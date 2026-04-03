@@ -84,6 +84,44 @@ services:
     networks:
       - healthcare-net
 
+  patient-db:
+    image: postgres:17-alpine
+    container_name: patient-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: patient_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5434:5432"
+    volumes:
+      - patient-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d patient_db"]
+      interval: 10s
+    networks:
+      - healthcare-net
+
+  patient-service:
+    build:
+      context: .
+      dockerfile: ./services/patient-service/Dockerfile
+    container_name: patient-service
+    ports:
+      - "8002:8002"
+    environment:
+      APP_ENV: development
+      PORT: "8002"
+      DATABASE_URL: "postgres://postgres:password123@patient-db:5432/patient_db?sslmode=disable"
+      RABBITMQ_URL: "amqp://admin:password123@rabbitmq:5672/"
+    depends_on:
+      patient-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - healthcare-net
+
   # ────────────────────────────────
   # Reverse Proxy
   # ────────────────────────────────
@@ -107,6 +145,7 @@ services:
 volumes:
   auth-db-data:
   rabbitmq-data:
+  patient-db-data:
 
 # ────────────────────────────────
 # Internal network
