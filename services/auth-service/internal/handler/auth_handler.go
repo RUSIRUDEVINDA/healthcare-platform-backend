@@ -27,7 +27,7 @@ func NewAuthHandler(authSvc *service.AuthService, log *logger.Logger) *AuthHandl
 func (h *AuthHandler) RegisterRoutes(router *gin.Engine) {
 	// Public health check
 	router.GET("/health", h.HealthCheck)
-	router.GET("/ready", h.ReadinessCheck)
+	router.GET("/ready", h.ReadinessCheck) 
 
 	// Auth endpoints
 	auth := router.Group("/auth")
