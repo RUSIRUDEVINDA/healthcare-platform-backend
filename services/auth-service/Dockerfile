@@ -6,24 +6,22 @@ FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
-# 1. Copy root dependency files
-# Docker caches this layer — only re-runs go mod download when go.mod changes
-COPY go.mod go.sum ./
-RUN go mod download
+# Disable Go Workspaces to ensure this service builds independently 
+# using only its own go.mod and the local 'pkg' directory.
+ENV GOWORK=off
 
-# 2. Copy shared libraries (pkg)
+# 1. Copy shared libraries (pkg)
 COPY pkg/ ./pkg/
 
-# 3. Copy service-specific code
+# 2. Copy only this service's code
 COPY services/auth-service/ ./services/auth-service/
 
-# 4. Compile binary from within the service directory
-# CGO_ENABLED=0 = static binary
-# GOOS=linux = compile for Linux
+# 3. Compile binary from within the service directory
+WORKDIR /app/services/auth-service
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-w -s" \
     -o /auth-service \
-    ./services/auth-service/cmd/main.go
+    ./cmd/main.go
 
 # ─────────────────────────────────────────────
 # Stage 2: Production image
