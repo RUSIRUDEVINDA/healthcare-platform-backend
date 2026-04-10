@@ -58,6 +58,15 @@ type AppointmentBookedEvent struct {
 	Timestamp     string  `json:"timestamp"`
 }
 
+// PaymentCompletedEvent is published by payment-service
+// Subscribers:
+//   - appointment-service: marks appointment as paid
+//   - notification-service: sends payment receipt
+type PaymentCompletedEvent struct {
+	PaymentID     string `json:"payment_id"`
+	AppointmentID string `json:"appointment_id"`
+	ProviderID    string `json:"provider_id"`
+	Timestamp     string `json:"timestamp"`
 // DoctorCreatedEvent is published by doctor-service when a doctor record is created.
 // Consumers (e.g. notification-service) can subscribe on exchange doctor_events.
 type DoctorCreatedEvent struct {
@@ -120,12 +129,48 @@ func (c *Client) Close() {
 	}
 }
 
+// EnsureQueueBindings declares a durable queue and binds it to the given exchange/routing keys.
+// This helps prevent message loss when publishers emit events before consumers start.
+func (c *Client) EnsureQueueBindings(queueName, exchange string, routingKeys ...string) error {
+	queue, err := c.channel.QueueDeclare(
+		queueName,
+		true,  // durable
+		false, // auto-delete
+		false, // exclusive
+		false, // no-wait
+		nil,
+	)
+	if err != nil {
+		return fmt.Errorf("rabbitmq.EnsureQueueBindings declare queue: %w", err)
+	}
+
+	for _, routingKey := range routingKeys {
+		if routingKey == "" {
+			continue
+		}
+		if err := c.channel.QueueBind(queue.Name, routingKey, exchange, false, nil); err != nil {
+			return fmt.Errorf("rabbitmq.EnsureQueueBindings bind queue: %w", err)
+		}
+	}
+
+	c.log.Info("Ensured queue bindings", "queue", queueName, "exchange", exchange)
+	return nil
+}
+
 // Publishers (auth-service publishes these)
 func (c *Client) PublishUserRegistered(event UserRegisteredEvent) error {
 	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
 	return c.publish(ExchangeUserEvents, RoutingKeyUserRegistered, event)
 }
 
+func (c *Client) PublishUserLoggedIn(event UserRegisteredEvent) error {
+	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	return c.publish(ExchangeUserEvents, RoutingKeyUserLoggedIn, event)
+}
+
+func (c *Client) PublishPaymentCompleted(event PaymentCompletedEvent) error {
+	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	return c.publish(ExchangePaymentEvents, RoutingKeyPaymentCompleted, event)
 // PublishDoctorCreated publishes to the doctor_events topic exchange (routing: doctor.created).
 func (c *Client) PublishDoctorCreated(event DoctorCreatedEvent) error {
 	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
@@ -136,7 +181,7 @@ func (c *Client) PublishDoctorCreated(event DoctorCreatedEvent) error {
 
 // ConsumeQueue starts consuming messages from a queue
 // handler is called for each message received
-func (c *Client) ConsumeQueue(queueName, exchange, routingKey string, handler func([]byte) error) error {
+func (c *Client) ConsumeQueue(queueName, exchange string, handler func([]byte) error, routingKeys ...string) error {
 	// Declare the queue
 	queue, err := c.channel.QueueDeclare(
 		queueName, // queue name
@@ -150,9 +195,14 @@ func (c *Client) ConsumeQueue(queueName, exchange, routingKey string, handler fu
 		return fmt.Errorf("rabbitmq.ConsumeQueue declare queue: %w", err)
 	}
 
-	// Bind queue to exchange with routing key
-	if err := c.channel.QueueBind(queue.Name, routingKey, exchange, false, nil); err != nil {
-		return fmt.Errorf("rabbitmq.ConsumeQueue bind queue: %w", err)
+	// Bind queue to exchange with routing keys
+	for _, routingKey := range routingKeys {
+		if routingKey == "" {
+			continue
+		}
+		if err := c.channel.QueueBind(queue.Name, routingKey, exchange, false, nil); err != nil {
+			return fmt.Errorf("rabbitmq.ConsumeQueue bind queue: %w", err)
+		}
 	}
 
 	// Start consuming
@@ -181,7 +231,7 @@ func (c *Client) ConsumeQueue(queueName, exchange, routingKey string, handler fu
 		}
 	}()
 
-	c.log.Info("Started consuming queue", "queue", queueName, "routing_key", routingKey)
+	c.log.Info("Started consuming queue", "queue", queueName, "exchange", exchange)
 	return nil
 }
 

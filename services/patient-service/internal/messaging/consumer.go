@@ -27,8 +27,8 @@ func (c *PatientConsumer) Start() error {
 	err := c.mqClient.ConsumeQueue(
 		queueName,
 		rabbitmq.ExchangeUserEvents,
-		rabbitmq.RoutingKeyUserRegistered,
 		c.handleUserRegistered,
+		rabbitmq.RoutingKeyUserRegistered,
 	)
 
 	if err != nil {
