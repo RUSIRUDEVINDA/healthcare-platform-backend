@@ -117,6 +117,7 @@ func (s *AuthService) Login(req *model.LoginRequest) (*model.TokenResponse, erro
 	}
 
 	s.log.Info("User logged in", "user_id", user.ID, "role", user.Role)
+	s.publishUserLoggedInEvent(user)
 
 	return s.buildTokenResponse(user)
 }
@@ -226,5 +227,19 @@ func (s *AuthService) publishUserRegisteredEvent(user *model.User) {
 		s.log.Error("Failed to publish user.registered event", "user_id", user.ID, "error", err)
 	} else {
 		s.log.Info("Published user.registered event", "user_id", user.ID)
+	}
+}
+
+func (s *AuthService) publishUserLoggedInEvent(user *model.User) {
+	event := rabbitmq.UserRegisteredEvent{
+		UserID:    user.ID,
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Role:      string(user.Role),
+	}
+
+	if err := s.mqClient.PublishUserLoggedIn(event); err != nil {
+		s.log.Error("Failed to publish user.logged_in event", "user_id", user.ID, "error", err)
 	}
 }
