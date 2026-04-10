@@ -1,5 +1,3 @@
-version: '3.8'
-
 # ─────────────────────────────────────────────────────────────
 # Local Development Docker Compose
 # Run: docker-compose up --build
@@ -27,6 +25,27 @@ services:
       - auth-db-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d auth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - healthcare-net
+
+  doctor-db:
+    image: postgres:17-alpine
+    container_name: doctor-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: doctor_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5439:5432"
+    volumes:
+      - doctor-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d doctor_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -70,7 +89,8 @@ services:
     environment:
       APP_ENV: development
       PORT: "8001"
-      DATABASE_URL: "postgres://postgres:password123@auth-db:5432/auth_db?sslmode=disable"
+      # Set AUTH_DATABASE_URL in repo-root .env to use Neon (sslmode=require). Default stays local auth-db.
+      DATABASE_URL: "${AUTH_DATABASE_URL:-postgres://postgres:password123@auth-db:5432/auth_db?sslmode=disable}"
       RABBITMQ_URL: "amqp://admin:password123@rabbitmq:5672/"
       JWT_SECRET: "local-dev-jwt-secret-minimum-32-characters!!"
       JWT_REFRESH_SECRET: "local-dev-refresh-secret-minimum-32-chars!"
@@ -119,6 +139,52 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+  doctor-service:
+    build:
+      context: .
+      dockerfile: ./services/doctor-service/Dockerfile
+    container_name: doctor-service
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    environment:
+      APP_ENV: development
+      PORT: "8003"
+      # Set DOCTOR_DATABASE_URL in repo-root .env to use Neon (sslmode=require). Default stays local doctor-db.
+      DATABASE_URL: "${DOCTOR_DATABASE_URL:-postgres://postgres:password123@doctor-db:5432/doctor_db?sslmode=disable}"
+      RABBITMQ_URL: "amqp://admin:password123@rabbitmq:5672/"
+      AUTH_SERVICE_URL: "http://auth-service:8001"
+    depends_on:
+      doctor-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - healthcare-net
+
+  # Set OPENAI_API_KEY or GEMINI_API_KEY in repo-root .env; use AI_PROVIDER=openai|gemini.
+  ai-symptom-service:
+    build:
+      context: .
+      dockerfile: ./services/ai-symptom-service/Dockerfile
+    container_name: ai-symptom-service
+    restart: unless-stopped
+    ports:
+      - "8008:8008"
+    environment:
+      APP_ENV: development
+      PORT: "8008"
+      AUTH_SERVICE_URL: "http://auth-service:8001"
+      AI_PROVIDER: "${AI_PROVIDER:-openai}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_MODEL: "gpt-4o-mini"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      GEMINI_MODEL: "${GEMINI_MODEL:-gemini-2.5-flash}"
+    depends_on:
+      auth-service:
+        condition: service_started
     networks:
       - healthcare-net
 
@@ -136,6 +202,8 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - auth-service
+      - doctor-service
+      - ai-symptom-service
     networks:
       - healthcare-net
 
@@ -144,13 +212,14 @@ services:
 # ────────────────────────────────
 volumes:
   auth-db-data:
+  doctor-db-data:
   rabbitmq-data:
   patient-db-data:
 
 # ────────────────────────────────
 # Internal network
 # Services talk to each other using container names as hostnames
-# e.g. auth-service connects to "auth-db:5432"
+# e.g. auth-service → "auth-db:5432", doctor-service → "doctor-db:5432"
 # ────────────────────────────────
 networks:
   healthcare-net:

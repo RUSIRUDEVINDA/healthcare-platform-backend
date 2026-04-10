@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-symptom-service-config
+  namespace: healthcare
+data:
+  APP_ENV: "production"
+  PORT: "8008"
+  AUTH_SERVICE_URL: "http://auth-service.healthcare.svc.cluster.local:8001"
+  AI_PROVIDER: "openai"
+  OPENAI_MODEL: "gpt-4o-mini"
+  GEMINI_MODEL: "gemini-2.5-flash"
