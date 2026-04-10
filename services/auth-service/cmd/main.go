@@ -53,6 +53,17 @@ func main() {
 	}
 	defer mqClient.Close()
 
+	// Ensure patient-service queue is bound before we publish events.
+	// This prevents losing user.registered events when patient-service starts later.
+	if err := mqClient.EnsureQueueBindings(
+		"patient_profile_creator_queue",
+		rabbitmq.ExchangeUserEvents,
+		rabbitmq.RoutingKeyUserRegistered,
+		rabbitmq.RoutingKeyUserLoggedIn,
+	); err != nil {
+		log.Fatal("Failed to ensure RabbitMQ queue bindings", "error", err)
+	}
+
 	// Initialize JWT helper
 	jwtHelper := jwt.New(cfg.JWTSecret, cfg.JWTRefreshSecret, cfg.AccessTokenTTLMinutes, cfg.RefreshTokenTTLDays)
 
@@ -73,6 +84,11 @@ func main() {
 
 	// Register routes
 	authHandler.RegisterRoutes(router)
+	router.POST("/api/auth/register", authHandler.Register)
+	router.POST("/api/auth/login", authHandler.Login)
+	router.POST("/api/auth/logout", authHandler.Logout)
+	router.POST("/api/auth/refresh", authHandler.Refresh)
+	router.GET("/api/auth/validate", authHandler.ValidateToken)
 
 	// Create HTTP server
 	srv := &http.Server{
