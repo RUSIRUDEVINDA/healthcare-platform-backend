@@ -4,4 +4,5 @@ use (
 	./pkg
 	./services/auth-service
 	./services/patient-service
+	./services/payment-service
 )
