@@ -67,6 +67,8 @@ type PaymentCompletedEvent struct {
 	AppointmentID string `json:"appointment_id"`
 	ProviderID    string `json:"provider_id"`
 	Timestamp     string `json:"timestamp"`
+}
+
 // DoctorCreatedEvent is published by doctor-service when a doctor record is created.
 // Consumers (e.g. notification-service) can subscribe on exchange doctor_events.
 type DoctorCreatedEvent struct {
@@ -171,6 +173,8 @@ func (c *Client) PublishUserLoggedIn(event UserRegisteredEvent) error {
 func (c *Client) PublishPaymentCompleted(event PaymentCompletedEvent) error {
 	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
 	return c.publish(ExchangePaymentEvents, RoutingKeyPaymentCompleted, event)
+}
+
 // PublishDoctorCreated publishes to the doctor_events topic exchange (routing: doctor.created).
 func (c *Client) PublishDoctorCreated(event DoctorCreatedEvent) error {
 	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
