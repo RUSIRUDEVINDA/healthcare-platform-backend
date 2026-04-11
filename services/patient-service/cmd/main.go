@@ -12,13 +12,14 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 
+	"healthcare-platform/pkg/jwt"
+	"healthcare-platform/pkg/logger"
+	"healthcare-platform/pkg/rabbitmq"
 	"healthcare-platform/services/patient-service/internal/config"
 	"healthcare-platform/services/patient-service/internal/handler"
 	"healthcare-platform/services/patient-service/internal/messaging"
 	"healthcare-platform/services/patient-service/internal/repository"
 	"healthcare-platform/services/patient-service/internal/service"
-	"healthcare-platform/pkg/logger"
-	"healthcare-platform/pkg/rabbitmq"
 )
 
 func main() {
@@ -57,6 +58,9 @@ func main() {
 		log.Fatal("Failed to start patient consumer", "error", err)
 	}
 
+	// Setup JWT helper for route protection
+	jwtHelper := jwt.New(cfg.JWTSecret, "", 15, 7)
+
 	// Setup Gin HTTP Router
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -65,7 +69,7 @@ func main() {
 	router.Use(gin.Recovery())
 	// router.Use(middleware.Logger(log)) // If we had one for this service
 
-	patientHandler.RegisterRoutes(router)
+	patientHandler.RegisterRoutes(router, jwtHelper)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,

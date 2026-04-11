@@ -3,8 +3,9 @@ go 1.25.0
 use (
 	./pkg
 	./services/ai-symptom-service
-	./services/api-gateway
+	//./services/api-gateway
 	./services/auth-service
 	./services/patient-service
+	./services/payment-service
 	./services/doctor-service
 )
