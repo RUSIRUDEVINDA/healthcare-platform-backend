@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"healthcare-platform/services/patient-service/internal/service"
-	"healthcare-platform/pkg/rabbitmq"
 	"healthcare-platform/pkg/logger"
+	"healthcare-platform/pkg/rabbitmq"
+	"healthcare-platform/services/patient-service/internal/service"
 )
 
 type PatientConsumer struct {
@@ -29,6 +29,7 @@ func (c *PatientConsumer) Start() error {
 		rabbitmq.ExchangeUserEvents,
 		c.handleUserRegistered,
 		rabbitmq.RoutingKeyUserRegistered,
+		rabbitmq.RoutingKeyUserLoggedIn,
 	)
 
 	if err != nil {
