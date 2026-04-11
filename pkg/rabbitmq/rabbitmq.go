@@ -16,6 +16,7 @@ const (
 	ExchangeUserEvents        = "user_events"
 	ExchangeAppointmentEvents = "appointment_events"
 	ExchangePaymentEvents     = "payment_events"
+	ExchangeDoctorEvents      = "doctor_events"
 
 	RoutingKeyUserRegistered       = "user.registered"
 	RoutingKeyUserLoggedIn         = "user.logged_in"
@@ -23,6 +24,7 @@ const (
 	RoutingKeyAppointmentCancelled = "appointment.cancelled"
 	RoutingKeyPaymentCompleted     = "payment.completed"
 	RoutingKeyPaymentFailed        = "payment.failed"
+	RoutingKeyDoctorCreated        = "doctor.created"
 )
 
 // Event payload structs
@@ -65,6 +67,16 @@ type PaymentCompletedEvent struct {
 	AppointmentID string `json:"appointment_id"`
 	ProviderID    string `json:"provider_id"`
 	Timestamp     string `json:"timestamp"`
+// DoctorCreatedEvent is published by doctor-service when a doctor record is created.
+// Consumers (e.g. notification-service) can subscribe on exchange doctor_events.
+type DoctorCreatedEvent struct {
+	DoctorID       uint   `json:"doctor_id"`
+	Name           string `json:"name"`
+	Specialization string `json:"specialization"`
+	Hospital       string `json:"hospital"`
+	NIC            string `json:"nic"`
+	SLMCNo         string `json:"slmc_no"`
+	Timestamp      string `json:"timestamp"`
 }
 
 // Client
@@ -159,6 +171,10 @@ func (c *Client) PublishUserLoggedIn(event UserRegisteredEvent) error {
 func (c *Client) PublishPaymentCompleted(event PaymentCompletedEvent) error {
 	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
 	return c.publish(ExchangePaymentEvents, RoutingKeyPaymentCompleted, event)
+// PublishDoctorCreated publishes to the doctor_events topic exchange (routing: doctor.created).
+func (c *Client) PublishDoctorCreated(event DoctorCreatedEvent) error {
+	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	return c.publish(ExchangeDoctorEvents, RoutingKeyDoctorCreated, event)
 }
 
 // Consumers (used by other services)
@@ -225,6 +241,7 @@ func (c *Client) declareExchanges() error {
 		ExchangeUserEvents,
 		ExchangeAppointmentEvents,
 		ExchangePaymentEvents,
+		ExchangeDoctorEvents,
 	}
 
 	for _, exchange := range exchanges {

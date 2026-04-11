@@ -1,0 +1,4 @@
+DROP INDEX IF EXISTS idx_doctors_slmc_no;
+DROP INDEX IF EXISTS idx_doctors_nic;
+ALTER TABLE doctors DROP COLUMN IF EXISTS slmc_no;
+ALTER TABLE doctors DROP COLUMN IF EXISTS nic;

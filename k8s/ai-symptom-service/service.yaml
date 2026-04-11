@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-symptom-service
+  namespace: healthcare
+  labels:
+    app: ai-symptom-service
+spec:
+  selector:
+    app: ai-symptom-service
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8008
+      targetPort: 8008
+  type: ClusterIP
