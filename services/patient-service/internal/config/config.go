@@ -12,6 +12,7 @@ type Config struct {
 	Port        string
 	DatabaseURL string
 	RabbitMQURL string
+	JWTSecret   string
 }
 
 func Load() (*Config, error) {
@@ -23,6 +24,7 @@ func Load() (*Config, error) {
 		Port:        getEnv("PORT", "8002"),
 		DatabaseURL: getEnv("DATABASE_URL", ""),
 		RabbitMQURL: getEnv("RABBITMQ_URL", ""),
+		JWTSecret:   getEnv("JWT_SECRET", ""),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -30,6 +32,9 @@ func Load() (*Config, error) {
 	}
 	if cfg.RabbitMQURL == "" {
 		return nil, fmt.Errorf("RABBITMQ_URL is not set")
+	}
+	if cfg.JWTSecret == "" {
+		return nil, fmt.Errorf("JWT_SECRET is not set")
 	}
 
 	return cfg, nil
