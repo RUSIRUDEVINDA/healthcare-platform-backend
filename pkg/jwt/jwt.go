@@ -75,9 +75,9 @@ func (h *Helper) ParseAccessToken(tokenStr string) (*Claims, error) {
 
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
-			return nil, errors.New("token has expired")
+			return nil, errors.New("access token has expired")
 		}
-		return nil, errors.New("invalid token")
+		return nil, errors.New("invalid access token")
 	}
 
 	claims, ok := token.Claims.(*Claims)
