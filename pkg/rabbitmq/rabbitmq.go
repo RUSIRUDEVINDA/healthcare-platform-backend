@@ -170,6 +170,11 @@ func (c *Client) PublishUserLoggedIn(event UserRegisteredEvent) error {
 	return c.publish(ExchangeUserEvents, RoutingKeyUserLoggedIn, event)
 }
 
+func (c *Client) PublishAppointmentBooked(event AppointmentBookedEvent) error {
+	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	return c.publish(ExchangeAppointmentEvents, RoutingKeyAppointmentBooked, event)
+}
+
 func (c *Client) PublishPaymentCompleted(event PaymentCompletedEvent) error {
 	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
 	return c.publish(ExchangePaymentEvents, RoutingKeyPaymentCompleted, event)
