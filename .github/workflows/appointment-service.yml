@@ -9,6 +9,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/appointment-service
 
     steps:
       - name: Checkout code
@@ -23,7 +26,7 @@ jobs:
         run: go mod tidy
 
       - name: Build
-        run: go build ./cmd/main.go
+        run: go build ./cmd
 
       - name: Build Docker image
         run: docker build -t appointment-service:latest .
