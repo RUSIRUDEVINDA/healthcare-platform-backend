@@ -48,8 +48,8 @@ func (s *AppointmentService) BookAppointment(patientID, role string, req *model.
 		PaymentStatus: model.PaymentPending,
 	}
 
-	if strings.TrimSpace(string(req.SlotID)) != "" {
-		slot, err := s.repo.GetSlotByID(string(req.SlotID))
+	if strings.TrimSpace(req.SlotID) != "" {
+		slot, err := s.repo.GetSlotByID(req.SlotID)
 		if err != nil {
 			return nil, fmt.Errorf("service.BookAppointment load slot: %w", err)
 		}
@@ -78,7 +78,7 @@ func (s *AppointmentService) BookAppointment(patientID, role string, req *model.
 		appt.DurationMinutes = int(slot.EndTime.Sub(slot.StartTime).Minutes())
 		appt.PaymentDueAt = &dueAt
 	} else {
-		if req.ScheduledAt == nil || req.DurationMinutes == nil || strings.TrimSpace(string(req.DoctorID)) == "" {
+		if req.ScheduledAt == nil || req.DurationMinutes == nil || strings.TrimSpace(req.DoctorID) == "" {
 			return nil, fmt.Errorf("either slot_id or doctor_id, scheduled_at, and duration_minutes must be provided")
 		}
 		if !req.ScheduledAt.After(now) {
@@ -94,7 +94,7 @@ func (s *AppointmentService) BookAppointment(patientID, role string, req *model.
 			dueAt = oneHourFromNow
 		}
 
-		appt.DoctorID = string(req.DoctorID)
+		appt.DoctorID = req.DoctorID
 		appt.ScheduledAt = req.ScheduledAt.UTC()
 		appt.DurationMinutes = *req.DurationMinutes
 		appt.PaymentDueAt = &dueAt
@@ -180,7 +180,7 @@ func (s *AppointmentService) CreateSlot(callerID, callerToken, role string, req 
 		return nil, fmt.Errorf("end time must be after start time")
 	}
 
-	doctorProfileID := strings.TrimSpace(string(req.DoctorID))
+	doctorProfileID := strings.TrimSpace(req.DoctorID)
 	if role == "doctor" {
 		resolvedID, err := s.getCallerDoctorProfileID(callerToken)
 		if err != nil {

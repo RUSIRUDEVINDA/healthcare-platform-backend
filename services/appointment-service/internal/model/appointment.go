@@ -82,8 +82,8 @@ type Slot struct {
 // ---- Request / Response DTOs ----
 
 type BookAppointmentRequest struct {
-	SlotID          FlexibleID  `json:"slot_id,omitempty"`
-	DoctorID        FlexibleID  `json:"doctor_id,omitempty"`
+	SlotID          string      `json:"slot_id,omitempty"`
+	DoctorID        string      `json:"doctor_id,omitempty"`
 	ScheduledAt     *time.Time  `json:"scheduled_at,omitempty"`
 	DurationMinutes *int        `json:"duration_minutes,omitempty"`
 	Notes           string      `json:"notes"`
@@ -101,9 +101,9 @@ type AppointmentStatusUpdateRequest struct {
 }
 
 type CreateSlotRequest struct {
-	DoctorID  FlexibleID `json:"doctor_id" binding:"required"`
-	StartTime time.Time  `json:"start_time" binding:"required"`
-	EndTime   time.Time  `json:"end_time" binding:"required"`
+	DoctorID  string    `json:"doctor_id" binding:"required"`
+	StartTime time.Time `json:"start_time" binding:"required"`
+	EndTime   time.Time `json:"end_time" binding:"required"`
 }
 
 type UpdateSlotRequest struct {
