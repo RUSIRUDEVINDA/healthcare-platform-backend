@@ -164,7 +164,26 @@ services:
     networks:
       - healthcare-net
 
-  # Set OPENAI_API_KEY or GEMINI_API_KEY in repo-root .env; use AI_PROVIDER=openai|gemini.
+  ai-symptom-db:
+    image: postgres:17-alpine
+    container_name: ai-symptom-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: symptom_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    volumes:
+      - ai-symptom-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d symptom_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - healthcare-net
+
+  # LLM keys in repo-root .env. DATABASE_URL defaults to local ai-symptom-db (override for Neon, etc.).
   ai-symptom-service:
     build:
       context: .
@@ -177,12 +196,15 @@ services:
       APP_ENV: development
       PORT: "8008"
       AUTH_SERVICE_URL: "http://auth-service:8001"
+      DATABASE_URL: "${AI_SYMPTOM_DATABASE_URL:-postgres://postgres:password123@ai-symptom-db:5432/symptom_db?sslmode=disable}"
       AI_PROVIDER: "${AI_PROVIDER:-openai}"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
       OPENAI_MODEL: "gpt-4o-mini"
       GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
       GEMINI_MODEL: "${GEMINI_MODEL:-gemini-2.5-flash}"
     depends_on:
+      ai-symptom-db:
+        condition: service_healthy
       auth-service:
         condition: service_started
     networks:
@@ -300,6 +322,7 @@ services:
 # ────────────────────────────────
 volumes:
   auth-db-data:
+  ai-symptom-db-data:
   doctor-db-data:
   rabbitmq-data:
   patient-db-data:
