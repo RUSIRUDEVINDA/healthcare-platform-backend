@@ -1,2 +1,7 @@
 .gocache
-
+healthcare-platform.postman_collection.json
+.gocache/
+.gomodcache/
+**/.gocache/
+**/.gomodcache/
+*.exe
