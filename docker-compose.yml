@@ -131,7 +131,7 @@ services:
       PORT: "8002"
       DATABASE_URL: "postgres://postgres:password123@patient-db:5432/patient_db?sslmode=disable"
       RABBITMQ_URL: "amqp://admin:password123@rabbitmq:5672/"
-      JWT_SECRET: "local-dev-jwt-secret-minimum-32-characters!!"
+      JWT_SECRET: "local-dev-secret-change-this-in-production-32chars"
     depends_on:
       patient-db:
         condition: service_healthy
@@ -302,6 +302,27 @@ services:
     networks:
       - healthcare-net
 
+  telemedicine-db:
+    image: postgres:17-alpine
+    container_name: telemedicine-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: telemedicine_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5438:5432"
+    volumes:
+      - telemedicine-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d telemedicine_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - healthcare-net
+
   appointment-service:
     build:
       context: .
@@ -320,6 +341,34 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    networks:
+      - healthcare-net
+
+  telemedicine-service:
+    build:
+      context: .
+      dockerfile: ./services/telemedicine-service/Dockerfile
+    container_name: telemedicine-service
+    restart: unless-stopped
+    ports:
+      - "8009:8009"
+    env_file:
+      - ./services/telemedicine-service/.env
+    environment:
+      APP_ENV: development
+      PORT: "8009"
+      DATABASE_URL: "postgres://postgres:password123@telemedicine-db:5432/telemedicine_db?sslmode=disable"
+      JWT_SECRET: "local-dev-secret-change-this-in-production-32chars"
+      APPOINTMENT_SERVICE_URL: "http://appointment-service:8004"
+      JITSI_BASE_URL: "https://meet.jit.si"
+      RABBITMQ_URL: "amqp://admin:password123@rabbitmq:5672/"
+    depends_on:
+      telemedicine-db:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      appointment-service:
+        condition: service_started
     networks:
       - healthcare-net
 
@@ -342,6 +391,7 @@ services:
       - doctor-service
       - ai-symptom-service
       - appointment-service
+      - telemedicine-service
     networks:
       - healthcare-net
 
@@ -356,6 +406,7 @@ volumes:
   payment-db-data:
   appointment-db-data:
   file-storage-db-data:
+  telemedicine-db-data:
 
 # ────────────────────────────────
 # Internal network
