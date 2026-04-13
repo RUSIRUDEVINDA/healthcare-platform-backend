@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
 	"healthcare-platform/pkg/logger"
 	"healthcare-platform/services/appointment-service/internal/middleware"
 	"healthcare-platform/services/appointment-service/internal/model"
@@ -60,13 +61,25 @@ func (h *AppointmentHandler) Book(c *gin.Context) {
 		return
 	}
 
+	token, ok := middleware.CallerToken(c)
+	if !ok || token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing caller token"})
+		return
+	}
+
 	var req model.BookAppointmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if strings.TrimSpace(req.SlotID) != "" {
+		if _, err := uuid.Parse(strings.TrimSpace(req.SlotID)); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "slot_id must be a valid UUID"})
+			return
+		}
+	}
 
-	appt, err := h.svc.BookAppointment(userID, role, &req)
+	appt, err := h.svc.BookAppointment(userID, role, token, &req)
 	if err != nil {
 		if strings.Contains(err.Error(), "only patients can book appointments") {
 			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
@@ -88,6 +101,15 @@ func (h *AppointmentHandler) Book(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		if strings.Contains(err.Error(), "invalid consultation mode") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if strings.Contains(err.Error(), "slot not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		h.log.Error("Failed to book appointment", "user_id", userID, "role", role, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to book appointment"})
 		return
 	}

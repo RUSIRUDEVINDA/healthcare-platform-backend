@@ -10,4 +10,5 @@ use (
 	./services/file-storage-service
 	./services/appointment-service
 	./services/doctor-service
+	./services/telemedicine-service
 )

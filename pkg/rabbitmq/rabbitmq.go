@@ -54,14 +54,18 @@ type UserRegisteredEvent struct {
 //   - notification-service: sends confirmation SMS + email
 //   - payment-service: creates payment record
 type AppointmentBookedEvent struct {
-	AppointmentID string  `json:"appointment_id"`
-	PatientID     string  `json:"patient_id"`
-	DoctorID      string  `json:"doctor_id"`
-	PatientEmail  string  `json:"patient_email"`
-	DoctorEmail   string  `json:"doctor_email"`
-	ScheduledAt   string  `json:"scheduled_at"`
-	ConsultFee    float64 `json:"consult_fee"`
-	Timestamp     string  `json:"timestamp"`
+	AppointmentID     string  `json:"appointment_id"`
+	PatientID         string  `json:"patient_id"`
+	DoctorID          string  `json:"doctor_id"`
+	DoctorOwnerUserID string  `json:"doctor_owner_user_id,omitempty"`
+	ConsultationMode  string  `json:"consultation_mode,omitempty"`
+	RoomName          string  `json:"room_name,omitempty"`
+	JoinURL           string  `json:"join_url,omitempty"`
+	PatientEmail      string  `json:"patient_email"`
+	DoctorEmail       string  `json:"doctor_email"`
+	ScheduledAt       string  `json:"scheduled_at"`
+	ConsultFee        float64 `json:"consult_fee"`
+	Timestamp         string  `json:"timestamp"`
 }
 
 // PaymentCompletedEvent is published by payment-service
