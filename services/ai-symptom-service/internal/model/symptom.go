@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 // SymptomCheckRequest is the body for POST /symptoms/check.
 type SymptomCheckRequest struct {
 	Symptoms        string `json:"symptoms" binding:"required,min=10,max=8000"`
@@ -11,6 +13,17 @@ type SymptomCheckResponse struct {
 	SuggestedSpecialty string `json:"suggested_specialty"`
 	PreliminaryNotes   string `json:"preliminary_notes"`
 	Disclaimer         string `json:"disclaimer"`
+}
+
+// SymptomChatHistoryItem is one saved symptom check for GET /symptoms/history.
+type SymptomChatHistoryItem struct {
+	ID                 int64     `json:"id"`
+	Symptoms           string    `json:"symptoms"`
+	OptionalContext    string    `json:"optional_context,omitempty"`
+	SuggestedSpecialty string    `json:"suggested_specialty"`
+	PreliminaryNotes   string    `json:"preliminary_notes"`
+	Disclaimer         string    `json:"disclaimer"`
+	CreatedAt          time.Time `json:"created_at"`
 }
 
 // ValidateTokenResponse matches auth-service GET /auth/validate JSON body.
