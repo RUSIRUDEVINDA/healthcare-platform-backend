@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/lib/pq"
 
 	"healthcare-platform/pkg/logger"
@@ -66,7 +68,11 @@ func (s *DoctorService) GetByID(id int64) (*model.Doctor, error) {
 	return d, nil
 }
 
-func (s *DoctorService) Create(req *model.CreateDoctorRequest) (*model.Doctor, error) {
+func (s *DoctorService) Create(callerID, role string, req *model.CreateDoctorRequest) (*model.Doctor, error) {
+	if role != "doctor" && role != "admin" {
+		return nil, fmt.Errorf("only doctors or admins can create doctor profiles")
+	}
+
 	nic := strings.TrimSpace(req.NIC)
 	slmc := strings.TrimSpace(req.SLMCNo)
 	if !nicDigitsRE.MatchString(nic) {
@@ -76,7 +82,33 @@ func (s *DoctorService) Create(req *model.CreateDoctorRequest) (*model.Doctor, e
 		return nil, ErrInvalidSLMCFormat
 	}
 
+	userID := strings.TrimSpace(req.UserID)
+	switch role {
+	case "doctor":
+		if userID != "" && userID != callerID {
+			return nil, fmt.Errorf("user_id must match the logged-in doctor")
+		}
+		userID = callerID
+	case "admin":
+		if userID == "" {
+			return nil, fmt.Errorf("user_id is required for doctor profile creation")
+		}
+	}
+
+	email := strings.TrimSpace(req.Email)
+	if email == "" {
+		return nil, fmt.Errorf("email is required for doctor profile creation")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("hash password: %w", err)
+	}
+
 	d := &model.Doctor{
+		UserID:         userID,
+		Email:          email,
+		PasswordHash:   string(hashedPassword),
 		Name:           req.Name,
 		Specialization: req.Specialization,
 		Experience:     req.Experience,
@@ -110,6 +142,17 @@ func (s *DoctorService) Create(req *model.CreateDoctorRequest) (*model.Doctor, e
 	return d, nil
 }
 
+func (s *DoctorService) GetByUserID(userID string) (*model.Doctor, error) {
+	d, err := s.repo.FindByUserID(strings.TrimSpace(userID))
+	if err != nil {
+		return nil, err
+	}
+	if d == nil {
+		return nil, ErrDoctorNotFound
+	}
+	return d, nil
+}
+
 func (s *DoctorService) Update(id int64, req *model.UpdateDoctorRequest) (*model.Doctor, error) {
 	existing, err := s.repo.FindByID(id)
 	if err != nil {
@@ -120,8 +163,13 @@ func (s *DoctorService) Update(id int64, req *model.UpdateDoctorRequest) (*model
 	}
 
 	if req.Name == nil && req.Specialization == nil && req.Experience == nil &&
-		req.Hospital == nil && req.NIC == nil && req.SLMCNo == nil {
+		req.Hospital == nil && req.NIC == nil && req.SLMCNo == nil && req.Email == nil {
 		return nil, ErrNoFieldsToUpdate
+	}
+
+	if req.Email != nil {
+		trimmed := strings.TrimSpace(*req.Email)
+		req.Email = &trimmed
 	}
 
 	if req.NIC != nil {
@@ -142,6 +190,9 @@ func (s *DoctorService) Update(id int64, req *model.UpdateDoctorRequest) (*model
 
 	if req.Name != nil {
 		existing.Name = *req.Name
+	}
+	if req.Email != nil {
+		existing.Email = *req.Email
 	}
 	if req.Specialization != nil {
 		existing.Specialization = *req.Specialization

@@ -4,6 +4,9 @@ import "time"
 
 type Doctor struct {
 	ID             int64     `json:"id"`
+	UserID         string    `json:"user_id,omitempty"`
+	Email          string    `json:"email,omitempty"`
+	PasswordHash   string    `json:"-"`
 	Name           string    `json:"name"`
 	Specialization string    `json:"specialization"`
 	Experience     int       `json:"experience"`
@@ -15,6 +18,9 @@ type Doctor struct {
 }
 
 type CreateDoctorRequest struct {
+	UserID         string `json:"user_id,omitempty"`
+	Email          string `json:"email,omitempty" binding:"omitempty,email"`
+	Password       string `json:"password" binding:"required,min=8"`
 	Name           string `json:"name" binding:"required,min=2,max=255"`
 	Specialization string `json:"specialization" binding:"required,min=2,max=255"`
 	Experience     int    `json:"experience" binding:"required,min=0,max=80"`
@@ -24,6 +30,7 @@ type CreateDoctorRequest struct {
 }
 
 type UpdateDoctorRequest struct {
+	Email          *string `json:"email,omitempty" binding:"omitempty,email"`
 	Name           *string `json:"name,omitempty" binding:"omitempty,min=2,max=255"`
 	Specialization *string `json:"specialization,omitempty" binding:"omitempty,min=2,max=255"`
 	Experience     *int    `json:"experience,omitempty" binding:"omitempty,min=0,max=80"`
