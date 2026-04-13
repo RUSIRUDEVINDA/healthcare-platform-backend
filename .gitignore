@@ -10,3 +10,9 @@ healthcare-platform.postman_collection.json
 **/.gomodcache/
 *.exe
 file-storage-service.postman_collection.json
+
+# add script-generated files and script folder to .gitignore
+*.log
+scripts/
+
+file-storage-service.postman_collection.json
