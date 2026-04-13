@@ -51,7 +51,7 @@ func main() {
 
 	// Setup Business Logic
 	appointmentRepo := repository.NewAppointmentRepository(db)
-	appointmentSvc := service.NewAppointmentService(appointmentRepo, mqClient, log, cfg.DoctorServiceURL)
+	appointmentSvc := service.NewAppointmentService(appointmentRepo, mqClient, log, cfg.DoctorServiceURL, cfg.JitsiBaseURL)
 	appointmentHandler := handler.NewAppointmentHandler(appointmentSvc, log)
 	appointmentConsumer := messaging.NewAppointmentConsumer(mqClient, appointmentSvc, log)
 
@@ -140,6 +140,9 @@ func runMigrations(db *sql.DB, log *logger.Logger) error {
 		doctor_id        TEXT NOT NULL,
 		doctor_owner_user_id TEXT NOT NULL DEFAULT '',
 		slot_id          UUID,
+		consultation_mode TEXT NOT NULL DEFAULT 'physical',
+		room_name        TEXT NOT NULL DEFAULT '',
+		join_url         TEXT NOT NULL DEFAULT '',
 		scheduled_at     TIMESTAMPTZ NOT NULL,
 		duration_minutes INT NOT NULL DEFAULT 30,
 		status           TEXT NOT NULL DEFAULT 'pending',
@@ -165,6 +168,9 @@ func runMigrations(db *sql.DB, log *logger.Logger) error {
 	ALTER TABLE appointments ALTER COLUMN doctor_id TYPE TEXT USING doctor_id::text;
 	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS doctor_owner_user_id TEXT NOT NULL DEFAULT '';
 	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS slot_id UUID;
+	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS consultation_mode TEXT NOT NULL DEFAULT 'physical';
+	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS room_name TEXT NOT NULL DEFAULT '';
+	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS join_url TEXT NOT NULL DEFAULT '';
 	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'pending';
 	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS payment_due_at TIMESTAMPTZ;
 	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;

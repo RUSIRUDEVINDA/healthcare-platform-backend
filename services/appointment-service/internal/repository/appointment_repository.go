@@ -79,12 +79,12 @@ func (r *AppointmentRepository) Create(a *model.Appointment) error {
 
 	_, err = tx.Exec(`
 		INSERT INTO appointments (
-			id, patient_id, doctor_id, doctor_owner_user_id, slot_id, scheduled_at,
+			id, patient_id, doctor_id, doctor_owner_user_id, slot_id, consultation_mode, room_name, join_url, scheduled_at,
 			duration_minutes, status, payment_status, payment_due_at, paid_at,
 			notes, created_at, updated_at
 		)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
-		a.ID, a.PatientID, a.DoctorID, a.DoctorOwnerUserID, a.SlotID, a.ScheduledAt,
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+		a.ID, a.PatientID, a.DoctorID, a.DoctorOwnerUserID, a.SlotID, a.ConsultationMode, a.RoomName, a.JoinURL, a.ScheduledAt,
 		a.DurationMinutes, a.Status, a.PaymentStatus, a.PaymentDueAt, a.PaidAt,
 		a.Notes, a.CreatedAt, a.UpdatedAt,
 	)
@@ -100,13 +100,15 @@ func (r *AppointmentRepository) GetByID(id string) (*model.Appointment, error) {
 	var paymentDueAt sql.NullTime
 	var paidAt sql.NullTime
 	var slotID sql.NullString
+	var roomName sql.NullString
+	var joinURL sql.NullString
 
 	err := r.db.QueryRow(`
-		SELECT id, patient_id, doctor_id, doctor_owner_user_id, slot_id, scheduled_at, duration_minutes,
+		SELECT id, patient_id, doctor_id, doctor_owner_user_id, slot_id, consultation_mode, room_name, join_url, scheduled_at, duration_minutes,
 		       status, payment_status, payment_due_at, paid_at, notes, created_at, updated_at
 		FROM appointments WHERE id = $1`, id).
 		Scan(
-			&a.ID, &a.PatientID, &a.DoctorID, &a.DoctorOwnerUserID, &slotID, &a.ScheduledAt, &a.DurationMinutes,
+			&a.ID, &a.PatientID, &a.DoctorID, &a.DoctorOwnerUserID, &slotID, &a.ConsultationMode, &roomName, &joinURL, &a.ScheduledAt, &a.DurationMinutes,
 			&a.Status, &a.PaymentStatus, &paymentDueAt, &paidAt, &a.Notes, &a.CreatedAt, &a.UpdatedAt,
 		)
 	if err == sql.ErrNoRows {
@@ -126,6 +128,12 @@ func (r *AppointmentRepository) GetByID(id string) (*model.Appointment, error) {
 	if slotID.Valid {
 		a.SlotID = slotID.String
 	}
+	if roomName.Valid {
+		a.RoomName = roomName.String
+	}
+	if joinURL.Valid {
+		a.JoinURL = joinURL.String
+	}
 	return a, nil
 }
 
@@ -143,7 +151,7 @@ func (r *AppointmentRepository) ListAppointmentsAll() ([]model.Appointment, erro
 
 func (r *AppointmentRepository) listAppointments(clause string, args ...interface{}) ([]model.Appointment, error) {
 	query := `
-		SELECT id, patient_id, doctor_id, doctor_owner_user_id, slot_id, scheduled_at, duration_minutes,
+		SELECT id, patient_id, doctor_id, doctor_owner_user_id, slot_id, consultation_mode, room_name, join_url, scheduled_at, duration_minutes,
 		       status, payment_status, payment_due_at, paid_at, notes, created_at, updated_at
 		FROM appointments `
 	query += clause
@@ -160,8 +168,10 @@ func (r *AppointmentRepository) listAppointments(clause string, args ...interfac
 		var paymentDueAt sql.NullTime
 		var paidAt sql.NullTime
 		var slotID sql.NullString
+		var roomName sql.NullString
+		var joinURL sql.NullString
 		if err := rows.Scan(
-			&a.ID, &a.PatientID, &a.DoctorID, &a.DoctorOwnerUserID, &slotID, &a.ScheduledAt, &a.DurationMinutes,
+			&a.ID, &a.PatientID, &a.DoctorID, &a.DoctorOwnerUserID, &slotID, &a.ConsultationMode, &roomName, &joinURL, &a.ScheduledAt, &a.DurationMinutes,
 			&a.Status, &a.PaymentStatus, &paymentDueAt, &paidAt, &a.Notes, &a.CreatedAt, &a.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -176,6 +186,12 @@ func (r *AppointmentRepository) listAppointments(clause string, args ...interfac
 		}
 		if slotID.Valid {
 			a.SlotID = slotID.String
+		}
+		if roomName.Valid {
+			a.RoomName = roomName.String
+		}
+		if joinURL.Valid {
+			a.JoinURL = joinURL.String
 		}
 		out = append(out, a)
 	}
@@ -202,7 +218,7 @@ func (r *AppointmentRepository) MarkPaymentCompleted(id string) error {
 
 func (r *AppointmentRepository) FindOverdueUnpaid(now time.Time) ([]model.Appointment, error) {
 	rows, err := r.db.Query(`
-		SELECT id, patient_id, doctor_id, doctor_owner_user_id, slot_id, scheduled_at, duration_minutes,
+		SELECT id, patient_id, doctor_id, doctor_owner_user_id, slot_id, consultation_mode, room_name, join_url, scheduled_at, duration_minutes,
 		       status, payment_status, payment_due_at, paid_at, notes, created_at, updated_at
 		FROM appointments
 		WHERE payment_status = $1
@@ -222,8 +238,10 @@ func (r *AppointmentRepository) FindOverdueUnpaid(now time.Time) ([]model.Appoin
 		var paymentDueAt sql.NullTime
 		var paidAt sql.NullTime
 		var slotID sql.NullString
+		var roomName sql.NullString
+		var joinURL sql.NullString
 		if err := rows.Scan(
-			&a.ID, &a.PatientID, &a.DoctorID, &a.DoctorOwnerUserID, &slotID, &a.ScheduledAt, &a.DurationMinutes,
+			&a.ID, &a.PatientID, &a.DoctorID, &a.DoctorOwnerUserID, &slotID, &a.ConsultationMode, &roomName, &joinURL, &a.ScheduledAt, &a.DurationMinutes,
 			&a.Status, &a.PaymentStatus, &paymentDueAt, &paidAt, &a.Notes, &a.CreatedAt, &a.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -238,6 +256,12 @@ func (r *AppointmentRepository) FindOverdueUnpaid(now time.Time) ([]model.Appoin
 		}
 		if slotID.Valid {
 			a.SlotID = slotID.String
+		}
+		if roomName.Valid {
+			a.RoomName = roomName.String
+		}
+		if joinURL.Valid {
+			a.JoinURL = joinURL.String
 		}
 		out = append(out, a)
 	}

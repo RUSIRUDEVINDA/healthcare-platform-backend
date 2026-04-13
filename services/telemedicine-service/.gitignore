@@ -1,0 +1,6 @@
+.env
+*.log
+.gocache
+.gofmt
+main.exe
+
