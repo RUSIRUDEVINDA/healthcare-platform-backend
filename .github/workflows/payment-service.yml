@@ -76,7 +76,7 @@ jobs:
           PAYHERE_ENV: sandbox
           PAYHERE_RETURN_URL: http://localhost:3000/payment/success
           PAYHERE_CANCEL_URL: http://localhost:3000/payment/cancel
-          PAYHERE_NOTIFY_URL: https://example.com/api/v1/payments/webhook/payhere
+          PAYHERE_NOTIFY_URL: https://ideally-visor-expanse.ngrok-free.dev/api/v1/payments/webhook/payhere
         run: go test -v -race -coverprofile=coverage.out ./...
 
       - name: Upload coverage artifact

@@ -1,9 +1,12 @@
 package service
 
 import (
+	"crypto/rand"
+	"encoding/base32"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -18,20 +21,22 @@ type AppointmentService struct {
 	mq               *rabbitmq.Client
 	log              *logger.Logger
 	doctorServiceURL string
+	jitsiBaseURL     string
 	httpClient       *http.Client
 }
 
-func NewAppointmentService(repo *repository.AppointmentRepository, mq *rabbitmq.Client, log *logger.Logger, doctorServiceURL string) *AppointmentService {
+func NewAppointmentService(repo *repository.AppointmentRepository, mq *rabbitmq.Client, log *logger.Logger, doctorServiceURL, jitsiBaseURL string) *AppointmentService {
 	return &AppointmentService{
 		repo:             repo,
 		mq:               mq,
 		log:              log,
 		doctorServiceURL: strings.TrimRight(doctorServiceURL, "/"),
+		jitsiBaseURL:     strings.TrimRight(jitsiBaseURL, "/"),
 		httpClient:       &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
-func (s *AppointmentService) BookAppointment(patientID, role string, req *model.BookAppointmentRequest) (*model.Appointment, error) {
+func (s *AppointmentService) BookAppointment(patientID, role, callerToken string, req *model.BookAppointmentRequest) (*model.Appointment, error) {
 	if role != "patient" {
 		return nil, fmt.Errorf("only patients can book appointments")
 	}
@@ -41,11 +46,20 @@ func (s *AppointmentService) BookAppointment(patientID, role string, req *model.
 		paymentMode = model.PaymentModePayNow
 	}
 
+	consultationMode := req.ConsultationMode
+	if consultationMode == "" {
+		consultationMode = model.ConsultationModePhysical
+	}
+	if !model.IsValidConsultationMode(consultationMode) {
+		return nil, fmt.Errorf("invalid consultation mode; allowed values: physical, jitsi")
+	}
+
 	now := time.Now().UTC()
 	appt := &model.Appointment{
-		PatientID:     patientID,
-		Notes:         req.Notes,
-		PaymentStatus: model.PaymentPending,
+		PatientID:        patientID,
+		Notes:            req.Notes,
+		ConsultationMode: consultationMode,
+		PaymentStatus:    model.PaymentPending,
 	}
 
 	if strings.TrimSpace(req.SlotID) != "" {
@@ -100,15 +114,28 @@ func (s *AppointmentService) BookAppointment(patientID, role string, req *model.
 		appt.PaymentDueAt = &dueAt
 	}
 
+	if consultationMode == model.ConsultationModeJitsi {
+		roomName, err := generateRoomName()
+		if err != nil {
+			return nil, fmt.Errorf("generate room name: %w", err)
+		}
+		appt.RoomName = roomName
+		appt.JoinURL = s.joinURL(roomName)
+	}
+
 	if err := s.repo.Create(appt); err != nil {
 		return nil, fmt.Errorf("service.BookAppointment: %w", err)
 	}
 
 	event := rabbitmq.AppointmentBookedEvent{
-		AppointmentID: appt.ID,
-		PatientID:     appt.PatientID,
-		DoctorID:      appt.DoctorID,
-		ScheduledAt:   appt.ScheduledAt.Format(time.RFC3339),
+		AppointmentID:     appt.ID,
+		PatientID:         appt.PatientID,
+		DoctorID:          appt.DoctorID,
+		DoctorOwnerUserID: appt.DoctorOwnerUserID,
+		ConsultationMode:  string(appt.ConsultationMode),
+		RoomName:          appt.RoomName,
+		JoinURL:           appt.JoinURL,
+		ScheduledAt:       appt.ScheduledAt.Format(time.RFC3339),
 	}
 	if err := s.mq.PublishAppointmentBooked(event); err != nil {
 		s.log.Error("Failed to publish appointment.booked event", "error", err)
@@ -387,4 +414,19 @@ func (s *AppointmentService) getCallerDoctorProfileID(token string) (string, err
 		return "", fmt.Errorf("doctor profile not found for current user")
 	}
 	return id, nil
+}
+
+func (s *AppointmentService) joinURL(roomName string) string {
+	return s.jitsiBaseURL + "/" + url.PathEscape(roomName)
+}
+
+func generateRoomName() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+
+	encoded := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b)
+	encoded = strings.ToLower(encoded)
+	return "telemed-" + encoded, nil
 }

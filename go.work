@@ -7,6 +7,8 @@ use (
 	./services/auth-service
 	./services/patient-service
 	./services/payment-service
+	./services/file-storage-service
 	./services/appointment-service
 	./services/doctor-service
+	./services/telemedicine-service
 )

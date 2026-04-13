@@ -17,14 +17,20 @@ const (
 	ExchangeAppointmentEvents = "appointment_events"
 	ExchangePaymentEvents     = "payment_events"
 	ExchangeDoctorEvents      = "doctor_events"
+	ExchangeFileEvents        = "file_events"
 
 	RoutingKeyUserRegistered       = "user.registered"
 	RoutingKeyUserLoggedIn         = "user.logged_in"
+	RoutingKeyUserDeleted          = "user.deleted"
 	RoutingKeyAppointmentBooked    = "appointment.booked"
 	RoutingKeyAppointmentCancelled = "appointment.cancelled"
 	RoutingKeyPaymentCompleted     = "payment.completed"
 	RoutingKeyPaymentFailed        = "payment.failed"
 	RoutingKeyDoctorCreated        = "doctor.created"
+	RoutingKeyDoctorProfileUpdated = "doctor.profile.updated"
+	RoutingKeyPatientDeleted       = "patient.deleted"
+	RoutingKeyFileUploaded         = "file.uploaded"
+	RoutingKeyFileDeleted          = "file.deleted"
 )
 
 // Event payload structs
@@ -48,14 +54,18 @@ type UserRegisteredEvent struct {
 //   - notification-service: sends confirmation SMS + email
 //   - payment-service: creates payment record
 type AppointmentBookedEvent struct {
-	AppointmentID string  `json:"appointment_id"`
-	PatientID     string  `json:"patient_id"`
-	DoctorID      string  `json:"doctor_id"`
-	PatientEmail  string  `json:"patient_email"`
-	DoctorEmail   string  `json:"doctor_email"`
-	ScheduledAt   string  `json:"scheduled_at"`
-	ConsultFee    float64 `json:"consult_fee"`
-	Timestamp     string  `json:"timestamp"`
+	AppointmentID     string  `json:"appointment_id"`
+	PatientID         string  `json:"patient_id"`
+	DoctorID          string  `json:"doctor_id"`
+	DoctorOwnerUserID string  `json:"doctor_owner_user_id,omitempty"`
+	ConsultationMode  string  `json:"consultation_mode,omitempty"`
+	RoomName          string  `json:"room_name,omitempty"`
+	JoinURL           string  `json:"join_url,omitempty"`
+	PatientEmail      string  `json:"patient_email"`
+	DoctorEmail       string  `json:"doctor_email"`
+	ScheduledAt       string  `json:"scheduled_at"`
+	ConsultFee        float64 `json:"consult_fee"`
+	Timestamp         string  `json:"timestamp"`
 }
 
 // PaymentCompletedEvent is published by payment-service
@@ -79,6 +89,51 @@ type DoctorCreatedEvent struct {
 	NIC            string `json:"nic"`
 	SLMCNo         string `json:"slmc_no"`
 	Timestamp      string `json:"timestamp"`
+}
+
+// UserDeletedEvent is published when a user is removed from the platform.
+type UserDeletedEvent struct {
+	UserID    string `json:"user_id"`
+	Email     string `json:"email,omitempty"`
+	Role      string `json:"role,omitempty"`
+	Timestamp string `json:"timestamp"`
+}
+
+// PatientDeletedEvent is published when a patient account/profile is removed.
+type PatientDeletedEvent struct {
+	PatientID string `json:"patient_id"`
+	UserID    string `json:"user_id,omitempty"`
+	Timestamp string `json:"timestamp"`
+}
+
+// DoctorProfileUpdatedEvent is published when doctor profile metadata changes.
+type DoctorProfileUpdatedEvent struct {
+	DoctorID           string `json:"doctor_id"`
+	UserID             string `json:"user_id,omitempty"`
+	ProfileImageURL    string `json:"profile_image_url,omitempty"`
+	ProfileImageFileID string `json:"profile_image_file_id,omitempty"`
+	Timestamp          string `json:"timestamp"`
+}
+
+// FileUploadedEvent is published by file-storage-service after a successful upload.
+type FileUploadedEvent struct {
+	FileID          string `json:"file_id"`
+	OwnerID         string `json:"owner_id"`
+	UploaderID      string `json:"uploader_id"`
+	Kind            string `json:"kind"`
+	StorageProvider string `json:"storage_provider"`
+	OriginalName    string `json:"original_name"`
+	MimeType        string `json:"mime_type"`
+	SizeBytes       int64  `json:"size_bytes"`
+	Timestamp       string `json:"timestamp"`
+}
+
+// FileDeletedEvent is published by file-storage-service after a successful delete.
+type FileDeletedEvent struct {
+	FileID          string `json:"file_id"`
+	OwnerID         string `json:"owner_id"`
+	StorageProvider string `json:"storage_provider"`
+	Timestamp       string `json:"timestamp"`
 }
 
 // Client
@@ -186,6 +241,31 @@ func (c *Client) PublishDoctorCreated(event DoctorCreatedEvent) error {
 	return c.publish(ExchangeDoctorEvents, RoutingKeyDoctorCreated, event)
 }
 
+func (c *Client) PublishUserDeleted(event UserDeletedEvent) error {
+	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	return c.publish(ExchangeUserEvents, RoutingKeyUserDeleted, event)
+}
+
+func (c *Client) PublishPatientDeleted(event PatientDeletedEvent) error {
+	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	return c.publish(ExchangeUserEvents, RoutingKeyPatientDeleted, event)
+}
+
+func (c *Client) PublishDoctorProfileUpdated(event DoctorProfileUpdatedEvent) error {
+	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	return c.publish(ExchangeDoctorEvents, RoutingKeyDoctorProfileUpdated, event)
+}
+
+func (c *Client) PublishFileUploaded(event FileUploadedEvent) error {
+	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	return c.publish(ExchangeFileEvents, RoutingKeyFileUploaded, event)
+}
+
+func (c *Client) PublishFileDeleted(event FileDeletedEvent) error {
+	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	return c.publish(ExchangeFileEvents, RoutingKeyFileDeleted, event)
+}
+
 // Consumers (used by other services)
 
 // ConsumeQueue starts consuming messages from a queue
@@ -251,6 +331,7 @@ func (c *Client) declareExchanges() error {
 		ExchangeAppointmentEvents,
 		ExchangePaymentEvents,
 		ExchangeDoctorEvents,
+		ExchangeFileEvents,
 	}
 
 	for _, exchange := range exchanges {

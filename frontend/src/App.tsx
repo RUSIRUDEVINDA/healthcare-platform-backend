@@ -1,0 +1,22 @@
+import { Navigate, Route, Routes } from 'react-router-dom';
+import AuthLayout from './layouts/AuthLayout';
+import Login from './pages/Login';
+import Register from './pages/Register.tsx';
+import Dashboard from './pages/Dashboard';
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/auth/login" replace />} />
+      <Route path="/auth" element={<AuthLayout />}>
+        <Route path="login" element={<Login />} />
+        <Route path="register" element={<Register />} />
+      </Route>
+      <Route path="/dashboard" element={<Dashboard />} />
+      {/* Fallback route */}
+      <Route path="*" element={<Navigate to="/auth/login" replace />} />
+    </Routes>
+  );
+}
+
+export default App;
