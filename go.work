@@ -7,5 +7,6 @@ use (
 	./services/auth-service
 	./services/patient-service
 	./services/payment-service
+	./services/appointment-service
 	./services/doctor-service
 )

@@ -1,0 +1,33 @@
+name: Appointment Service CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/appointment-service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Install dependencies
+        run: go mod tidy
+
+      - name: Build
+        run: go build -o appointment-service ./cmd
+
+      - name: Build Docker image
+        working-directory: .
+        run: docker build -f services/appointment-service/Dockerfile -t appointment-service:latest .

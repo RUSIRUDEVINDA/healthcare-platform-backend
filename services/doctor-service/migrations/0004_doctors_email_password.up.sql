@@ -1,0 +1,3 @@
+ALTER TABLE doctors ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT '';
+ALTER TABLE doctors ADD COLUMN IF NOT EXISTS password_hash TEXT NOT NULL DEFAULT '';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_email ON doctors (email) WHERE email <> '';

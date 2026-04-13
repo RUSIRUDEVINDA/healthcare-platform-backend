@@ -1,54 +1,57 @@
 # ─────────────────────────────────────────────
-# Stage 1: Build (same layout as auth-service Dockerfile)
+# Stage 1: Build
 # ─────────────────────────────────────────────
 # syntax=docker/dockerfile:1.7
 FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
+# Disable Go Workspaces to ensure this service builds independently 
 ENV GOWORK=off
 
+# 1. Copy module manifests first to cache dependency downloads
 COPY pkg/go.mod pkg/go.sum ./pkg/
-COPY services/doctor-service/go.mod services/doctor-service/go.sum ./services/doctor-service/
+COPY services/appointment-service/go.mod services/appointment-service/go.sum ./services/appointment-service/
 
-WORKDIR /app/services/doctor-service
+WORKDIR /app/services/appointment-service
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go mod download
 
 WORKDIR /app
 
+# 2. Copy shared libraries (pkg)
 COPY pkg/ ./pkg/
 
-COPY services/doctor-service/ ./services/doctor-service/
+# 3. Copy only this service's code
+COPY services/appointment-service/ ./services/appointment-service/
 
-WORKDIR /app/services/doctor-service
+# 4. Compile binary
+WORKDIR /app/services/appointment-service
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-w -s" \
-    -o /doctor-service \
+    -o /appointment-service \
     ./cmd/main.go
 
 # ─────────────────────────────────────────────
 # Stage 2: Production image
 # ─────────────────────────────────────────────
-FROM alpine:3.18
+FROM alpine:3.20
 
 WORKDIR /app
 
-RUN apk --no-cache add ca-certificates tzdata
+# Copy binary from builder stage
+COPY --from=builder /appointment-service .
 
-COPY --from=builder /doctor-service .
+# Copy migration files (optional, as main.go has them embedded currently, but good for future)
+COPY services/appointment-service/migrations/ ./migrations/
 
-COPY services/doctor-service/migrations/ ./migrations/
-
+# Run as non-root user
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 
-EXPOSE 8003
+EXPOSE 8004
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD wget -qO- http://localhost:8003/health || exit 1
-
-CMD ["./doctor-service"]
+CMD ["./appointment-service"]
