@@ -8,6 +8,8 @@ type PaymentStatus string
 
 type PaymentMode string
 
+type ConsultationMode string
+
 const (
 	StatusPending   AppointmentStatus = "pending"
 	StatusConfirmed AppointmentStatus = "confirmed"
@@ -26,6 +28,11 @@ const (
 const (
 	PaymentModePayNow   PaymentMode = "pay_now"
 	PaymentModePayLater PaymentMode = "pay_later"
+)
+
+const (
+	ConsultationModePhysical ConsultationMode = "physical"
+	ConsultationModeJitsi    ConsultationMode = "jitsi"
 )
 
 var allowedAppointmentStatuses = map[AppointmentStatus]struct{}{
@@ -53,12 +60,19 @@ func IsValidPaymentStatus(status PaymentStatus) bool {
 	return ok
 }
 
+func IsValidConsultationMode(mode ConsultationMode) bool {
+	return mode == ConsultationModePhysical || mode == ConsultationModeJitsi
+}
+
 type Appointment struct {
 	ID                string            `json:"id"`
 	PatientID         string            `json:"patient_id"`
 	DoctorID          string            `json:"doctor_id"`
 	DoctorOwnerUserID string            `json:"doctor_owner_user_id"`
 	SlotID            string            `json:"slot_id"`
+	ConsultationMode  ConsultationMode  `json:"consultation_mode"`
+	RoomName          string            `json:"room_name,omitempty"`
+	JoinURL           string            `json:"join_url,omitempty"`
 	ScheduledAt       time.Time         `json:"scheduled_at"`
 	DurationMinutes   int               `json:"duration_minutes"`
 	Status            AppointmentStatus `json:"status"`
@@ -82,12 +96,13 @@ type Slot struct {
 // ---- Request / Response DTOs ----
 
 type BookAppointmentRequest struct {
-	SlotID          string      `json:"slot_id,omitempty"`
-	DoctorID        string      `json:"doctor_id,omitempty"`
-	ScheduledAt     *time.Time  `json:"scheduled_at,omitempty"`
-	DurationMinutes *int        `json:"duration_minutes,omitempty"`
-	Notes           string      `json:"notes"`
-	PaymentMode     PaymentMode `json:"payment_mode,omitempty"`
+	SlotID           string           `json:"slot_id,omitempty"`
+	DoctorID         string           `json:"doctor_id,omitempty"`
+	ScheduledAt      *time.Time       `json:"scheduled_at,omitempty"`
+	DurationMinutes  *int             `json:"duration_minutes,omitempty"`
+	Notes            string           `json:"notes"`
+	PaymentMode      PaymentMode      `json:"payment_mode,omitempty"`
+	ConsultationMode ConsultationMode `json:"consultation_mode,omitempty"`
 }
 
 type UpdateAppointmentRequest struct {
