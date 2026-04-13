@@ -11,6 +11,7 @@ type Config struct {
 	RabbitMQURL      string
 	JWTSecret        string
 	DoctorServiceURL string
+	JitsiBaseURL     string
 }
 
 func Load() (*Config, error) {
@@ -21,6 +22,7 @@ func Load() (*Config, error) {
 		RabbitMQURL:      getEnv("RABBITMQ_URL", "amqp://admin:password123@localhost:5672/"),
 		JWTSecret:        getEnv("JWT_SECRET", "local-dev-secret-change-this-in-production-32chars"),
 		DoctorServiceURL: getEnv("DOCTOR_SERVICE_URL", "http://doctor-service:8003"),
+		JitsiBaseURL:     getEnv("JITSI_BASE_URL", "https://meet.jit.si"),
 	}, nil
 }
 
