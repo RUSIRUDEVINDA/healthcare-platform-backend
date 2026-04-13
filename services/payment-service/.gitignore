@@ -1,1 +1,7 @@
 .env
+
+# Editor/formatter temp files (Windows)
+*.go.*
+
+# Legacy mock provider (do not commit)
+internal/provider/mock_payment_provider.go

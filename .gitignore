@@ -1,2 +1,6 @@
+/.gocache
+
+# Temp files accidentally created by editors/tools (e.g., `file.go.<digits>`)
+*.go.[0-9]*
 .gocache
 
