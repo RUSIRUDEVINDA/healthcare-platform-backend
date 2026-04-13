@@ -5,3 +5,4 @@ healthcare-platform.postman_collection.json
 **/.gocache/
 **/.gomodcache/
 *.exe
+file-storage-service.postman_collection.json
