@@ -3,10 +3,8 @@
 # Temp files accidentally created by editors/tools (e.g., `file.go.<digits>`)
 *.go.[0-9]*
 .gocache
-healthcare-platform.postman_collection.json
 .gocache/
 .gomodcache/
 **/.gocache/
 **/.gomodcache/
 *.exe
-file-storage-service.postman_collection.json
