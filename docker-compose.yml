@@ -323,6 +323,15 @@ services:
     networks:
       - healthcare-net
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: unless-stopped
+    networks:
+      - healthcare-net
+
   nginx:
     image: nginx:1.25-alpine
     restart: unless-stopped
