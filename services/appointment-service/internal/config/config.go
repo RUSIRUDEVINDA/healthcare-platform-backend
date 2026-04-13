@@ -19,7 +19,7 @@ func Load() (*Config, error) {
 		Port:             getEnv("PORT", "8004"),
 		DatabaseURL:      getEnv("DATABASE_URL", "postgres://user:password@localhost:5435/appointment_db?sslmode=disable"),
 		RabbitMQURL:      getEnv("RABBITMQ_URL", "amqp://admin:password123@localhost:5672/"),
-		JWTSecret:        getEnv("JWT_SECRET", "local-dev-jwt-secret-minimum-32-characters!!"),
+		JWTSecret:        getEnv("JWT_SECRET", "local-dev-secret-change-this-in-production-32chars"),
 		DoctorServiceURL: getEnv("DOCTOR_SERVICE_URL", "http://doctor-service:8003"),
 	}, nil
 }
