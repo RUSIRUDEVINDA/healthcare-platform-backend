@@ -366,6 +366,12 @@ services:
     networks:
       - healthcare-net
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: unless-stopped
   telemedicine-service:
     build:
       context: .

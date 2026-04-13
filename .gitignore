@@ -8,3 +8,6 @@
 **/.gocache/
 **/.gomodcache/
 *.exe
+
+/scripts
+file-storage-service.postman_collection.json
