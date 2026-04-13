@@ -8,10 +8,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"healthcare-platform/pkg/logger"
 	"healthcare-platform/services/doctor-service/internal/middleware"
 	"healthcare-platform/services/doctor-service/internal/model"
 	"healthcare-platform/services/doctor-service/internal/service"
-	"healthcare-platform/pkg/logger"
 )
 
 // DoctorHandler handles HTTP for doctor resources (handler layer only).
@@ -36,7 +36,8 @@ func (h *DoctorHandler) RegisterRoutes(router *gin.Engine, authClient *http.Clie
 	protected := router.Group("/doctors")
 	protected.Use(middleware.RequireAuthViaAuthService(authClient, authBaseURL))
 	{
-		protected.POST("", middleware.RequireRole("admin"), h.Create)
+		protected.POST("", middleware.RequireRole("doctor", "admin"), h.Create)
+		protected.GET("/me", middleware.RequireRole("doctor", "admin"), h.GetMe)
 
 		// Register path-param routes before PUT "" so /doctors/:id never shadows the root handler.
 		protected.PUT("/:id/profile", middleware.RequireRole("doctor", "admin"), h.UpdateProfile)
@@ -80,16 +81,40 @@ func (h *DoctorHandler) GetByID(c *gin.Context) {
 }
 
 func (h *DoctorHandler) Create(c *gin.Context) {
+	callerID, _ := middlewareValue(c, middleware.ContextUserID)
+	callerEmail, _ := middlewareValue(c, middleware.ContextEmail)
+	role, _ := middlewareValue(c, middleware.ContextRole)
+
 	var req model.CreateDoctorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, model.ErrorResponse(formatValidationError(err)))
 		return
 	}
 
-	doc, err := h.svc.Create(&req)
+	if strings.TrimSpace(req.Email) == "" && callerEmail != "" {
+		req.Email = callerEmail
+	}
+
+	doc, err := h.svc.Create(callerID, role, &req)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidNICFormat) || errors.Is(err, service.ErrInvalidSLMCFormat) {
 			c.JSON(http.StatusBadRequest, model.ErrorResponse(err.Error()))
+			return
+		}
+		if strings.Contains(err.Error(), "user_id is required") || strings.Contains(err.Error(), "must match the logged-in doctor") {
+			c.JSON(http.StatusBadRequest, model.ErrorResponse(err.Error()))
+			return
+		}
+		if strings.Contains(err.Error(), "email is required for doctor profile creation") {
+			c.JSON(http.StatusBadRequest, model.ErrorResponse(err.Error()))
+			return
+		}
+		if strings.Contains(err.Error(), "hash password") {
+			c.JSON(http.StatusBadRequest, model.ErrorResponse(err.Error()))
+			return
+		}
+		if strings.Contains(err.Error(), "only doctors or admins can create doctor profiles") {
+			c.JSON(http.StatusForbidden, model.ErrorResponse(err.Error()))
 			return
 		}
 		if errors.Is(err, service.ErrDuplicateNICOrSLMC) {
@@ -102,6 +127,27 @@ func (h *DoctorHandler) Create(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, model.SuccessResponse(doc))
+}
+
+func (h *DoctorHandler) GetMe(c *gin.Context) {
+	userID, ok := middlewareValue(c, middleware.ContextUserID)
+	if !ok || userID == "" {
+		c.JSON(http.StatusUnauthorized, model.ErrorResponse("missing authenticated user"))
+		return
+	}
+
+	doc, err := h.svc.GetByUserID(userID)
+	if err != nil {
+		if errors.Is(err, service.ErrDoctorNotFound) {
+			c.JSON(http.StatusNotFound, model.ErrorResponse(err.Error()))
+			return
+		}
+		h.log.Error("Get doctor by user id failed", "error", err)
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse("Failed to fetch doctor profile"))
+		return
+	}
+
+	c.JSON(http.StatusOK, model.SuccessResponse(doc))
 }
 
 func (h *DoctorHandler) Update(c *gin.Context) {
@@ -215,4 +261,13 @@ func parseIDParam(c *gin.Context) (int64, error) {
 
 func formatValidationError(err error) string {
 	return "Invalid request: " + err.Error()
+}
+
+func middlewareValue(c *gin.Context, key string) (string, bool) {
+	val, ok := c.Get(key)
+	if !ok {
+		return "", false
+	}
+	s, ok := val.(string)
+	return s, ok
 }
