@@ -6,19 +6,22 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 
+	"healthcare-platform/pkg/logger"
+	"healthcare-platform/pkg/middleware"
+	"healthcare-platform/pkg/rabbitmq"
 	"healthcare-platform/services/payment-service/internal/config"
 	"healthcare-platform/services/payment-service/internal/handler"
 	"healthcare-platform/services/payment-service/internal/messaging"
+	"healthcare-platform/services/payment-service/internal/provider"
 	"healthcare-platform/services/payment-service/internal/repository"
 	"healthcare-platform/services/payment-service/internal/service"
-	"healthcare-platform/pkg/logger"
-	"healthcare-platform/pkg/rabbitmq"
 )
 
 func main() {
@@ -27,6 +30,9 @@ func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal("Failed to load payment-service config", "error", err)
+	}
+	if strings.Contains(cfg.PayHereNotifyURL, "localhost") || strings.Contains(cfg.PayHereNotifyURL, "127.0.0.1") {
+		log.Warn("PAYHERE_NOTIFY_URL points to localhost; PayHere cannot reach it. Use a public URL (e.g., ngrok).", "notify_url", cfg.PayHereNotifyURL)
 	}
 
 	db, err := connectDB(cfg.DatabaseURL, log)
@@ -47,7 +53,16 @@ func main() {
 
 	// Initialize Layers
 	repo := repository.NewPaymentRepository(db)
-	svc := service.NewPaymentService(repo, mqClient, log)
+	paymentProvider := provider.NewPayHereProvider(
+		cfg.PayHereMerchantID,
+		cfg.PayHereMerchantSecret,
+		cfg.PayHereEnv,
+		cfg.PayHereReturnURL,
+		cfg.PayHereCancelURL,
+		cfg.PayHereNotifyURL,
+	)
+	eventPublisher := messaging.NewRabbitMQEventPublisher(mqClient)
+	svc := service.NewPaymentService(repo, paymentProvider, eventPublisher, log)
 	h := handler.NewPaymentHandler(svc, log)
 
 	// Messaging
@@ -62,10 +77,16 @@ func main() {
 	}
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.Use(middleware.CORSMiddleware())
 
 	// Health check
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	// Serve test page
+	router.GET("/payhere-test", func(c *gin.Context) {
+		c.File("./payhere-test.html")
 	})
 
 	h.RegisterRoutes(router)
@@ -130,7 +151,7 @@ func runMigrations(db *sql.DB, log *logger.Logger) error {
 	);
 	-- If the table already existed from a previous version, ensure new columns exist.
 	-- (CREATE TABLE IF NOT EXISTS does not add missing columns.)
-	ALTER TABLE payments ADD COLUMN IF NOT EXISTS provider       VARCHAR(20)  NOT NULL DEFAULT 'stripe';
+	ALTER TABLE payments ADD COLUMN IF NOT EXISTS provider       VARCHAR(20)  NOT NULL DEFAULT 'payhere';
 	ALTER TABLE payments ADD COLUMN IF NOT EXISTS provider_id    VARCHAR(255);
 	ALTER TABLE payments ADD COLUMN IF NOT EXISTS status         VARCHAR(20)  NOT NULL DEFAULT 'pending';
 	ALTER TABLE payments ADD COLUMN IF NOT EXISTS currency       VARCHAR(3)   NOT NULL DEFAULT 'USD';
