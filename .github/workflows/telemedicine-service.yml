@@ -11,6 +11,8 @@ on:
     branches: [main]
     paths:
       - 'services/telemedicine-service/**'
+      - 'k8s/telemedicine-service/**'
+      - '.github/workflows/telemedicine-service.yml'
 
 env:
   SERVICE_NAME: telemedicine-service
