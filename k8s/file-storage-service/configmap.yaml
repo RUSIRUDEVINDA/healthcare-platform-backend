@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: file-storage-service-config
+  namespace: healthcare
+data:
+  APP_ENV: "production"
+  PORT: "8010"
+  DATABASE_URL: "postgres://postgres:$(POSTGRES_PASSWORD)@file-storage-db-service.healthcare.svc.cluster.local:5432/file_storage_db?sslmode=disable"
+  RABBITMQ_URL: "amqp://admin:$(RABBITMQ_PASSWORD)@rabbitmq-service.healthcare.svc.cluster.local:5672/"
+  CLOUDINARY_UPLOAD_FOLDER: "healthcare-platform"
+  R2_ACCOUNT_ID: "your-r2-account-id"
+  R2_BUCKET: "your-r2-bucket"
+  R2_ENDPOINT: "https://your-r2-account-id.r2.cloudflarestorage.com"
