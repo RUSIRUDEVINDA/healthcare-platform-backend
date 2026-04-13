@@ -28,6 +28,8 @@ RUN apk --no-cache add ca-certificates tzdata wget
 
 COPY --from=builder /ai-symptom-service .
 
+COPY services/ai-symptom-service/migrations/ ./migrations/
+
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 

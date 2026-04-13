@@ -3,8 +3,15 @@ name: File Storage Service CI
 on:
   push:
     branches: [main, dev]
+    paths:
+      - 'services/file-storage-service/**'
+      - 'k8s/file-storage-service/**'
+      - '.github/workflows/file-storage-service.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'services/file-storage-service/**'
+      - 'k8s/file-storage-service/**'
 
 jobs:
   build:
