@@ -372,6 +372,8 @@ services:
       dockerfile: Dockerfile
     container_name: frontend
     restart: unless-stopped
+    networks:
+      - healthcare-net
   telemedicine-service:
     build:
       context: .
@@ -420,6 +422,7 @@ services:
       - ai-symptom-service
       - appointment-service
       - telemedicine-service
+      - frontend
     networks:
       - healthcare-net
 

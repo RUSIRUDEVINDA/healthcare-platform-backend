@@ -1,0 +1,7 @@
+node_modules
+dist
+.npm
+.vite
+.vscode
+.DS_Store
+*.log
