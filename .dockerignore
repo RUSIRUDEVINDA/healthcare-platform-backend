@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+dist/
+build/
+.npm/
+
+# Go files
+bin/
+*.exe
+*.test
+*.out
+vendor/
+
+# Environment
+.env*
+!.env.example
+
+# Version Control
+.git/
+.gitignore
+.dockerignore
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
