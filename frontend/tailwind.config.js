@@ -8,17 +8,17 @@ export default {
     extend: {
       colors: {
         brand: {
-          light: '#e1f5e6', // light green background like the dribbble shot
-          DEFAULT: '#3da562', // primary green
-          dark: '#2a7844', // hover state
+          light: '#e0f5f0',
+          DEFAULT: '#2eb88a',
+          dark: '#1f8a66',
         },
         surface: {
           DEFAULT: '#ffffff',
-          muted: '#f9fafb',
+          muted: '#f8fafb',
         }
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       }
     },
   },
