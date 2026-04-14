@@ -14,26 +14,31 @@ export interface Doctor {
     updated_at: string;
 }
 
-interface DoctorApiResponse {
+interface ApiResponse<T> {
     success: boolean;
-    data: Doctor[];
+    data: T;
     error?: string;
 }
 
 export const doctorApi = {
     listDoctors: async (specialization?: string): Promise<Doctor[]> => {
         const params = specialization ? `?specialization=${encodeURIComponent(specialization)}` : '';
-        const response = await apiClient.get<DoctorApiResponse>(`/doctors${params}`);
-        // doctor-service wraps in { success, data }
-        const body = response.data as any;
-        if (body?.data && Array.isArray(body.data)) return body.data;
+        const response = await apiClient.get<ApiResponse<Doctor[]> | Doctor[]>(`doctors${params}`);
+        const body = response.data;
+        
+        if (body && typeof body === 'object' && 'data' in body && Array.isArray(body.data)) return body.data;
         if (Array.isArray(body)) return body;
         return [];
     },
 
     getDoctor: async (id: number): Promise<Doctor | null> => {
-        const response = await apiClient.get<any>(`/doctors/${id}`);
+        const response = await apiClient.get<ApiResponse<Doctor> | Doctor>(`doctors/${id}`);
         const body = response.data;
-        return body?.data ?? body ?? null;
+        
+        if (body && typeof body === 'object') {
+            if ('data' in body && body.data) return body.data;
+            if ('id' in body) return body as Doctor;
+        }
+        return null;
     },
 };
