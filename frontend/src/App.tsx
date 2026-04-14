@@ -3,6 +3,7 @@ import AuthLayout from './layouts/AuthLayout';
 import Login from './pages/Login';
 import Register from './pages/Register.tsx';
 import Dashboard from './pages/Dashboard';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="register" element={<Register />} />
       </Route>
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/profile" element={<Profile />} />
       {/* Fallback route */}
       <Route path="*" element={<Navigate to="/auth/login" replace />} />
     </Routes>
