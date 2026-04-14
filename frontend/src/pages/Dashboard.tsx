@@ -54,9 +54,9 @@ export default function Dashboard() {
           <Link to="/profile" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
             <User className="mr-3 h-5 w-5" /> Profile
           </Link>
-          <a href="#" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+          <Link to="/appointments" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
             <Calendar className="mr-3 h-5 w-5" /> Appointments
-          </a>
+          </Link>
           <a href="#" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
             <ClipboardList className="mr-3 h-5 w-5" /> Records
           </a>
