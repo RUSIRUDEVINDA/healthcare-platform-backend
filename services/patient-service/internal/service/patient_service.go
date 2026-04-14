@@ -50,6 +50,22 @@ func (s *PatientService) GetProfile(userID string) (*model.Patient, error) {
 	return p, nil
 }
 
+func (s *PatientService) EnsureProfile(userID, email, firstName, lastName string) (*model.Patient, error) {
+	p, err := s.GetProfile(userID)
+	if err != nil {
+		return nil, err
+	}
+	if p != nil {
+		return p, nil
+	}
+
+	s.log.Info("Patient profile not found during GetProfile, attempting lazy creation", "user_id", userID)
+	if err := s.CreateFromUserEvent(userID, email, firstName, lastName); err != nil {
+		return nil, fmt.Errorf("service.EnsureProfile: %w", err)
+	}
+	return s.GetProfile(userID)
+}
+
 func (s *PatientService) UpdateProfile(userID string, req *model.UpdatePatientRequest) error {
 	existing, err := s.repo.FindByUserID(userID)
 	if err != nil {

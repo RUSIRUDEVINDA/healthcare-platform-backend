@@ -43,9 +43,13 @@ func (h *PatientHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	p, err := h.svc.GetProfile(userID.(string))
+	email, _ := c.Get("user_email")
+	firstName, _ := c.Get("first_name")
+	lastName, _ := c.Get("last_name")
+
+	p, err := h.svc.EnsureProfile(userID.(string), email.(string), firstName.(string), lastName.(string))
 	if err != nil {
-		h.log.Error("Failed to fetch profile", "user_id", userID, "error", err)
+		h.log.Error("Failed to fetch profile / EnsureProfile", "user_id", userID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch patient profile"})
 		return
 	}
