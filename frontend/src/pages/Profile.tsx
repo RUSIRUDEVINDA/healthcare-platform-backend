@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';import { User, Mail, Phone, MapPin, Calendar, Droplets, Shield, ArrowLeft, Save, Edit2, Medal, Building2, CreditCard, Stethoscope } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import { User, Mail, Phone, MapPin, Calendar, Droplets, Shield, ArrowLeft, Save, Edit2, Medal, Building2, CreditCard, Stethoscope } from 'lucide-react';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { doctorApi, type DoctorProfile } from '../api/doctor';
 import { Link } from 'react-router-dom';
@@ -60,8 +63,8 @@ export default function Profile() {
         }));
       }
       setError(null);
-    } catch (err: any) {
-      if (err.response?.status === 404) {
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
         setError('PROFILE_NOT_FOUND');
       } else {
         setError('Failed to load profile. Please try again later.');
@@ -117,10 +120,14 @@ export default function Profile() {
       }
       await fetchProfile();
       setIsEditing(false);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error updating profile:', err);
       const message =
         (err as any)?.response?.data?.error || 'Failed to update profile';
+      let message = 'Failed to update profile';
+      if (axios.isAxiosError(err)) {
+        message = err.response?.data?.error || message;
+      }
       alert(message);
     } finally {
       setLoading(false);

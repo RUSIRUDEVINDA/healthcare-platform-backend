@@ -136,13 +136,17 @@ func (h *DoctorHandler) GetMe(c *gin.Context) {
 		return
 	}
 
-	doc, err := h.svc.GetByUserID(userID)
+	email, _ := middlewareValue(c, middleware.ContextEmail)
+	firstName, _ := middlewareValue(c, middleware.ContextFirstName)
+	lastName, _ := middlewareValue(c, middleware.ContextLastName)
+
+	doc, err := h.svc.EnsureProfile(userID, email, firstName, lastName)
 	if err != nil {
 		if errors.Is(err, service.ErrDoctorNotFound) {
 			c.JSON(http.StatusNotFound, model.ErrorResponse(err.Error()))
 			return
 		}
-		h.log.Error("Get doctor by user id failed", "error", err)
+		h.log.Error("Get doctor by user id / EnsureProfile failed", "error", err)
 		c.JSON(http.StatusInternalServerError, model.ErrorResponse("Failed to fetch doctor profile"))
 		return
 	}
