@@ -12,9 +12,11 @@ import (
 // Claims is the JWT token payload
 // This is embedded in every access token
 type Claims struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
-	Role   string `json:"role"`
+	UserID    string `json:"user_id"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	FirstName string `json:"first_name,omitempty"`
+	LastName  string `json:"last_name,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -38,13 +40,15 @@ func New(accessSecret, refreshSecret string, accessTTLMins, refreshTTLDays int) 
 
 // GenerateAccessToken creates a signed JWT access token
 // Returns: tokenString, expiresInSeconds, error
-func (h *Helper) GenerateAccessToken(userID, email, role string) (string, int, error) {
+func (h *Helper) GenerateAccessToken(userID, email, role, firstName, lastName string) (string, int, error) {
 	expiresAt := time.Now().UTC().Add(time.Duration(h.AccessTTLMins) * time.Minute)
 
 	claims := &Claims{
-		UserID: userID,
-		Email:  email,
-		Role:   role,
+		UserID:    userID,
+		Email:     email,
+		Role:      role,
+		FirstName: firstName,
+		LastName:  lastName,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
