@@ -5,6 +5,7 @@ import Register from './pages/Register.tsx';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import Appointments from './pages/Appointments';
+import PaymentStatus from './pages/PaymentStatus';
 
 function App() {
   return (
@@ -17,6 +18,11 @@ function App() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/appointments" element={<Appointments />} />
+      
+      {/* Payment redirection targets */}
+      <Route path="/payment/success" element={<PaymentStatus type="success" />} />
+      <Route path="/payment/cancel" element={<PaymentStatus type="cancel" />} />
+      
       {/* Fallback route */}
       <Route path="*" element={<Navigate to="/auth/login" replace />} />
     </Routes>
