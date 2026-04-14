@@ -27,17 +27,17 @@ export interface UpdateProfileRequest {
 
 export const patientApi = {
   getProfile: async () => {
-    const response = await apiClient.get<PatientProfile>('/v1/patient/profile');
+    const response = await apiClient.get<PatientProfile>('v1/patient/profile');
     return response.data;
   },
   
   updateProfile: async (data: UpdateProfileRequest) => {
-    const response = await apiClient.put('/v1/patient/profile', data);
+    const response = await apiClient.put('v1/patient/profile', data);
     return response.data;
   },
   
   patchProfile: async (data: UpdateProfileRequest) => {
-    const response = await apiClient.patch('/v1/patient/profile', data);
+    const response = await apiClient.patch('v1/patient/profile', data);
     return response.data;
   }
 };
