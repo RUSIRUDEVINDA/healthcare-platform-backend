@@ -14,9 +14,11 @@ import (
 
 // Context keys for values forwarded from auth-service validation.
 const (
-	ContextUserID = "user_id"
-	ContextEmail  = "email"
-	ContextRole   = "role"
+	ContextUserID    = "user_id"
+	ContextEmail     = "email"
+	ContextRole      = "role"
+	ContextFirstName = "first_name"
+	ContextLastName  = "last_name"
 )
 
 // CORS allows browser clients to call the API (same pattern as auth-service).
@@ -97,6 +99,8 @@ func RequireAuthViaAuthService(client *http.Client, authBaseURL string) gin.Hand
 		c.Set(ContextUserID, body.UserID)
 		c.Set(ContextEmail, body.Email)
 		c.Set(ContextRole, body.Role)
+		c.Set(ContextFirstName, body.FirstName)
+		c.Set(ContextLastName, body.LastName)
 
 		c.Next()
 	}

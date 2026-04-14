@@ -38,6 +38,8 @@ func AuthRequired(jwtHelper *jwt.Helper) gin.HandlerFunc {
 		c.Set("user_id", claims.UserID)
 		c.Set("user_email", claims.Email)
 		c.Set("user_role", claims.Role)
+		c.Set("first_name", claims.FirstName)
+		c.Set("last_name", claims.LastName)
 
 		c.Next()
 	}

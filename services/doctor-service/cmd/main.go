@@ -17,6 +17,7 @@ import (
 	"healthcare-platform/services/doctor-service/internal/config"
 	"healthcare-platform/services/doctor-service/internal/handler"
 	"healthcare-platform/services/doctor-service/internal/middleware"
+	"healthcare-platform/services/doctor-service/internal/messaging"
 	"healthcare-platform/services/doctor-service/internal/repository"
 	"healthcare-platform/services/doctor-service/internal/service"
 
@@ -56,6 +57,14 @@ func main() {
 	docRepo := repository.NewDoctorRepository(db)
 	docSvc := service.NewDoctorService(docRepo, mqClient, log)
 	docHandler := handler.NewDoctorHandler(docSvc, log)
+
+	// Start RabbitMQ Consumer for synchronizing doctor registration
+	if mqClient != nil {
+		docConsumer := messaging.NewDoctorConsumer(mqClient, docSvc, log)
+		if err := docConsumer.Start(); err != nil {
+			log.Error("Failed to start doctor consumer", "error", err)
+		}
+	}
 
 	authHTTP := &http.Client{Timeout: 10 * time.Second}
 
@@ -140,6 +149,7 @@ func runMigrations(db *sql.DB, log *logger.Logger) error {
 		{"migrations/0002_doctors_nic_slmc.up.sql", embeddedDoctorsNicSlmcMigration},
 		{"migrations/0003_doctors_user_id.up.sql", embeddedDoctorsUserIDMigration},
 		{"migrations/0004_doctors_email_password.up.sql", embeddedDoctorsEmailPasswordMigration},
+		{"migrations/0005_relax_doctor_constraints.up.sql", ""},
 	}
 	for _, f := range files {
 		sqlBytes, err := os.ReadFile(f.path)

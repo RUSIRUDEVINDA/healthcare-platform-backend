@@ -177,13 +177,24 @@ CREATE TABLE IF NOT EXISTS users (
 	email         VARCHAR(255) UNIQUE NOT NULL,
 	password_hash VARCHAR(255) NOT NULL,
 	role          VARCHAR(20) NOT NULL CHECK (role IN ('patient', 'doctor', 'admin')),
-	first_name    VARCHAR(100) NOT NULL,
-	last_name     VARCHAR(100) NOT NULL,
+	first_name    VARCHAR(100) NOT NULL DEFAULT '',
+	last_name     VARCHAR(100) NOT NULL DEFAULT '',
 	is_verified   BOOLEAN DEFAULT FALSE,
 	is_active     BOOLEAN DEFAULT TRUE,
 	created_at    TIMESTAMPTZ DEFAULT NOW(),
 	updated_at    TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure names exist if table was created by older version
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='first_name') THEN
+        ALTER TABLE users ADD COLUMN first_name VARCHAR(100) NOT NULL DEFAULT '';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='last_name') THEN
+        ALTER TABLE users ADD COLUMN last_name VARCHAR(100) NOT NULL DEFAULT '';
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (
 	id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
