@@ -136,6 +136,7 @@ func (s *AppointmentService) BookAppointment(patientID, role, callerToken string
 		RoomName:          appt.RoomName,
 		JoinURL:           appt.JoinURL,
 		ScheduledAt:       appt.ScheduledAt.Format(time.RFC3339),
+		ConsultFee:        1500.00,
 	}
 	if err := s.mq.PublishAppointmentBooked(event); err != nil {
 		s.log.Error("Failed to publish appointment.booked event", "error", err)
