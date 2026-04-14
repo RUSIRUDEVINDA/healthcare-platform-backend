@@ -43,27 +43,27 @@ export interface BookAppointmentRequest {
 
 export const appointmentApi = {
     getDoctorSlots: async (doctorId: string, status?: string) => {
-        const response = await apiClient.get<Slot[]>(`/v1/appointments/doctor/${doctorId}${status ? `?status=${status}` : ''}`);
+        const response = await apiClient.get<Slot[]>(`v1/appointments/doctor/${doctorId}${status ? `?status=${status}` : ''}`);
         return response.data;
     },
 
     listAppointments: async () => {
-        const response = await apiClient.get<Appointment[]>('/v1/appointments');
+        const response = await apiClient.get<Appointment[]>('v1/appointments');
         return response.data;
     },
 
     bookAppointment: async (data: BookAppointmentRequest) => {
-        const response = await apiClient.post<Appointment>('/v1/appointments', data);
+        const response = await apiClient.post<Appointment>('v1/appointments', data);
         return response.data;
     },
 
     cancelAppointment: async (id: string) => {
-        const response = await apiClient.put(`/v1/appointments/${id}/cancel`);
+        const response = await apiClient.put(`v1/appointments/${id}/cancel`);
         return response.data;
     },
 
     getAppointmentStatus: async (id: string) => {
-        const response = await apiClient.get<Appointment>(`/v1/appointments/${id}`);
+        const response = await apiClient.get<Appointment>(`v1/appointments/${id}`);
         return response.data;
     },
 };
