@@ -1,8 +1,16 @@
 # Stage 1: Build the React Application
 FROM node:20-alpine AS build
 WORKDIR /app
+
+# Ensure devDependencies are installed
+ENV NODE_ENV=development
+
 COPY package*.json ./
 RUN npm install
+
+# Explicitly add binaries to path
+ENV PATH /app/node_modules/.bin:$PATH
+
 COPY . .
 RUN npm run build
 
