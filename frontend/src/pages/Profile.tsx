@@ -148,12 +148,12 @@ export default function Profile() {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Profile Not Found</h2>
           <p className="text-gray-600 mb-8">
-            {role === 'doctor' 
+            {role === 'doctor'
               ? "It seems you don't have a doctor profile yet. Please contact support if this persists."
               : "It seems you don't have a patient profile yet."}
           </p>
           {role !== 'doctor' && (
-            <button 
+            <button
               onClick={() => setIsEditing(true)}
               className="w-full py-3 bg-brand text-white rounded-xl font-semibold hover:bg-brand-dark transition-colors"
             >
@@ -173,7 +173,7 @@ export default function Profile() {
             <ArrowLeft className="mr-2 h-5 w-5" /> Back to Dashboard
           </Link>
           {!isEditing && profile && (
-            <button 
+            <button
               onClick={() => setIsEditing(true)}
               className="flex items-center px-4 py-2 bg-brand text-white rounded-xl font-medium hover:bg-brand-dark transition-colors"
             >
@@ -185,7 +185,7 @@ export default function Profile() {
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Header */}
           <div className="h-32 bg-gradient-to-r from-brand to-brand-dark"></div>
-          
+
           <div className="px-8 pb-8">
             <div className="relative -mt-16 mb-6">
               <div className="w-32 h-32 bg-white rounded-2xl shadow-md p-1">
@@ -200,10 +200,10 @@ export default function Profile() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name (read-only)</label>
-                    <input 
-                      type="text" 
-                      value={role === 'doctor' ? (profile as DoctorProfile).name : `${(profile as PatientProfile).first_name} ${(profile as PatientProfile).last_name}`} 
-                      disabled 
+                    <input
+                      type="text"
+                      value={role === 'doctor' ? (profile as DoctorProfile).name : `${(profile as PatientProfile).first_name} ${(profile as PatientProfile).last_name}`}
+                      disabled
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-500"
                     />
                   </div>
@@ -214,8 +214,8 @@ export default function Profile() {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Specialization</label>
                         <div className="relative">
                           <Stethoscope className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             name="specialization"
                             value={formData.specialization}
                             onChange={handleInputChange}
@@ -228,8 +228,8 @@ export default function Profile() {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Experience (Years)</label>
                         <div className="relative">
                           <Medal className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
-                          <input 
-                            type="number" 
+                          <input
+                            type="number"
                             name="experience"
                             value={formData.experience}
                             onChange={handleInputChange}
@@ -242,8 +242,8 @@ export default function Profile() {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Hospital</label>
                         <div className="relative">
                           <Building2 className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             name="hospital"
                             value={formData.hospital}
                             onChange={handleInputChange}
@@ -256,8 +256,8 @@ export default function Profile() {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">NIC Number</label>
                         <div className="relative">
                           <CreditCard className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             name="nic"
                             value={formData.nic}
                             onChange={handleInputChange}
@@ -270,8 +270,8 @@ export default function Profile() {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">SLMC Registration No</label>
                         <div className="relative">
                           <Shield className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             name="slmc_no"
                             value={formData.slmc_no}
                             onChange={handleInputChange}
@@ -287,8 +287,8 @@ export default function Profile() {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Date of Birth</label>
                         <div className="relative">
                           <Calendar className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
-                          <input 
-                            type="date" 
+                          <input
+                            type="date"
                             name="date_of_birth"
                             value={formData.date_of_birth}
                             onChange={handleInputChange}
@@ -298,7 +298,7 @@ export default function Profile() {
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Gender</label>
-                        <select 
+                        <select
                           name="gender"
                           value={formData.gender}
                           onChange={handleInputChange}
@@ -314,8 +314,8 @@ export default function Profile() {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
                         <div className="relative">
                           <Phone className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
-                          <input 
-                            type="tel" 
+                          <input
+                            type="tel"
                             name="phone_number"
                             value={formData.phone_number}
                             onChange={handleInputChange}
@@ -328,7 +328,7 @@ export default function Profile() {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Blood Group</label>
                         <div className="relative">
                           <Droplets className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
-                          <select 
+                          <select
                             name="blood_group"
                             value={formData.blood_group}
                             onChange={handleInputChange}
@@ -350,7 +350,7 @@ export default function Profile() {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Address</label>
                         <div className="relative">
                           <MapPin className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
-                          <textarea 
+                          <textarea
                             name="address"
                             value={formData.address}
                             onChange={handleInputChange}
@@ -363,8 +363,8 @@ export default function Profile() {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Emergency Contact</label>
                         <div className="relative">
                           <Shield className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             name="emergency_contact"
                             value={formData.emergency_contact}
                             onChange={handleInputChange}
@@ -378,14 +378,14 @@ export default function Profile() {
                 </div>
 
                 <div className="flex space-x-4 pt-4">
-                  <button 
+                  <button
                     type="submit"
                     className="flex-1 flex items-center justify-center py-3 bg-brand text-white rounded-xl font-semibold hover:bg-brand-dark transition-colors shadow-lg shadow-brand/20"
                     disabled={loading}
                   >
                     <Save className="mr-2 h-5 w-5" /> {loading ? 'Saving...' : 'Save Changes'}
                   </button>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setIsEditing(false)}
                     className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
