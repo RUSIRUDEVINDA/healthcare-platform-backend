@@ -2,24 +2,39 @@ import { useState, useEffect } from 'react';
 import { LogOut, User, Activity, Calendar, ClipboardList, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { patientApi, type PatientProfile } from '../api/patient';
+import { doctorApi, type DoctorProfile } from '../api/doctor';
 
 export default function Dashboard() {
-  const [profile, setProfile] = useState<PatientProfile | null>(null);
+  const [profile, setProfile] = useState<PatientProfile | DoctorProfile | null>(null);
+  const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
+    const userString = localStorage.getItem('user');
+    const user = userString ? JSON.parse(userString) : null;
+    const userRole = user?.role;
+    setRole(userRole);
+
     const fetchProfile = async () => {
       try {
-        const data = await patientApi.getProfile();
+        let data;
+        if (userRole === 'doctor') {
+          data = await doctorApi.getProfile();
+        } else {
+          data = await patientApi.getProfile();
+        }
         setProfile(data);
       } catch (err) {
         console.error('Failed to fetch profile:', err);
       }
     };
-    fetchProfile();
+    if (userRole) {
+      fetchProfile();
+    }
   }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
     window.location.href = '/auth/login';
   };
 
@@ -66,8 +81,16 @@ export default function Dashboard() {
         
         <main className="p-8 overflow-y-auto">
           <div className="mb-10">
-            <h3 className="text-3xl font-bold text-gray-900">Welcome back, {profile?.first_name || 'Patient'}</h3>
-            <p className="text-gray-500 mt-2">Here's what's happening with your health today.</p>
+            <h3 className="text-3xl font-bold text-gray-900">
+              Welcome back, {
+                role === 'doctor' 
+                  ? (profile as DoctorProfile)?.name || 'Doctor' 
+                  : (profile as PatientProfile)?.first_name || 'Patient'
+              }
+            </h3>
+            <p className="text-gray-500 mt-2">
+              {role === 'doctor' ? "Here's your schedule for today." : "Here's what's happening with your health today."}
+            </p>
           </div>
 
           {/* Quick Stats */}

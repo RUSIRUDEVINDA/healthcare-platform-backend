@@ -169,10 +169,12 @@ func (s *AuthService) ValidateToken(tokenStr string) (*model.ValidateTokenRespon
 	}
 
 	return &model.ValidateTokenResponse{
-		Valid:  true,
-		UserID: claims.UserID,
-		Email:  claims.Email,
-		Role:   model.Role(claims.Role),
+		Valid:     true,
+		UserID:    claims.UserID,
+		Email:     claims.Email,
+		Role:      model.Role(claims.Role),
+		FirstName: claims.FirstName,
+		LastName:  claims.LastName,
 	}, nil
 }
 
@@ -182,7 +184,7 @@ func (s *AuthService) ValidateToken(tokenStr string) (*model.ValidateTokenRespon
 
 func (s *AuthService) buildTokenResponse(user *model.User) (*model.TokenResponse, error) {
 	// Generate short-lived access token
-	accessToken, expiresIn, err := s.jwtHelper.GenerateAccessToken(user.ID, user.Email, string(user.Role))
+	accessToken, expiresIn, err := s.jwtHelper.GenerateAccessToken(user.ID, user.Email, string(user.Role), user.FirstName, user.LastName)
 	if err != nil {
 		return nil, fmt.Errorf("service.buildTokenResponse access token: %w", err)
 	}

@@ -20,9 +20,13 @@ export default function Login() {
       
       // The backend returns { "success": true, "data": { "access_token": "..." } }
       const token = response.data?.data?.access_token;
+      const user = response.data?.data?.user;
       
       if (token) {
         localStorage.setItem('access_token', token);
+        if (user) {
+          localStorage.setItem('user', JSON.stringify(user));
+        }
         // Assuming we route to dashboard after login (to be implemented)
         window.location.href = '/dashboard';
       } else {

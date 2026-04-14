@@ -76,10 +76,12 @@ type UserInfo struct {
 // ValidateTokenResponse is returned to API Gateway / other services
 // when they call GET /auth/validate to check a JWT
 type ValidateTokenResponse struct {
-	Valid  bool   `json:"valid"`
-	UserID string `json:"user_id,omitempty"`
-	Email  string `json:"email,omitempty"`
-	Role   Role   `json:"role,omitempty"`
+	Valid     bool   `json:"valid"`
+	UserID    string `json:"user_id,omitempty"`
+	Email     string `json:"email,omitempty"`
+	Role      Role   `json:"role,omitempty"`
+	FirstName string `json:"first_name,omitempty"`
+	LastName  string `json:"last_name,omitempty"`
 }
 
 // APIResponse is a generic wrapper for all HTTP responses

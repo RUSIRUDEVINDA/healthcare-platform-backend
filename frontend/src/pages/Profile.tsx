@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';import { User, Mail, Phone, MapPin, Calendar, Droplets, Shield, ArrowLeft, Save, Edit2, Medal, Building2, CreditCard, Stethoscope } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { User, Mail, Phone, MapPin, Calendar, Droplets, Shield, ArrowLeft, Save, Edit2, Medal, Building2, CreditCard, Stethoscope } from 'lucide-react';
@@ -121,6 +122,8 @@ export default function Profile() {
       setIsEditing(false);
     } catch (err: unknown) {
       console.error('Error updating profile:', err);
+      const message =
+        (err as any)?.response?.data?.error || 'Failed to update profile';
       let message = 'Failed to update profile';
       if (axios.isAxiosError(err)) {
         message = err.response?.data?.error || message;
@@ -511,6 +514,12 @@ export default function Profile() {
                       </div>
                     </>
                   )}
+           <div>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Emergency Contact</p>
+                        <p className="text-gray-900 font-medium">{profile?.emergency_contact || 'Not set'}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
