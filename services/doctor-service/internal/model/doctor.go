@@ -47,10 +47,12 @@ type UpdateDoctorPutRootRequest struct {
 
 // ValidateTokenResponse matches auth-service GET /auth/validate JSON body.
 type ValidateTokenResponse struct {
-	Valid  bool   `json:"valid"`
-	UserID string `json:"user_id,omitempty"`
-	Email  string `json:"email,omitempty"`
-	Role   string `json:"role,omitempty"`
+	Valid     bool   `json:"valid"`
+	UserID    string `json:"user_id,omitempty"`
+	Email     string `json:"email,omitempty"`
+	Role      string `json:"role,omitempty"`
+	FirstName string `json:"first_name,omitempty"`
+	LastName  string `json:"last_name,omitempty"`
 }
 
 // APIResponse is the standard JSON envelope for doctor-service handlers.
