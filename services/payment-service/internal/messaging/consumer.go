@@ -50,7 +50,7 @@ func (c *PaymentConsumer) handleAppointmentBooked(body []byte) error {
 		AppointmentID: event.AppointmentID,
 		PatientID:     event.PatientID,
 		Amount:        event.ConsultFee,
-		Currency:      "USD", // Default
+		Currency:      "LKR", // Default for local consultations
 	}
 
 	_, err := c.svc.CreatePayment(req)
