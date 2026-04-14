@@ -19,6 +19,9 @@ import { Link } from 'react-router-dom';
 import type { Slot, Appointment, BookAppointmentRequest } from '../api/appointments';
 import { appointmentApi } from '../api/appointments';
 import { doctorApi, type Doctor } from '../api/doctors';
+import { patientApi } from '../api/patient';
+import { paymentApi } from '../api/payment';
+import { submitPayHereForm } from '../utils/payment';
 import BookingModal from '../components/appointments/BookingModal';
 
 type TabKey = 'doctors' | 'appointments';
@@ -33,6 +36,7 @@ export default function Appointments() {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState<TabKey>('doctors');
     const [isApptMenuOpen, setIsApptMenuOpen] = useState(true);
+    const [isRedirecting, setIsRedirecting] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -90,8 +94,34 @@ export default function Appointments() {
 
     const handleBook = async (data: BookAppointmentRequest) => {
         try {
-            await appointmentApi.bookAppointment(data);
-            await fetchData();
+            const appt = await appointmentApi.bookAppointment(data);
+            
+            if (data.payment_mode === 'pay_now' && appt.id) {
+                // Fetch patient profile to get customer details for PayHere
+                const profile = await patientApi.getProfile();
+                
+                // Get checkout parameters from our payment service
+                const checkout = await paymentApi.checkout({
+                    appointment_id: appt.id,
+                    items: `Consultation with ${getDoctorName(data.doctor_id)}`,
+                    customer: {
+                        first_name: profile.first_name,
+                        last_name: profile.last_name,
+                        email: profile.email,
+                        phone: profile.phone_number || '0000000000',
+                        address: profile.address || 'Colombo',
+                        city: 'Colombo',
+                        country: 'Sri Lanka'
+                    }
+                });
+
+                // Redirect to PayHere Checkout
+                setIsRedirecting(true);
+                submitPayHereForm(checkout);
+            } else {
+                await fetchData();
+                setActiveTab('appointments');
+            }
         } catch (error) {
             console.error('Booking failed:', error);
             throw error;
@@ -280,10 +310,10 @@ export default function Appointments() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                                     {filteredDoctors.map((doc) => {
                                         const docSlots = doctorSlots[String(doc.id)] || [];
-                                        const count = docSlots.filter(s => !s.is_booked && s.status !== 'booked').length;
+                                        const count = docSlots.filter((s: Slot) => !s.is_booked && s.status !== 'booked').length;
                                         const initials = doc.name
                                             .split(' ')
-                                            .map((w) => w[0])
+                                            .map((w: string) => w[0])
                                             .join('')
                                             .slice(0, 2)
                                             .toUpperCase();
@@ -364,7 +394,7 @@ export default function Appointments() {
                                         <div key={appt.id} className="bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-md transition-all group flex items-center gap-6">
                                             {/* Dr Avatar */}
                                             <div className="w-14 h-14 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-brand font-bold shrink-0 shadow-sm group-hover:border-brand/20 transition-colors">
-                                                {getDoctorName(appt.doctor_id).split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                                {getDoctorName(appt.doctor_id).split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                                             </div>
 
                                             {/* Dr Info */}
@@ -474,6 +504,17 @@ export default function Appointments() {
                     slots={doctorSlots[String(doctors[0].id)] || []}
                     onBook={handleBook}
                 />
+            )}
+
+            {/* Redirecting Overlay */}
+            {isRedirecting && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="text-center">
+                        <div className="w-16 h-16 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                        <h3 className="text-xl font-bold text-gray-900">Redirecting to Payment</h3>
+                        <p className="text-gray-500 mt-2">Please do not close your browser...</p>
+                    </div>
+                </div>
             )}
         </div>
     );
