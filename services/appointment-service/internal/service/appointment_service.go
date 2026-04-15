@@ -439,8 +439,11 @@ func (s *AppointmentService) getDoctorConsultationFee(doctorID string) (float64,
 	if err != nil {
 		return 0, err
 	}
-	if profile.Data.ChannelingFee <= 0 {
-		return 0, fmt.Errorf("doctor channeling fee is not configured")
+	if profile.Data.ChannelingFee < 0 {
+		return 0, fmt.Errorf("doctor channeling fee is invalid")
+	}
+	if profile.Data.ChannelingFee == 0 {
+		s.log.Warn("Doctor channeling fee is zero; proceeding with hospital fee only", "doctor_id", doctorID)
 	}
 	return profile.Data.ChannelingFee, nil
 }
