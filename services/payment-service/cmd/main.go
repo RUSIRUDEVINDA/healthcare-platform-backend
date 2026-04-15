@@ -84,10 +84,6 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// Serve test page
-	router.GET("/payhere-test", func(c *gin.Context) {
-		c.File("./payhere-test.html")
-	})
 
 	h.RegisterRoutes(router)
 
