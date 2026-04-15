@@ -21,6 +21,8 @@ type PaymentRepo interface {
 	FindByID(id string) (*model.Payment, error)
 	UpdateStatus(id string, status model.PaymentStatus, providerID string) error
 	FindByAppointmentID(appointmentID string) (*model.Payment, error)
+	FindByPatientID(patientID string) ([]*model.Payment, error)
+	UpdateStatusByAppointmentID(appointmentID string, status model.PaymentStatus) error
 }
 
 type PaymentProvider interface {
@@ -115,6 +117,10 @@ func (s *PaymentService) GetPaymentByID(id string) (*model.Payment, error) {
 	return s.repo.FindByID(id)
 }
 
+func (s *PaymentService) ListPaymentsByPatient(patientID string) ([]*model.Payment, error) {
+	return s.repo.FindByPatientID(patientID)
+}
+
 func (s *PaymentService) Checkout(req *model.CheckoutRequest) (*model.CheckoutResponse, error) {
 	if req == nil {
 		return nil, fmt.Errorf("service.Checkout: request is nil")
@@ -200,4 +206,24 @@ func (s *PaymentService) publishPaymentCompleted(paymentID, appointmentID, provi
 	} else {
 		s.log.Info("Published payment.completed event", "payment_id", paymentID)
 	}
+}
+
+func (s *PaymentService) CancelPaymentByAppointmentID(appointmentID string) error {
+	p, err := s.repo.FindByAppointmentID(appointmentID)
+	if err != nil {
+		return fmt.Errorf("service.CancelPayment: find payment: %w", err)
+	}
+
+	// Only cancel if it's still pending
+	if p.Status != model.StatusPending {
+		s.log.Warn("Attempted to cancel a non-pending payment", "payment_id", p.ID, "status", p.Status)
+		return nil
+	}
+
+	if err := s.repo.UpdateStatusByAppointmentID(appointmentID, model.StatusCancelled); err != nil {
+		return fmt.Errorf("service.CancelPayment update status: %w", err)
+	}
+
+	s.log.Info("Payment cancelled due to appointment cancellation", "appointment_id", appointmentID, "payment_id", p.ID)
+	return nil
 }
