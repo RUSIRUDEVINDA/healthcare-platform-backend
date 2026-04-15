@@ -69,7 +69,7 @@ func main() {
 	router.Use(gin.Recovery())
 	// router.Use(middleware.Logger(log)) // If we had one for this service
 
-	patientHandler.RegisterRoutes(router, jwtHelper)
+	patientHandler.RegisterRoutes(router, jwtHelper, cfg.InternalAPIKey)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,

@@ -16,6 +16,10 @@ apiClient.interceptors.request.use((config) => {
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Default Content-Type is application/json; FormData must use multipart with a boundary (set by the runtime).
+  if (config.data instanceof FormData && config.headers) {
+    config.headers.delete('Content-Type');
+  }
   return config;
 });
 

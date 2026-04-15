@@ -7,6 +7,7 @@ import Profile from './pages/Profile';
 import Appointments from './pages/Appointments';
 import Payments from './pages/Payments';
 import PaymentStatus from './pages/PaymentStatus';
+import MedicalRecords from './pages/MedicalRecords';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
       <Route path="/profile" element={<Profile />} />
       <Route path="/appointments" element={<Appointments />} />
       <Route path="/payments" element={<Payments />} />
+      <Route path="/records" element={<MedicalRecords />} />
       
       {/* Payment redirection targets */}
       <Route path="/payment/success" element={<PaymentStatus type="success" />} />

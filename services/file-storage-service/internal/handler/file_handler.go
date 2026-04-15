@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -93,9 +94,14 @@ func (h *FileHandler) UploadPatientFile(c *gin.Context) {
 		return
 	}
 
-	rec, replaced, err := h.svc.UploadPatientFile(c.Request.Context(), ownerID, role, token, patientID, fileHeader)
+	docCategory := strings.TrimSpace(c.PostForm("document_category"))
+	rec, replaced, err := h.svc.UploadPatientFile(c.Request.Context(), ownerID, role, token, patientID, docCategory, fileHeader)
 	if err != nil {
-		h.writeAccessError(c, err)
+		if errors.Is(err, service.ErrUnauthorizedAccess) {
+			h.writeAccessError(c, err)
+			return
+		}
+		h.writeUploadError(c, err)
 		return
 	}
 	message := "file uploaded"

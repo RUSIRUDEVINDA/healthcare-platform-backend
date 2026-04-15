@@ -108,6 +108,11 @@ export default function BookingModal({ isOpen, onClose, doctor, slots, onBook }:
                                             <div className="text-xs text-gray-500 mt-1">
                                                 {new Date(slot.start_time).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                                             </div>
+                                            {slot.hospital ? (
+                                                <div className="text-[11px] text-brand/80 mt-1 font-medium truncate">
+                                                    {slot.hospital}
+                                                </div>
+                                            ) : null}
                                         </button>
                                     );
                                 })}

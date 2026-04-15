@@ -50,6 +50,18 @@ func (s *PatientService) GetProfile(userID string) (*model.Patient, error) {
 	return p, nil
 }
 
+// GetDisplayByUserID returns stored patient profile names for a user (for internal service callers).
+func (s *PatientService) GetDisplayByUserID(userID string) (firstName, lastName string, found bool, err error) {
+	p, e := s.repo.FindByUserID(userID)
+	if e != nil {
+		return "", "", false, fmt.Errorf("service.GetDisplayByUserID: %w", e)
+	}
+	if p == nil {
+		return "", "", false, nil
+	}
+	return p.FirstName, p.LastName, true, nil
+}
+
 func (s *PatientService) EnsureProfile(userID, email, firstName, lastName string) (*model.Patient, error) {
 	p, err := s.GetProfile(userID)
 	if err != nil {
