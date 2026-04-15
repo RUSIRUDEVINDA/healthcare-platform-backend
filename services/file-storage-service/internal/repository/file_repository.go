@@ -29,21 +29,22 @@ func (r *FileRepository) Create(ctx context.Context, file *model.FileRecord) err
 
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO files (
-			id, owner_id, uploader_id, kind, storage_provider,
+			id, owner_id, uploader_id, kind, document_category, storage_provider,
 			original_name, stored_name, mime_type, size_bytes, checksum,
 			cloudinary_public_id, cloudinary_url, r2_bucket, r2_object_key,
 			is_public, created_at, updated_at, deleted_at
 		) VALUES (
-			$1, $2, $3, $4, $5,
-			$6, $7, $8, $9, $10,
-			$11, $12, $13, $14,
-			$15, $16, $17, $18
+			$1, $2, $3, $4, $5, $6,
+			$7, $8, $9, $10, $11,
+			$12, $13, $14, $15,
+			$16, $17, $18, $19
 		)
 	`,
 		file.ID,
 		file.OwnerID,
 		file.UploaderID,
 		file.Kind,
+		file.DocumentCategory,
 		file.StorageProvider,
 		file.OriginalName,
 		file.StoredName,
@@ -72,18 +73,19 @@ func (r *FileRepository) Update(ctx context.Context, file *model.FileRecord) err
 		SET owner_id = $2,
 		    uploader_id = $3,
 		    kind = $4,
-		    storage_provider = $5,
-		    original_name = $6,
-		    stored_name = $7,
-		    mime_type = $8,
-		    size_bytes = $9,
-		    checksum = $10,
-		    cloudinary_public_id = $11,
-		    cloudinary_url = $12,
-		    r2_bucket = $13,
-		    r2_object_key = $14,
-		    is_public = $15,
-		    updated_at = $16,
+		    document_category = $5,
+		    storage_provider = $6,
+		    original_name = $7,
+		    stored_name = $8,
+		    mime_type = $9,
+		    size_bytes = $10,
+		    checksum = $11,
+		    cloudinary_public_id = $12,
+		    cloudinary_url = $13,
+		    r2_bucket = $14,
+		    r2_object_key = $15,
+		    is_public = $16,
+		    updated_at = $17,
 		    deleted_at = NULL
 		WHERE id = $1 AND deleted_at IS NULL
 	`,
@@ -91,6 +93,7 @@ func (r *FileRepository) Update(ctx context.Context, file *model.FileRecord) err
 		file.OwnerID,
 		file.UploaderID,
 		file.Kind,
+		file.DocumentCategory,
 		file.StorageProvider,
 		file.OriginalName,
 		file.StoredName,
@@ -119,7 +122,7 @@ func (r *FileRepository) Update(ctx context.Context, file *model.FileRecord) err
 
 func (r *FileRepository) GetByID(ctx context.Context, id string) (*model.FileRecord, error) {
 	row := r.db.QueryRowContext(ctx, `
-		SELECT id, owner_id, uploader_id, kind, storage_provider,
+		SELECT id, owner_id, uploader_id, kind, document_category, storage_provider,
 		       original_name, stored_name, mime_type, size_bytes, checksum,
 		       cloudinary_public_id, cloudinary_url, r2_bucket, r2_object_key,
 		       is_public, created_at, updated_at, deleted_at
@@ -132,7 +135,7 @@ func (r *FileRepository) GetByID(ctx context.Context, id string) (*model.FileRec
 
 func (r *FileRepository) ListByOwner(ctx context.Context, ownerID string) ([]model.FileRecord, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, owner_id, uploader_id, kind, storage_provider,
+		SELECT id, owner_id, uploader_id, kind, document_category, storage_provider,
 		       original_name, stored_name, mime_type, size_bytes, checksum,
 		       cloudinary_public_id, cloudinary_url, r2_bucket, r2_object_key,
 		       is_public, created_at, updated_at, deleted_at
@@ -204,6 +207,7 @@ func scanFileRecord(scanner interface {
 		&file.OwnerID,
 		&file.UploaderID,
 		&file.Kind,
+		&file.DocumentCategory,
 		&file.StorageProvider,
 		&file.OriginalName,
 		&file.StoredName,
