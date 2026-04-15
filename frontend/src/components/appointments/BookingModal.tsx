@@ -28,6 +28,7 @@ export default function BookingModal({ isOpen, onClose, doctor, slots, consultat
     const [patientProfile, setPatientProfile] = useState<PatientProfile | null>(null);
     const [patientLoading, setPatientLoading] = useState(false);
     const [patientError, setPatientError] = useState<string | null>(null);
+    const [bookingError, setBookingError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!isOpen) {
@@ -37,6 +38,7 @@ export default function BookingModal({ isOpen, onClose, doctor, slots, consultat
         setSelectedSlot(null);
         setConsultationMode('jitsi');
         setPaymentMode('pay_now');
+        setBookingError(null);
     }, [isOpen]);
 
     useEffect(() => {
@@ -79,6 +81,7 @@ export default function BookingModal({ isOpen, onClose, doctor, slots, consultat
         if (!selectedSlot) return;
 
         setIsSubmitting(true);
+        setBookingError(null);
         try {
             await onBook({
                 doctor_id: doctor.id,
@@ -88,8 +91,10 @@ export default function BookingModal({ isOpen, onClose, doctor, slots, consultat
                 payment_mode: paymentMode,
             });
             onClose();
-        } catch (error) {
-            console.error('Booking failed:', error);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Booking failed. Please try again.';
+            setBookingError(message);
+            console.error('Booking failed:', message, error);
         } finally {
             setIsSubmitting(false);
         }
@@ -311,6 +316,11 @@ export default function BookingModal({ isOpen, onClose, doctor, slots, consultat
                         </div>
 
                         <div className="mt-auto pt-4 border-t border-gray-100">
+                            {bookingError && (
+                                <div className="mb-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
+                                    {bookingError}
+                                </div>
+                            )}
                             <button
                                 type="button"
                                 onClick={handleBookSubmit}

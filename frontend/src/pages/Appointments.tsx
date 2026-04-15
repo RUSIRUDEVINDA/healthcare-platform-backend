@@ -126,9 +126,15 @@ export default function Appointments() {
                 await fetchData();
                 setActiveTab('appointments');
             }
-        } catch (error) {
-            console.error('Booking failed:', error);
-            throw error;
+        } catch (error: unknown) {
+            const apiMessage =
+                error && typeof error === 'object' && 'response' in error
+                    ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
+                    : undefined;
+            const fallbackMessage = error instanceof Error ? error.message : 'Booking failed.';
+            const message = apiMessage || fallbackMessage;
+            console.error('Booking failed:', message, error);
+            throw new Error(message);
         }
     };
 

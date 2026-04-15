@@ -45,9 +45,6 @@ function formatTime(dateStr: string) {
   });
 }
 
-function uniqueStrings(values: Array<string | null | undefined>) {
-  return Array.from(new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value))));
-}
 
 function classifyRecord(file: FileRecord): RecordBucket {
   const haystack = `${file.original_name} ${file.stored_name}`.toLowerCase();
@@ -119,13 +116,17 @@ export default function Dashboard() {
           records = await fileApi.listMyFiles();
         } else {
           const patientProfile = profileData as PatientProfile;
-          const candidateOwnerIds = uniqueStrings([authUserId, patientProfile?.user_id, patientProfile?.id]);
-          const results = await Promise.allSettled(
-            candidateOwnerIds.map((ownerId) => fileApi.listPatientFiles(ownerId))
-          );
-          const combined = results.flatMap((result) => (result.status === 'fulfilled' ? result.value : []));
-          const fallbackFiles = combined.length === 0 ? await fileApi.listMyFiles() : [];
-          records = Array.from(new Map([...combined, ...fallbackFiles].map((file) => [file.id, file])).values());
+          // The file service checks callerID (JWT user_id) == patientID.
+          // Always use user_id — that's what the JWT contains and what the file service authorises against.
+          const ownerUserId = patientProfile?.user_id ?? authUserId;
+          if (ownerUserId) {
+            try {
+              records = await fileApi.listPatientFiles(ownerUserId);
+            } catch {
+              // fallback to /api/v1/files (listMyFiles) — resolved from JWT directly
+              records = await fileApi.listMyFiles();
+            }
+          }
         }
 
         records.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
