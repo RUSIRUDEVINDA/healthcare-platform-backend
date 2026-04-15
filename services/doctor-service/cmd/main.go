@@ -150,6 +150,7 @@ func runMigrations(db *sql.DB, log *logger.Logger) error {
 		{"migrations/0003_doctors_user_id.up.sql", embeddedDoctorsUserIDMigration},
 		{"migrations/0004_doctors_email_password.up.sql", embeddedDoctorsEmailPasswordMigration},
 		{"migrations/0005_relax_doctor_constraints.up.sql", ""},
+		{"migrations/0006_doctors_channeling_fee.up.sql", embeddedDoctorsChannelingFeeMigration},
 	}
 	for _, f := range files {
 		sqlBytes, err := os.ReadFile(f.path)
@@ -172,6 +173,7 @@ CREATE TABLE IF NOT EXISTS doctors (
     specialization  VARCHAR(255) NOT NULL,
     experience      INT NOT NULL CHECK (experience >= 0 AND experience <= 80),
     hospital        VARCHAR(255) NOT NULL,
+    channeling_fee  NUMERIC(10,2) NOT NULL DEFAULT 0,
     nic             VARCHAR(12) NOT NULL,
     slmc_no         VARCHAR(5) NOT NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -220,4 +222,8 @@ const embeddedDoctorsEmailPasswordMigration = `
 ALTER TABLE doctors ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT '';
 ALTER TABLE doctors ADD COLUMN IF NOT EXISTS password_hash TEXT NOT NULL DEFAULT '';
 CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_email ON doctors (email) WHERE email <> '';
+`
+
+const embeddedDoctorsChannelingFeeMigration = `
+ALTER TABLE doctors ADD COLUMN IF NOT EXISTS channeling_fee NUMERIC(10,2) NOT NULL DEFAULT 0;
 `

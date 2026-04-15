@@ -11,6 +11,7 @@ type Doctor struct {
 	Specialization string    `json:"specialization"`
 	Experience     int       `json:"experience"`
 	Hospital       string    `json:"hospital"`
+	ChannelingFee  float64   `json:"channeling_fee"`
 	NIC            string    `json:"nic"`
 	SLMCNo         string    `json:"slmc_no"`
 	CreatedAt      time.Time `json:"created_at"`
@@ -25,6 +26,7 @@ type CreateDoctorRequest struct {
 	Specialization string `json:"specialization" binding:"required,min=2,max=255"`
 	Experience     int    `json:"experience" binding:"required,min=0,max=80"`
 	Hospital       string `json:"hospital" binding:"required,min=2,max=255"`
+	ChannelingFee  float64 `json:"channeling_fee" binding:"omitempty,gt=0"`
 	NIC            string `json:"nic" binding:"required,len=12"`
 	SLMCNo         string `json:"slmc_no" binding:"required,len=5"`
 }
@@ -35,6 +37,7 @@ type UpdateDoctorRequest struct {
 	Specialization *string `json:"specialization,omitempty" binding:"omitempty,min=2,max=255"`
 	Experience     *int    `json:"experience,omitempty" binding:"omitempty,min=0,max=80"`
 	Hospital       *string `json:"hospital,omitempty" binding:"omitempty,min=2,max=255"`
+	ChannelingFee  *float64 `json:"channeling_fee,omitempty" binding:"omitempty,gt=0"`
 	NIC            *string `json:"nic,omitempty" binding:"omitempty,len=12"`
 	SLMCNo         *string `json:"slmc_no,omitempty" binding:"omitempty,len=5"`
 }
