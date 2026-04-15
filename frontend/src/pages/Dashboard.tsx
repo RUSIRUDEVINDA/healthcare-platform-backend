@@ -13,9 +13,9 @@ import {
   Sparkles,
   Stethoscope,
   User,
+  Scale,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { LogOut, User, Activity, Calendar, ClipboardList, CreditCard, Scale } from 'lucide-react';
+
 import { Link } from 'react-router-dom';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { doctorApi, type DoctorProfile } from '../api/doctor';
@@ -272,15 +272,14 @@ export default function Dashboard() {
               <CreditCard className="h-[18px] w-[18px]" /> Payments
             </Link>
           )}
-          <Link to="/records" className="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-teal-50 rounded-full transition-colors text-sm">
           <Link
             to="/bmi-calculator"
             className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
           >
             <Scale className="h-[18px] w-[18px]" /> BMI Calculator
           </Link>
-          <a
-            href="#"
+          <Link
+            to="/records"
             className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
           >
             <ClipboardList className="h-[18px] w-[18px]" /> Records
