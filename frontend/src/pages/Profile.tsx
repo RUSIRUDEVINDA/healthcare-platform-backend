@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { User, Phone, MapPin, Calendar, Droplets, Shield, Save, Edit2, Medal, Building2, CreditCard, Stethoscope, Trash2, AlertTriangle, Globe, Activity, ClipboardList, LogOut } from 'lucide-react';
+import { User, Phone, MapPin, Calendar, Droplets, Shield, Save, Edit2, Medal, Building2, CreditCard, Stethoscope, Trash2, AlertTriangle, Globe, Activity } from 'lucide-react';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { doctorApi, type DoctorProfile } from '../api/doctor';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -152,12 +152,6 @@ export default function Profile() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user');
-    window.location.href = '/auth/login';
-  };
-
   if (loading && !profile) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -167,66 +161,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f6f8fa] flex font-sans">
-      {/* Sidebar */}
-      <aside className="w-60 bg-white border-r border-gray-100 hidden lg:flex flex-col sticky top-0 h-screen">
-        <div className="px-6 pt-6 pb-5">
-          <Link to="/dashboard" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
-              <Activity className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-lg font-bold text-gray-900 tracking-tight">AyaRX</span>
-          </Link>
-        </div>
-
-        <nav className="flex-1 px-4 space-y-1">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-3">Menu</p>
-          <Link
-            to="/dashboard"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-          >
-            <Activity className="h-[18px] w-[18px]" /> Dashboard
-          </Link>
-          <Link
-            to="/profile"
-            className="flex items-center gap-3 px-3 py-2.5 bg-brand/10 text-brand rounded-xl font-semibold transition-all text-sm shadow-sm"
-          >
-            <User className="h-[18px] w-[18px]" /> Profile
-          </Link>
-          <Link
-            to="/appointments"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-          >
-            <Calendar className="h-[18px] w-[18px]" /> Appointments
-          </Link>
-          {role !== 'doctor' && (
-            <Link
-              to="/payments"
-              className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-            >
-              <CreditCard className="h-[18px] w-[18px]" /> Payments
-            </Link>
-          )}
-          <Link
-            to="/records"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-          >
-            <ClipboardList className="h-[18px] w-[18px]" /> Records
-          </Link>
-        </nav>
-
-        <div className="p-4 border-t border-gray-100 mx-4 mb-4">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors text-sm font-medium"
-          >
-            <LogOut className="h-[18px] w-[18px]" /> Sign Out
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-y-auto">
+    <div className="flex min-h-screen flex-1 flex-col overflow-y-auto bg-[#f6f8fa] font-sans">
         <header className="h-14 bg-white border-b border-gray-100 flex items-center justify-between px-8 sticky top-0 z-10">
           <h2 className="text-[15px] font-bold text-gray-900">Your Profile</h2>
           <div className="flex items-center gap-4">
@@ -691,7 +626,6 @@ export default function Profile() {
             </div>
           )}
         </main>
-      </div>
     </div>
   );
 }
