@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut, User, Activity, Calendar, ClipboardList, CreditCard } from 'lucide-react';
+import { LogOut, User, Activity, Calendar, ClipboardList, CreditCard, Scale } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { doctorApi, type DoctorProfile } from '../api/doctor';
@@ -136,6 +136,12 @@ export default function Dashboard() {
               <CreditCard className="h-[18px] w-[18px]" /> Payments
             </Link>
           )}
+          <Link
+            to="/bmi-calculator"
+            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+          >
+            <Scale className="h-[18px] w-[18px]" /> BMI Calculator
+          </Link>
           <a
             href="#"
             className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
@@ -226,7 +232,7 @@ export default function Dashboard() {
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
               <div className="flex items-center justify-between mb-8">
                 <h4 className="text-xl font-bold text-gray-900">Upcoming Appointments</h4>
-                <Link to="/appointments" className="text-brand font-semibold text-sm hover:underline">View All</Link>
+                <Link to="/appointments?tab=appointments" className="text-brand font-semibold text-sm hover:underline">View All</Link>
               </div>
               <div className="space-y-6">
                 {appointments.length > 0 ? (
