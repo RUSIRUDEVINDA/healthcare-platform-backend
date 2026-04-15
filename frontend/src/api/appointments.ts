@@ -8,12 +8,28 @@ export interface Slot {
     start_time: string;
     end_time: string;
     is_booked: boolean;
+    hospital?: string;
     status?: 'available' | 'booked'; // frontend compat
+}
+
+export interface CreateSlotRequest {
+    doctor_id?: string;
+    start_time: string;
+    end_time: string;
+    hospital?: string;
+}
+
+export interface UpdateSlotRequest {
+    start_time?: string;
+    end_time?: string;
+    hospital?: string;
 }
 
 export interface Appointment {
     id: string;
     patient_id: string;
+    patient_first_name?: string;
+    patient_last_name?: string;
     doctor_id: string;
     doctor_owner_user_id?: string;
     slot_id: string;
@@ -65,6 +81,26 @@ export const appointmentApi = {
 
     getAppointmentStatus: async (id: string) => {
         const response = await apiClient.get<Appointment>(`v1/appointments/${id}`);
+        return response.data;
+    },
+
+    listMySlots: async () => {
+        const response = await apiClient.get<Slot[]>('v1/slots');
+        return response.data;
+    },
+
+    createSlot: async (data: CreateSlotRequest) => {
+        const response = await apiClient.post<Slot>('v1/slots', data);
+        return response.data;
+    },
+
+    updateSlot: async (id: string, data: UpdateSlotRequest) => {
+        const response = await apiClient.put<Slot>(`v1/slots/${id}`, data);
+        return response.data;
+    },
+
+    deleteSlot: async (id: string) => {
+        const response = await apiClient.delete(`v1/slots/${id}`);
         return response.data;
     },
 };

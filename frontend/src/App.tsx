@@ -10,6 +10,9 @@ import Payments from './pages/Payments';
 import PaymentStatus from './pages/PaymentStatus';
 import Telemedicine from './pages/Telemedicine';
 import Records from './pages/Records';
+import BmiCalculator from './pages/BmiCalculator';
+import MedicalRecords from './pages/MedicalRecords';
+import AppShellLayout from './layouts/AppShellLayout';
 
 function App() {
   return (
@@ -27,6 +30,15 @@ function App() {
       <Route path="/records" element={<Records />} />
       <Route path="/telemedicine" element={<Telemedicine />} />
 
+      <Route path="/bmi-calculator" element={<BmiCalculator />} />
+      <Route element={<AppShellLayout />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/appointments" element={<Appointments />} />
+        <Route path="/payments" element={<Payments />} />
+        <Route path="/records" element={<MedicalRecords />} />
+      </Route>
+      
       {/* Payment redirection targets */}
       <Route path="/payment/success" element={<PaymentStatus type="success" />} />
       <Route path="/payment/cancel" element={<PaymentStatus type="cancel" />} />

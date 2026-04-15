@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { User, Phone, MapPin, Calendar, Droplets, Shield, Save, Edit2, Medal, Building2, CreditCard, Stethoscope, Trash2, AlertTriangle, Globe, Activity, ClipboardList, LogOut } from 'lucide-react';
+import { User, Phone, MapPin, Calendar, Droplets, Shield, Save, Edit2, Medal, Building2, CreditCard, Stethoscope, Trash2, AlertTriangle, Globe, Activity, ClipboardList, LogOut, Scale } from 'lucide-react';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { doctorApi, type DoctorProfile } from '../api/doctor';
 import { Link, useNavigate } from 'react-router-dom';
@@ -12,6 +12,13 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const formatDateOnly = (value?: string | null) => {
+    if (!value) return 'Not set';
+    if (value.includes('T')) return value.split('T')[0];
+    if (value.length >= 10) return value.slice(0, 10);
+    return value;
+  };
 
   // Unified form data for both roles
   const [formData, setFormData] = useState({
@@ -545,7 +552,7 @@ export default function Profile() {
                               </div>
                               <div>
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">SLMC Number</p>
-                                <p className="text-gray-900 font-medium font-bold">{(profile as DoctorProfile).slmc_no}</p>
+                                <p className="text-gray-900 font-bold">{(profile as DoctorProfile).slmc_no}</p>
                               </div>
                             </div>
                             <div className="flex items-start">
@@ -566,7 +573,7 @@ export default function Profile() {
                               </div>
                               <div>
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Registered Email</p>
-                                <p className="text-gray-900 font-medium font-semibold">{(profile as PatientProfile).email}</p>
+                                <p className="text-gray-900 font-semibold">{(profile as PatientProfile).email}</p>
                               </div>
                             </div>
                             <div className="flex items-start">
@@ -575,7 +582,7 @@ export default function Profile() {
                               </div>
                               <div>
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Date of Birth</p>
-                                <p className="text-gray-900 font-medium">{(profile as PatientProfile).date_of_birth || 'Not set'}</p>
+                                <p className="text-gray-900 font-medium">{formatDateOnly((profile as PatientProfile).date_of_birth)}</p>
                               </div>
                             </div>
                             <div className="flex items-start">
@@ -611,7 +618,7 @@ export default function Profile() {
                               </div>
                               <div>
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Blood Group</p>
-                                <p className="text-gray-900 font-medium font-bold text-lg">{(profile as PatientProfile).blood_group || 'Not set'}</p>
+                                <p className="text-gray-900 font-bold text-lg">{(profile as PatientProfile).blood_group || 'Not set'}</p>
                               </div>
                             </div>
                             <div className="flex items-start">
@@ -629,7 +636,7 @@ export default function Profile() {
                               </div>
                               <div>
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Emergency Contact</p>
-                                <p className="text-gray-900 font-medium font-bold">{(profile as PatientProfile).emergency_contact || 'Not set'}</p>
+                                <p className="text-gray-900 font-bold">{(profile as PatientProfile).emergency_contact || 'Not set'}</p>
                               </div>
                             </div>
                             <div className="flex items-start">
@@ -638,7 +645,7 @@ export default function Profile() {
                               </div>
                               <div>
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Nationality</p>
-                                <p className="text-gray-900 font-medium font-bold">{(profile as PatientProfile).nationality || 'Not set'}</p>
+                                <p className="text-gray-900 font-bold">{(profile as PatientProfile).nationality || 'Not set'}</p>
                               </div>
                             </div>
                           </>

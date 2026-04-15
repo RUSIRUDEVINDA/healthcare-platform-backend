@@ -79,7 +79,9 @@ func (h *AppointmentHandler) Book(c *gin.Context) {
 		}
 	}
 
-	appt, err := h.svc.BookAppointment(userID, role, token, &req)
+	patientFirst, _ := middleware.CallerFirstName(c)
+	patientLast, _ := middleware.CallerLastName(c)
+	appt, err := h.svc.BookAppointment(userID, role, token, patientFirst, patientLast, &req)
 	if err != nil {
 		if strings.Contains(err.Error(), "only patients can book appointments") {
 			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
@@ -276,6 +278,7 @@ func (h *AppointmentHandler) CreateSlot(c *gin.Context) {
 			return
 		}
 		if strings.Contains(err.Error(), "hospital is required") || strings.Contains(err.Error(), "doctor_id is required") {
+		if strings.Contains(err.Error(), "cannot be in the past") {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -287,6 +290,12 @@ func (h *AppointmentHandler) CreateSlot(c *gin.Context) {
 			strings.Contains(err.Error(), "doctor profile not found for current user") ||
 			strings.Contains(err.Error(), "doctor service unavailable") {
 			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
+		if strings.Contains(err.Error(), "add your hospital") ||
+			strings.Contains(err.Error(), "hospital must match") ||
+			strings.Contains(err.Error(), "doctor_id is required") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
@@ -311,9 +320,26 @@ func (h *AppointmentHandler) UpdateSlot(c *gin.Context) {
 		return
 	}
 
-	slot, err := h.svc.UpdateSlot(id, userID, role, &req)
+	token, ok := middleware.CallerToken(c)
+	if !ok || token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing caller token"})
+		return
+	}
+
+	slot, err := h.svc.UpdateSlot(id, userID, token, role, &req)
 	if err != nil {
-		if strings.Contains(err.Error(), "end time must be after start time") {
+		if strings.Contains(err.Error(), "slot not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		if strings.Contains(err.Error(), "cannot update a booked slot") {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+		if strings.Contains(err.Error(), "end time must be after start time") ||
+			strings.Contains(err.Error(), "add your hospital") ||
+			strings.Contains(err.Error(), "hospital must match") ||
+			strings.Contains(err.Error(), "cannot be in the past") {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -342,6 +368,14 @@ func (h *AppointmentHandler) DeleteSlot(c *gin.Context) {
 	}
 
 	if err := h.svc.DeleteSlot(id, userID, role); err != nil {
+		if strings.Contains(err.Error(), "slot not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		if strings.Contains(err.Error(), "cannot delete a booked slot") {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
 	}

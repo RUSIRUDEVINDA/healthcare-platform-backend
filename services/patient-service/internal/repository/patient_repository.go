@@ -91,19 +91,34 @@ func (r *PatientRepository) UpdatePartial(userID string, p *model.PatchPatientRe
 	return nil
 }
 
-func (r *PatientRepository) DeleteByUserID(userID string) (bool, error) {
-	query := `DELETE FROM patients WHERE user_id = $1`
-	res, err := r.db.Exec(query, userID)
+func (r *PatientRepository) DeleteByUserID(userID string) (string, error) {
+	// First fetch the patient_id before deleting
+	var patientID string
+	query := `SELECT id FROM patients WHERE user_id = $1`
+	err := r.db.QueryRow(query, userID).Scan(&patientID)
+	if err == sql.ErrNoRows {
+		return "", nil // Patient not found
+	}
 	if err != nil {
-		return false, fmt.Errorf("repository.DeleteByUserID: %w", err)
+		return "", fmt.Errorf("repository.DeleteByUserID fetch: %w", err)
+	}
+
+	// Now delete the patient
+	deleteQuery := `DELETE FROM patients WHERE user_id = $1`
+	res, err := r.db.Exec(deleteQuery, userID)
+	if err != nil {
+		return "", fmt.Errorf("repository.DeleteByUserID delete: %w", err)
 	}
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return false, fmt.Errorf("repository.DeleteByUserID rows affected: %w", err)
+		return "", fmt.Errorf("repository.DeleteByUserID rows affected: %w", err)
 	}
 
-	return rowsAffected > 0, nil
+	if rowsAffected > 0 {
+		return patientID, nil
+	}
+	return "", nil
 }
 
 func flexibleDateToTime(value *model.FlexibleTime) *time.Time {
