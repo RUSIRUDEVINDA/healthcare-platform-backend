@@ -14,6 +14,7 @@ import {
     ChevronDown,
     Building2,
     Briefcase,
+    CreditCard,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Slot, Appointment, BookAppointmentRequest } from '../api/appointments';
@@ -231,6 +232,12 @@ export default function Appointments() {
                         className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
                     >
                         <User className="h-[18px] w-[18px]" /> Profile
+                    </Link>
+                    <Link
+                        to="/payments"
+                        className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+                    >
+                        <CreditCard className="h-[18px] w-[18px]" /> Payments
                     </Link>
                     <a
                         href="#"
