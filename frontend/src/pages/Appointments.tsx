@@ -15,8 +15,9 @@ import {
     Building2,
     Briefcase,
     CreditCard,
+    Scale,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import type { Slot, Appointment, BookAppointmentRequest } from '../api/appointments';
 import { appointmentApi } from '../api/appointments';
 import { doctorApi, type Doctor } from '../api/doctors';
@@ -28,6 +29,7 @@ import BookingModal from '../components/appointments/BookingModal';
 type TabKey = 'doctors' | 'appointments';
 
 export default function Appointments() {
+    const [searchParams] = useSearchParams();
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [doctorSlots, setDoctorSlots] = useState<Record<string, Slot[]>>({});
@@ -35,7 +37,9 @@ export default function Appointments() {
     const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeTab, setActiveTab] = useState<TabKey>('doctors');
+    const [activeTab, setActiveTab] = useState<TabKey>(
+        (searchParams.get('tab') as TabKey) === 'appointments' ? 'appointments' : 'doctors'
+    );
     const [isApptMenuOpen, setIsApptMenuOpen] = useState(true);
     const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -238,6 +242,12 @@ export default function Appointments() {
                         className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
                     >
                         <CreditCard className="h-[18px] w-[18px]" /> Payments
+                    </Link>
+                    <Link
+                        to="/bmi-calculator"
+                        className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+                    >
+                        <Scale className="h-[18px] w-[18px]" /> BMI Calculator
                     </Link>
                     <a
                         href="#"
