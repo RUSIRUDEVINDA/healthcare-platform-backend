@@ -12,6 +12,8 @@ export interface PatientProfile {
   address?: string;
   emergency_contact?: string;
   blood_group?: string;
+  nationality?: string;
+  nic?: string;
   created_at: string;
   updated_at: string;
 }
@@ -23,6 +25,8 @@ export interface UpdateProfileRequest {
   address?: string;
   emergency_contact?: string;
   blood_group?: string;
+  nationality?: string;
+  nic?: string;
 }
 
 export const patientApi = {
@@ -38,6 +42,11 @@ export const patientApi = {
   
   patchProfile: async (data: UpdateProfileRequest) => {
     const response = await apiClient.patch('v1/patient/profile', data);
+    return response.data;
+  },
+
+  deleteProfile: async () => {
+    const response = await apiClient.delete('v1/patient/profile');
     return response.data;
   }
 };
