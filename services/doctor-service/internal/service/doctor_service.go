@@ -113,6 +113,7 @@ func (s *DoctorService) Create(callerID, role string, req *model.CreateDoctorReq
 		Specialization: req.Specialization,
 		Experience:     req.Experience,
 		Hospital:       req.Hospital,
+		ChannelingFee:  req.ChannelingFee,
 		NIC:            nic,
 		SLMCNo:         slmc,
 	}
@@ -204,7 +205,7 @@ func (s *DoctorService) Update(id int64, req *model.UpdateDoctorRequest) (*model
 	}
 
 	if req.Name == nil && req.Specialization == nil && req.Experience == nil &&
-		req.Hospital == nil && req.NIC == nil && req.SLMCNo == nil && req.Email == nil {
+		req.Hospital == nil && req.ChannelingFee == nil && req.NIC == nil && req.SLMCNo == nil && req.Email == nil {
 		return nil, ErrNoFieldsToUpdate
 	}
 
@@ -243,6 +244,9 @@ func (s *DoctorService) Update(id int64, req *model.UpdateDoctorRequest) (*model
 	}
 	if req.Hospital != nil {
 		existing.Hospital = *req.Hospital
+	}
+	if req.ChannelingFee != nil {
+		existing.ChannelingFee = *req.ChannelingFee
 	}
 	if req.NIC != nil {
 		existing.NIC = *req.NIC
