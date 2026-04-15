@@ -430,6 +430,14 @@ func (r *AppointmentRepository) DeleteSlot(id string) error {
 	return err
 }
 
+func (r *AppointmentRepository) DeleteByPatientID(patientID string) error {
+	_, err := r.db.Exec(`DELETE FROM appointments WHERE patient_id = $1`, patientID)
+	if err != nil {
+		return fmt.Errorf("repository.DeleteByPatientID: %w", err)
+	}
+	return nil
+}
+
 func (r *AppointmentRepository) ListSlots() ([]model.Slot, error) {
 	rows, err := r.db.Query(`SELECT id, doctor_id, owner_user_id, start_time, end_time, is_booked FROM slots ORDER BY start_time DESC`)
 	if err != nil {

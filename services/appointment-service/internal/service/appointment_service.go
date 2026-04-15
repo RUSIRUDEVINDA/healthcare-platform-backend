@@ -349,6 +349,14 @@ func (s *AppointmentService) HandlePaymentCompleted(appointmentID string) error 
 	return nil
 }
 
+func (s *AppointmentService) DeletePatientAppointments(patientID string) error {
+	if err := s.repo.DeleteByPatientID(patientID); err != nil {
+		return fmt.Errorf("service.DeletePatientAppointments: %w", err)
+	}
+	s.log.Info("Patient appointments deleted", "patient_id", patientID)
+	return nil
+}
+
 func (s *AppointmentService) ExpireOverdueAppointments(now time.Time) error {
 	overdue, err := s.repo.FindOverdueUnpaid(now.UTC())
 	if err != nil {
