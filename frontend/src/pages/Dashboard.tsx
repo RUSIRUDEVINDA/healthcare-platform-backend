@@ -17,9 +17,10 @@ import {
   Video,
   Clock,
   Building2,
+  ChevronDown,
 } from 'lucide-react';
 
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { doctorApi, type DoctorProfile } from '../api/doctor';
 import { appointmentApi, type Appointment, type Slot } from '../api/appointments';
@@ -86,6 +87,7 @@ function isSameLocalDay(a: Date, b: Date) {
 }
 
 export default function Dashboard() {
+  const location = useLocation();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<PatientProfile | DoctorProfile | null>(null);
   const [role, setRole] = useState<string | null>(null);
@@ -335,33 +337,70 @@ export default function Dashboard() {
 
         <nav className="flex-1 px-4 space-y-1">
           <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.32em] px-3 mb-3">Menu</p>
-          <Link to="/dashboard" className="flex items-center gap-3 px-3 py-2.5 bg-brand/10 text-brand rounded-full font-semibold text-sm">
+          <Link
+            to="/dashboard"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/dashboard'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
+          >
             <Activity className="h-[18px] w-[18px]" /> Dashboard
           </Link>
-          <Link to="/profile" className="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-teal-50 rounded-full transition-colors text-sm">
+          <Link
+            to="/profile"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/profile'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
+          >
             <User className="h-[18px] w-[18px]" /> Profile
           </Link>
-          <Link to="/appointments" className="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-teal-50 rounded-full transition-colors text-sm">
-            <Calendar className="h-[18px] w-[18px]" /> Appointments
+          <Link
+            to="/appointments"
+            className={`flex items-center justify-between px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/appointments'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Calendar className="h-[18px] w-[18px]" /> Appointments
+            </div>
+            <ChevronDown className="h-4 w-4 opacity-50" />
           </Link>
           {role !== 'doctor' && (
-            <Link to="/payments" className="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-teal-50 rounded-full transition-colors text-sm">
-              <CreditCard className="h-[18px] w-[18px]" /> Payments
-            </Link>
-          )}
-          {role !== 'doctor' && (
             <Link
-              to="/bmi-calculator"
-              className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+              to="/payments"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+                location.pathname === '/payments'
+                  ? 'bg-brand/10 text-brand font-semibold'
+                  : 'text-slate-500 hover:bg-teal-50'
+              }`}
             >
-              <Scale className="h-[18px] w-[18px]" /> BMI Calculator
+              <CreditCard className="h-[18px] w-[18px]" /> Payments
             </Link>
           )}
           <Link
             to="/records"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/records'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
           >
             <ClipboardList className="h-[18px] w-[18px]" /> Records
+          </Link>
+          <Link
+            to="/bmi-calculator"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/bmi-calculator'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
+          >
+            <Scale className="h-[18px] w-[18px]" /> BMI Calculator
           </Link>
         </nav>
 
