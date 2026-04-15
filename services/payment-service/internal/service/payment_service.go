@@ -23,6 +23,7 @@ type PaymentRepo interface {
 	FindByAppointmentID(appointmentID string) (*model.Payment, error)
 	FindByPatientID(patientID string) ([]*model.Payment, error)
 	UpdateStatusByAppointmentID(appointmentID string, status model.PaymentStatus) error
+	DeleteByPatientID(patientID string) error
 }
 
 type PaymentProvider interface {
@@ -225,5 +226,13 @@ func (s *PaymentService) CancelPaymentByAppointmentID(appointmentID string) erro
 	}
 
 	s.log.Info("Payment cancelled due to appointment cancellation", "appointment_id", appointmentID, "payment_id", p.ID)
+	return nil
+}
+
+func (s *PaymentService) DeletePatientPayments(patientID string) error {
+	if err := s.repo.DeleteByPatientID(patientID); err != nil {
+		return fmt.Errorf("service.DeletePatientPayments: %w", err)
+	}
+	s.log.Info("Patient payments deleted", "patient_id", patientID)
 	return nil
 }
