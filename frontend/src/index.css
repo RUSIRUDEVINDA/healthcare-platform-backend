@@ -1,9 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #f0faf9;
+  }
+
   body {
-    @apply antialiased text-gray-900 bg-surface-muted;
+    @apply antialiased text-gray-900 bg-surface-muted font-sans;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  strong,
+  b,
+  .font-medium,
+  .font-semibold,
+  .font-bold,
+  .font-extrabold,
+  .font-black {
+    font-weight: 400 !important;
+  }
+
+  button,
+  [type='button'],
+  [type='submit'],
+  [type='reset'] {
+    border-radius: 9999px !important;
+  }
+
+  input,
+  select {
+    border-radius: 9999px;
   }
 }

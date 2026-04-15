@@ -15,9 +15,8 @@ import {
     Building2,
     Briefcase,
     CreditCard,
-    Scale,
 } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { Slot, Appointment, BookAppointmentRequest } from '../api/appointments';
 import { appointmentApi } from '../api/appointments';
 import { doctorApi, type Doctor } from '../api/doctors';
@@ -28,8 +27,10 @@ import BookingModal from '../components/appointments/BookingModal';
 
 type TabKey = 'doctors' | 'appointments';
 
+const HOSPITAL_FEE = 500;
+
 export default function Appointments() {
-    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [doctorSlots, setDoctorSlots] = useState<Record<string, Slot[]>>({});
@@ -37,9 +38,7 @@ export default function Appointments() {
     const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeTab, setActiveTab] = useState<TabKey>(
-        (searchParams.get('tab') as TabKey) === 'appointments' ? 'appointments' : 'doctors'
-    );
+    const [activeTab, setActiveTab] = useState<TabKey>('doctors');
     const [isApptMenuOpen, setIsApptMenuOpen] = useState(true);
     const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -64,7 +63,7 @@ export default function Appointments() {
             let appts: Appointment[] = [];
             try {
                 const apptData = await appointmentApi.listAppointments();
-                appts = Array.isArray(apptData) ? apptData : (apptData as any)?.appointments ?? [];
+                appts = Array.isArray(apptData) ? apptData : [];
             } catch (err) {
                 console.error('Failed to fetch appointments:', err);
             }
@@ -148,6 +147,18 @@ export default function Appointments() {
         return doc?.specialization ?? '';
     };
 
+    const hasAppointmentEnded = (appt: Appointment) => {
+        const scheduledAtRaw = appt.scheduled_at || appt.scheduled_time;
+        if (!scheduledAtRaw) return false;
+
+        const startTime = new Date(scheduledAtRaw);
+        if (Number.isNaN(startTime.getTime())) return false;
+
+        const durationMinutes = appt.duration_minutes ?? 30;
+        const endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
+        return endTime.getTime() <= Date.now();
+    };
+
     const filteredDoctors = doctors.filter(
         (d) =>
             d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -178,7 +189,7 @@ export default function Appointments() {
                         <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
                             <Activity className="h-4 w-4 text-white" />
                         </div>
-                        <span className="text-lg font-bold text-gray-900 tracking-tight">AyaRX</span>
+                        <span className="text-lg font-medium text-gray-900 tracking-tight">MediPulse SriLanka</span>
                     </Link>
                 </div>
 
@@ -244,17 +255,11 @@ export default function Appointments() {
                         <CreditCard className="h-[18px] w-[18px]" /> Payments
                     </Link>
                     <Link
-                        to="/bmi-calculator"
-                        className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-                    >
-                        <Scale className="h-[18px] w-[18px]" /> BMI Calculator
-                    </Link>
-                    <a
-                        href="#"
+                        to="/records"
                         className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
                     >
                         <ClipboardList className="h-[18px] w-[18px]" /> Records
-                    </a>
+                    </Link>
                 </nav>
 
                 <div className="p-4 border-t border-gray-100 mx-4 mb-4">
@@ -468,14 +473,20 @@ export default function Appointments() {
                                                 </div>
 
                                                 {(appt.consultation_mode === 'jitsi' || appt.consultation_mode === 'video') && appt.join_url && appt.status !== 'cancelled' && (
-                                                    <a 
-                                                        href={appt.join_url} 
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer"
-                                                        className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-brand transition-all active:scale-95 shadow-sm shadow-black/5"
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => navigate(`/telemedicine?join_url=${encodeURIComponent(appt.join_url || '')}&doctor=${encodeURIComponent(getDoctorName(appt.doctor_id))}&title=${encodeURIComponent('Telemedicine Session')}`)}
+                                                        disabled={hasAppointmentEnded(appt)}
+                                                        title={hasAppointmentEnded(appt) ? 'This meeting has ended' : 'Join meeting'}
+                                                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm shadow-black/5 transition-all ${
+                                                            hasAppointmentEnded(appt)
+                                                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                                                : 'bg-gray-900 text-white hover:bg-brand active:scale-95'
+                                                        }`}
                                                     >
-                                                        <Video className="h-3.5 w-3.5" /> Join
-                                                    </a>
+                                                        <Video className="h-3.5 w-3.5" /> 
+                                                        {hasAppointmentEnded(appt) ? 'Ended' : 'Join'}
+                                                    </button>
                                                 )}
                                             </div>
                                         </div>
@@ -501,8 +512,11 @@ export default function Appointments() {
                         specialty: selectedDoctor.specialization,
                         hospital: selectedDoctor.hospital,
                         experience: selectedDoctor.experience,
+                        channeling_fee: selectedDoctor.channeling_fee,
                     }}
                     slots={doctorSlots[String(selectedDoctor.id)] || []}
+                    consultationFee={Number(selectedDoctor.channeling_fee || 0)}
+                    hospitalFee={HOSPITAL_FEE}
                     onBook={handleBook}
                 />
             )}
@@ -517,8 +531,11 @@ export default function Appointments() {
                         specialty: doctors[0].specialization,
                         hospital: doctors[0].hospital,
                         experience: doctors[0].experience,
+                        channeling_fee: doctors[0].channeling_fee,
                     }}
                     slots={doctorSlots[String(doctors[0].id)] || []}
+                    consultationFee={Number(doctors[0].channeling_fee || 0)}
+                    hospitalFee={HOSPITAL_FEE}
                     onBook={handleBook}
                 />
             )}

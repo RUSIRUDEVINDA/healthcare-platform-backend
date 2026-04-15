@@ -107,6 +107,18 @@ func (h *AppointmentHandler) Book(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		if strings.Contains(err.Error(), "doctor channeling fee is not configured") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if strings.Contains(err.Error(), "doctor profile not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		if strings.Contains(err.Error(), "doctor service unavailable") {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
 		if strings.Contains(err.Error(), "slot not found") {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
@@ -143,7 +155,6 @@ func (h *AppointmentHandler) GetStatus(c *gin.Context) {
 func (h *AppointmentHandler) ListAppointments(c *gin.Context) {
 	userID, _ := middleware.CallerID(c)
 	role, _ := middleware.CallerRole(c)
-
 	appointments, err := h.svc.ListAppointments(userID, role)
 	if err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
@@ -266,6 +277,7 @@ func (h *AppointmentHandler) CreateSlot(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		if strings.Contains(err.Error(), "hospital is required") || strings.Contains(err.Error(), "doctor_id is required") {
 		if strings.Contains(err.Error(), "cannot be in the past") {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
@@ -328,6 +340,10 @@ func (h *AppointmentHandler) UpdateSlot(c *gin.Context) {
 			strings.Contains(err.Error(), "add your hospital") ||
 			strings.Contains(err.Error(), "hospital must match") ||
 			strings.Contains(err.Error(), "cannot be in the past") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if strings.Contains(err.Error(), "hospital is required") {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

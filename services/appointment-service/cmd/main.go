@@ -158,6 +158,7 @@ func runMigrations(db *sql.DB, log *logger.Logger) error {
 		id         UUID PRIMARY KEY,
 		doctor_id  TEXT NOT NULL,
 		owner_user_id TEXT NOT NULL DEFAULT '',
+		hospital   TEXT NOT NULL DEFAULT '',
 		start_time TIMESTAMPTZ NOT NULL,
 		end_time   TIMESTAMPTZ NOT NULL,
 		is_booked  BOOLEAN DEFAULT FALSE,
@@ -186,6 +187,7 @@ func runMigrations(db *sql.DB, log *logger.Logger) error {
 	CREATE INDEX IF NOT EXISTS idx_appointments_slot ON appointments(slot_id);
 	CREATE INDEX IF NOT EXISTS idx_slots_doctor         ON slots(doctor_id);
 	CREATE INDEX IF NOT EXISTS idx_slots_owner          ON slots(owner_user_id);
+	CREATE INDEX IF NOT EXISTS idx_slots_hospital       ON slots(hospital);
 	CREATE INDEX IF NOT EXISTS idx_slots_start_time     ON slots(start_time);
 	CREATE INDEX IF NOT EXISTS idx_appointments_payment_due ON appointments(payment_due_at);
 	CREATE INDEX IF NOT EXISTS idx_appointments_payment_status ON appointments(payment_status);
