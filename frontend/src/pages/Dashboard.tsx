@@ -1,32 +1,10 @@
 import { useState, useEffect } from 'react';
-import { User, Activity, Calendar, ClipboardList, Video } from 'lucide-react';
+import { LogOut, User, Activity, Calendar, ClipboardList, CreditCard, Scale } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { doctorApi, type DoctorProfile } from '../api/doctor';
 import { appointmentApi, type Appointment } from '../api/appointments';
 import { doctorApi as doctorsListApi, type Doctor } from '../api/doctors';
-
-function getPatientDisplayName(appt: Appointment): string {
-  const f = appt.patient_first_name?.trim() || '';
-  const l = appt.patient_last_name?.trim() || '';
-  if (f || l) {
-    return `${f} ${l}`.trim();
-  }
-  const id = appt.patient_id || '';
-  return id.length > 10 ? `Patient ${id.slice(0, 8)}…` : 'Patient';
-}
-
-function canJoinJitsiVisit(appt: Appointment): boolean {
-  const mode = appt.consultation_mode;
-  const video = mode === 'jitsi' || mode === 'video';
-  if (!video || !(appt.join_url && appt.join_url.trim())) {
-    return false;
-  }
-  if (appt.status === 'cancelled' || appt.status === 'completed') {
-    return false;
-  }
-  return true;
-}
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<PatientProfile | DoctorProfile | null>(null);
@@ -61,15 +39,14 @@ export default function Dashboard() {
           .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
         setAppointments(sortedAppts);
 
-        if (userRole !== 'doctor') {
-          const docs = await doctorsListApi.listDoctors();
-          const docsMap: Record<string, Doctor> = {};
-          docs.forEach(d => {
-            docsMap[String(d.id)] = d;
-            docsMap[d.user_id] = d;
-          });
-          setDoctors(docsMap);
-        }
+        // Fetch doctors to map names
+        const docs = await doctorsListApi.listDoctors();
+        const docsMap: Record<string, Doctor> = {};
+        docs.forEach(d => {
+          docsMap[String(d.id)] = d;
+          docsMap[d.user_id] = d;
+        });
+        setDoctors(docsMap);
 
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
@@ -82,6 +59,12 @@ export default function Dashboard() {
       fetchData();
     }
   }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+    window.location.href = '/auth/login';
+  };
 
   const getDoctorName = (appt: Appointment) => {
     // Try mapping by doctor_id (integer ID) first, then doctor_owner_user_id
@@ -113,7 +96,72 @@ export default function Dashboard() {
   const nextAppointment = appointments.length > 0 ? appointments[0] : null;
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col overflow-hidden bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <aside className="w-60 bg-white border-r border-gray-100 hidden lg:flex flex-col sticky top-0 h-screen">
+        <div className="px-6 pt-6 pb-5">
+          <Link to="/dashboard" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
+              <Activity className="h-4 w-4 text-white" />
+            </div>
+            <span className="text-lg font-bold text-gray-900 tracking-tight">AyaRX</span>
+          </Link>
+        </div>
+
+        <nav className="flex-1 px-4 space-y-1">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-3">Menu</p>
+          <Link
+            to="/dashboard"
+            className="flex items-center gap-3 px-3 py-2.5 bg-brand/10 text-brand rounded-xl font-semibold transition-all text-sm"
+          >
+            <Activity className="h-[18px] w-[18px]" /> Dashboard
+          </Link>
+          <Link
+            to="/profile"
+            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+          >
+            <User className="h-[18px] w-[18px]" /> Profile
+          </Link>
+          <Link
+            to="/appointments"
+            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+          >
+            <Calendar className="h-[18px] w-[18px]" /> Appointments
+          </Link>
+          {role !== 'doctor' && (
+            <Link
+              to="/payments"
+              className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+            >
+              <CreditCard className="h-[18px] w-[18px]" /> Payments
+            </Link>
+          )}
+          <Link
+            to="/bmi-calculator"
+            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+          >
+            <Scale className="h-[18px] w-[18px]" /> BMI Calculator
+          </Link>
+          <a
+            href="#"
+            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+          >
+            <ClipboardList className="h-[18px] w-[18px]" /> Records
+          </a>
+        </nav>
+
+        <div className="p-4 border-t border-gray-100 mx-4 mb-4">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors text-sm font-medium"
+          >
+            <LogOut className="h-[18px] w-[18px]" /> Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 bg-white/80 backdrop-blur-md sticky top-0 z-10">
           <h2 className="text-xl font-semibold text-gray-800">Overview</h2>
           <div className="flex items-center space-x-4">
@@ -151,17 +199,13 @@ export default function Dashboard() {
                 <>
                   <h4 className="text-xl font-bold text-gray-900 mt-1">{formatDate(nextAppointment.scheduled_at)}</h4>
                   <p className="text-sm text-gray-400 mt-2">
-                    {role === 'doctor'
-                      ? `${getPatientDisplayName(nextAppointment)} • ${formatTime(nextAppointment.scheduled_at)}`
-                      : `${getDoctorName(nextAppointment)} • ${formatTime(nextAppointment.scheduled_at)}`}
+                    {getDoctorName(nextAppointment)} • {formatTime(nextAppointment.scheduled_at)}
                   </p>
                 </>
               ) : (
                 <>
                   <h4 className="text-xl font-bold text-gray-400 mt-1">No upcoming</h4>
-                  <p className="text-sm text-gray-400 mt-2">
-                    {role === 'doctor' ? 'No visits scheduled yet' : 'Book your next session'}
-                  </p>
+                  <p className="text-sm text-gray-400 mt-2">Book your next session</p>
                 </>
               )}
             </div>
@@ -188,7 +232,7 @@ export default function Dashboard() {
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
               <div className="flex items-center justify-between mb-8">
                 <h4 className="text-xl font-bold text-gray-900">Upcoming Appointments</h4>
-                <Link to="/appointments" className="text-brand font-semibold text-sm hover:underline">View All</Link>
+                <Link to="/appointments?tab=appointments" className="text-brand font-semibold text-sm hover:underline">View All</Link>
               </div>
               <div className="space-y-6">
                 {appointments.length > 0 ? (
@@ -200,31 +244,16 @@ export default function Dashboard() {
                       </div>
                       <div className="flex-1">
                         <h5 className="font-bold text-gray-900 capitalize">{appt.consultation_mode} Consultation</h5>
-                        <p className="text-sm text-gray-500">
-                          {role === 'doctor' ? getPatientDisplayName(appt) : `Dr. ${getDoctorName(appt)}`}
-                        </p>
+                        <p className="text-sm text-gray-500">Dr. {getDoctorName(appt)}</p>
                       </div>
-                      <div className="text-right text-sm flex flex-col items-end gap-2">
-                        <div>
-                          <p className="font-semibold text-gray-900">{formatTime(appt.scheduled_at)}</p>
-                          <span className={`px-2 py-1 rounded-md text-xs font-bold uppercase ${
-                            appt.status === 'confirmed' ? 'bg-green-50 text-green-600' : 
-                            appt.status === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-gray-600'
-                          }`}>
-                            {appt.status}
-                          </span>
-                        </div>
-                        {canJoinJitsiVisit(appt) && (
-                          <a
-                            href={appt.join_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs font-bold text-brand hover:underline"
-                          >
-                            <Video className="h-3.5 w-3.5" />
-                            {role === 'doctor' ? 'Join Jitsi' : 'Join'}
-                          </a>
-                        )}
+                      <div className="text-right text-sm">
+                        <p className="font-semibold text-gray-900">{formatTime(appt.scheduled_at)}</p>
+                        <span className={`px-2 py-1 rounded-md text-xs font-bold uppercase ${
+                          appt.status === 'confirmed' ? 'bg-green-50 text-green-600' : 
+                          appt.status === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-gray-600'
+                        }`}>
+                          {appt.status}
+                        </span>
                       </div>
                     </div>
                   ))
@@ -232,9 +261,7 @@ export default function Dashboard() {
                   <div className="text-center py-10">
                     <Calendar className="h-10 w-10 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500">No upcoming appointments found.</p>
-                    {role !== 'doctor' && (
-                      <Link to="/appointments" className="text-brand text-sm font-semibold mt-2 inline-block">Book Now</Link>
-                    )}
+                    <Link to="/appointments" className="text-brand text-sm font-semibold mt-2 inline-block">Book Now</Link>
                   </div>
                 )}
               </div>
@@ -256,6 +283,7 @@ export default function Dashboard() {
             </div>
           </div>
         </main>
+      </div>
     </div>
   );
 }

@@ -112,3 +112,12 @@ func (r *PaymentRepository) UpdateStatusByAppointmentID(appointmentID string, st
 	_, err := r.db.Exec(query, status, time.Now().UTC(), appointmentID)
 	return err
 }
+
+func (r *PaymentRepository) DeleteByPatientID(patientID string) error {
+	query := `DELETE FROM payments WHERE patient_id = $1`
+	_, err := r.db.Exec(query, patientID)
+	if err != nil {
+		return fmt.Errorf("repository.DeleteByPatientID: %w", err)
+	}
+	return nil
+}

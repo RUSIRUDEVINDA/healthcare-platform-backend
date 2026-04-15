@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, CheckCircle, Clock, AlertCircle, CreditCard } from 'lucide-react';
+import { LogOut, User, Activity, Calendar, ClipboardList, CreditCard, CheckCircle, Clock, AlertCircle, Scale } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { paymentApi, type Payment } from '../api/payment';
@@ -10,8 +10,14 @@ export default function Payments() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [appointments, setAppointments] = useState<Record<string, Appointment>>({});
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
+    const userJson = localStorage.getItem('user');
+    if (userJson) {
+      const user = JSON.parse(userJson);
+      setUserRole(user.role);
+    }
     fetchData();
   }, []);
 
@@ -40,6 +46,12 @@ export default function Payments() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+    window.location.href = '/auth/login';
   };
 
   const formatDate = (dateStr: string) => {
@@ -85,7 +97,72 @@ export default function Payments() {
   };
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col bg-[#f6f8fa] font-sans">
+    <div className="min-h-screen bg-[#f6f8fa] flex font-sans">
+      {/* Sidebar */}
+      <aside className="w-60 bg-white border-r border-gray-100 hidden lg:flex flex-col sticky top-0 h-screen">
+        <div className="px-6 pt-6 pb-5">
+          <Link to="/dashboard" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
+              <Activity className="h-4 w-4 text-white" />
+            </div>
+            <span className="text-lg font-bold text-gray-900 tracking-tight">AyaRX</span>
+          </Link>
+        </div>
+
+        <nav className="flex-1 px-4 space-y-1">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-3">Menu</p>
+          <Link
+            to="/dashboard"
+            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+          >
+            <Activity className="h-[18px] w-[18px]" /> Dashboard
+          </Link>
+          <Link
+            to="/profile"
+            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+          >
+            <User className="h-[18px] w-[18px]" /> Profile
+          </Link>
+          <Link
+            to="/appointments"
+            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+          >
+            <Calendar className="h-[18px] w-[18px]" /> Appointments
+          </Link>
+          {userRole !== 'doctor' && (
+            <Link
+              to="/payments"
+              className="flex items-center gap-3 px-3 py-2.5 bg-brand/10 text-brand rounded-xl font-semibold transition-all text-sm shadow-sm"
+            >
+              <CreditCard className="h-[18px] w-[18px]" /> Payments
+            </Link>
+          )}
+          <Link
+            to="/bmi-calculator"
+            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+          >
+            <Scale className="h-[18px] w-[18px]" /> BMI Calculator
+          </Link>
+          <a
+            href="#"
+            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+          >
+            <ClipboardList className="h-[18px] w-[18px]" /> Records
+          </a>
+        </nav>
+
+        <div className="p-4 border-t border-gray-100 mx-4 mb-4">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors text-sm font-medium"
+          >
+            <LogOut className="h-[18px] w-[18px]" /> Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-h-screen">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 bg-white/80 backdrop-blur-md sticky top-0 z-10">
           <h2 className="text-xl font-semibold text-gray-800">Payment History</h2>
           <div className="flex items-center space-x-4">
@@ -179,6 +256,7 @@ export default function Payments() {
             </div>
           )}
         </main>
+      </div>
     </div>
   );
 }

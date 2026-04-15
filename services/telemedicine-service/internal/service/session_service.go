@@ -278,6 +278,14 @@ func (s *SessionService) CreateFromAppointmentBooked(event rabbitmq.AppointmentB
 	return s.repo.Create(session)
 }
 
+func (s *SessionService) DeletePatientSessions(patientID string) error {
+	if err := s.repo.DeleteByPatientID(patientID); err != nil {
+		return fmt.Errorf("service.DeletePatientSessions: %w", err)
+	}
+	s.log.Info("Patient telemedicine sessions deleted", "patient_id", patientID)
+	return nil
+}
+
 func generateRoomName() (string, error) {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {

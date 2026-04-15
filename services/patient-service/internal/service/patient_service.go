@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"healthcare-platform/pkg/logger"
+	"healthcare-platform/pkg/rabbitmq"
 	"healthcare-platform/services/patient-service/internal/model"
 	"healthcare-platform/services/patient-service/internal/repository"
 )
@@ -15,11 +16,12 @@ var ErrPatientNotFound = errors.New("patient not found")
 
 type PatientService struct {
 	repo *repository.PatientRepository
+	mq   *rabbitmq.Client
 	log  *logger.Logger
 }
 
-func NewPatientService(repo *repository.PatientRepository, log *logger.Logger) *PatientService {
-	return &PatientService{repo: repo, log: log}
+func NewPatientService(repo *repository.PatientRepository, mq *rabbitmq.Client, log *logger.Logger) *PatientService {
+	return &PatientService{repo: repo, mq: mq, log: log}
 }
 
 func (s *PatientService) CreateFromUserEvent(userID, email, firstName, lastName string) error {
@@ -119,14 +121,25 @@ func (s *PatientService) DeleteProfile(userID string) error {
 		return ErrPatientNotFound
 	}
 
-	deleted, err := s.repo.DeleteByUserID(userID)
+	patientID, err := s.repo.DeleteByUserID(userID)
 	if err != nil {
 		return fmt.Errorf("service.DeleteProfile: %w", err)
 	}
-	if !deleted {
+	if patientID == "" {
 		return ErrPatientNotFound
 	}
 
-	s.log.Info("Patient profile deleted", "user_id", userID)
+	s.log.Info("Patient profile deleted", "user_id", userID, "patient_id", patientID)
+
+	// Publish patient.deleted event to notify other services
+	event := rabbitmq.PatientDeletedEvent{
+		PatientID: patientID,
+		UserID:    userID,
+	}
+	if err := s.mq.PublishPatientDeleted(event); err != nil {
+		// Log the error but don't fail the deletion
+		s.log.Error("Failed to publish patient.deleted event", "user_id", userID, "patient_id", patientID, "error", err)
+	}
+
 	return nil
 }
