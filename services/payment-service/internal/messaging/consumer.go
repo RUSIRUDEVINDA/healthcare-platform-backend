@@ -22,15 +22,26 @@ func NewPaymentConsumer(mqClient *rabbitmq.Client, svc *service.PaymentService, 
 func (c *PaymentConsumer) Start() error {
 	queueName := "payment_service_queue"
 
+	// Existing: Handle Booked
 	err := c.mqClient.ConsumeQueue(
 		queueName,
 		rabbitmq.ExchangeAppointmentEvents,
 		c.handleAppointmentBooked,
 		rabbitmq.RoutingKeyAppointmentBooked,
 	)
-
 	if err != nil {
-		return fmt.Errorf("messaging.Start: %w", err)
+		return fmt.Errorf("messaging.Start: booked: %w", err)
+	}
+
+	// New: Handle Cancelled
+	err = c.mqClient.ConsumeQueue(
+		queueName,
+		rabbitmq.ExchangeAppointmentEvents,
+		c.handleAppointmentCancelled,
+		rabbitmq.RoutingKeyAppointmentCancelled,
+	)
+	if err != nil {
+		return fmt.Errorf("messaging.Start: cancelled: %w", err)
 	}
 
 	c.log.Info("Payment service consumer started")
@@ -56,6 +67,21 @@ func (c *PaymentConsumer) handleAppointmentBooked(body []byte) error {
 	_, err := c.svc.CreatePayment(req)
 	if err != nil {
 		return fmt.Errorf("messaging.handleAppointmentBooked create payment: %w", err)
+	}
+
+	return nil
+}
+
+func (c *PaymentConsumer) handleAppointmentCancelled(body []byte) error {
+	var event rabbitmq.AppointmentCancelledEvent
+	if err := json.Unmarshal(body, &event); err != nil {
+		return fmt.Errorf("messaging.handleAppointmentCancelled unmarshal: %w", err)
+	}
+
+	c.log.Info("Processing appointment.cancelled event", "appointment_id", event.AppointmentID)
+
+	if err := c.svc.CancelPaymentByAppointmentID(event.AppointmentID); err != nil {
+		return fmt.Errorf("messaging.handleAppointmentCancelled service: %w", err)
 	}
 
 	return nil
