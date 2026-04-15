@@ -7,7 +7,10 @@ export default function Telemedicine() {
 
     const joinUrl = searchParams.get('join_url') || '';
     const title = searchParams.get('title') || 'Telemedicine Session';
-    const doctor = searchParams.get('doctor') || 'Doctor';
+    const peerName =
+        searchParams.get('peer')?.trim() ||
+        searchParams.get('doctor')?.trim() ||
+        'Participant';
 
     const iframeSrc = useMemo(() => {
         if (!joinUrl) return '';
@@ -23,7 +26,7 @@ export default function Telemedicine() {
                     </div>
                     <div className="min-w-0">
                         <h1 className="text-sm font-bold text-gray-900 truncate">{title}</h1>
-                        <p className="text-xs text-gray-500 truncate">Meeting with {doctor}</p>
+                        <p className="text-xs text-gray-500 truncate">Meeting with {peerName}</p>
                     </div>
                 </div>
 

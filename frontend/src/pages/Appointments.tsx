@@ -15,22 +15,41 @@ import {
     Building2,
     Briefcase,
     CreditCard,
+    Pencil,
+    Trash2,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Slot, Appointment, BookAppointmentRequest } from '../api/appointments';
 import { appointmentApi } from '../api/appointments';
-import { doctorApi, type Doctor } from '../api/doctors';
+import { doctorApi as doctorsListApi, type Doctor } from '../api/doctors';
+import { doctorApi as doctorProfileApi, type DoctorProfile } from '../api/doctor';
 import { patientApi } from '../api/patient';
 import { paymentApi } from '../api/payment';
 import { submitPayHereForm } from '../utils/payment';
 import BookingModal from '../components/appointments/BookingModal';
+import DoctorSlotFormModal from '../components/appointments/DoctorSlotFormModal';
 
-type TabKey = 'doctors' | 'appointments';
+type TabKey = 'doctors' | 'appointments' | 'slots';
 
 const HOSPITAL_FEE = 500;
 
+function readUserRole(): string | null {
+    try {
+        const raw = localStorage.getItem('user');
+        if (!raw) return null;
+        return JSON.parse(raw)?.role ?? null;
+    } catch {
+        return null;
+    }
+}
+
+function initialAppointmentsTab(): TabKey {
+    return readUserRole() === 'doctor' ? 'appointments' : 'doctors';
+}
+
 export default function Appointments() {
     const navigate = useNavigate();
+    const isDoctor = readUserRole() === 'doctor';
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [doctorSlots, setDoctorSlots] = useState<Record<string, Slot[]>>({});
@@ -38,9 +57,14 @@ export default function Appointments() {
     const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeTab, setActiveTab] = useState<TabKey>('doctors');
+    const [activeTab, setActiveTab] = useState<TabKey>(initialAppointmentsTab);
     const [isApptMenuOpen, setIsApptMenuOpen] = useState(true);
     const [isRedirecting, setIsRedirecting] = useState(false);
+    const [mySlots, setMySlots] = useState<Slot[]>([]);
+    const [doctorProfile, setDoctorProfile] = useState<DoctorProfile | null>(null);
+    const [slotModalOpen, setSlotModalOpen] = useState(false);
+    const [slotModalMode, setSlotModalMode] = useState<'create' | 'edit'>('create');
+    const [slotEditing, setSlotEditing] = useState<Slot | null>(null);
 
     useEffect(() => {
         fetchData();
@@ -49,17 +73,6 @@ export default function Appointments() {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            // Fetch doctors from doctor-service (public endpoint)
-            let docs: Doctor[] = [];
-            try {
-                const docResult = await doctorApi.listDoctors();
-                docs = Array.isArray(docResult) ? docResult : [];
-            } catch (err) {
-                console.error('Failed to fetch doctors:', err);
-            }
-            setDoctors(docs);
-
-            // Fetch appointments from appointment-service
             let appts: Appointment[] = [];
             try {
                 const apptData = await appointmentApi.listAppointments();
@@ -69,7 +82,39 @@ export default function Appointments() {
             }
             setAppointments(appts);
 
-            // Fetch available slots for each doctor
+            if (isDoctor) {
+                let profile: DoctorProfile | null = null;
+                let slotsMine: Slot[] = [];
+                try {
+                    profile = await doctorProfileApi.getProfile();
+                } catch (err) {
+                    console.error('Failed to fetch doctor profile:', err);
+                }
+                setDoctorProfile(profile);
+                try {
+                    const s = await appointmentApi.listMySlots();
+                    slotsMine = Array.isArray(s) ? s : [];
+                } catch (err) {
+                    console.error('Failed to fetch my slots:', err);
+                }
+                slotsMine.sort(
+                    (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+                );
+                setMySlots(slotsMine);
+                setDoctors([]);
+                setDoctorSlots({});
+                return;
+            }
+
+            let docs: Doctor[] = [];
+            try {
+                const docResult = await doctorsListApi.listDoctors();
+                docs = Array.isArray(docResult) ? docResult : [];
+            } catch (err) {
+                console.error('Failed to fetch doctors:', err);
+            }
+            setDoctors(docs);
+
             if (docs.length > 0) {
                 const slotResults: Record<string, Slot[]> = {};
                 await Promise.allSettled(
@@ -153,6 +198,65 @@ export default function Appointments() {
         return doc?.specialization ?? '';
     };
 
+    const getPatientDisplayName = (appt: Appointment) => {
+        const parts = [appt.patient_first_name, appt.patient_last_name].filter(Boolean);
+        return parts.length ? parts.join(' ') : 'Patient';
+    };
+
+    const profileHospitalStr = (doctorProfile?.hospital ?? '').trim();
+
+    const handleSaveSlot = async (payload: { start_time: string; end_time: string; hospital: string }) => {
+        if (!doctorProfile) {
+            throw new Error('Doctor profile not loaded');
+        }
+        const doctorId = String(doctorProfile.id);
+        if (slotModalMode === 'create') {
+            await appointmentApi.createSlot({
+                doctor_id: doctorId,
+                hospital: payload.hospital,
+                start_time: payload.start_time,
+                end_time: payload.end_time,
+            });
+        } else if (slotEditing) {
+            await appointmentApi.updateSlot(slotEditing.id, {
+                start_time: payload.start_time,
+                end_time: payload.end_time,
+                hospital: payload.hospital,
+            });
+        }
+        await fetchData();
+    };
+
+    const handleDeleteSlot = async (slot: Slot) => {
+        if (slot.is_booked) return;
+        if (!window.confirm('Remove this availability slot? Patients can no longer book it.')) return;
+        try {
+            await appointmentApi.deleteSlot(slot.id);
+            await fetchData();
+        } catch (e) {
+            console.error(e);
+            window.alert('Could not delete slot. It may already be booked.');
+        }
+    };
+
+    const handleCancelBookedSlot = async (slot: Slot) => {
+        const appt = appointments.find(
+            (a) => a.slot_id === slot.id && a.status !== 'cancelled' && a.status !== 'completed'
+        );
+        if (!appt) {
+            window.alert('No appointment found for this slot.');
+            return;
+        }
+        if (!window.confirm('Cancel this appointment and release the time slot?')) return;
+        try {
+            await appointmentApi.cancelAppointment(appt.id);
+            await fetchData();
+        } catch (e) {
+            console.error(e);
+            window.alert('Could not cancel appointment.');
+        }
+    };
+
     const hasAppointmentEnded = (appt: Appointment) => {
         const scheduledAtRaw = appt.scheduled_at || appt.scheduled_time;
         if (!scheduledAtRaw) return false;
@@ -173,10 +277,25 @@ export default function Appointments() {
     );
 
     const filteredAppointments = appointments.filter((appt) => {
+        const query = searchQuery.toLowerCase();
+        if (isDoctor) {
+            const patientName = getPatientDisplayName(appt).toLowerCase();
+            return (
+                patientName.includes(query) ||
+                appt.status.toLowerCase().includes(query) ||
+                (appt.payment_status && appt.payment_status.toLowerCase().includes(query))
+            );
+        }
         const docName = getDoctorName(appt.doctor_id).toLowerCase();
         const specialty = getDoctorSpecialty(appt.doctor_id).toLowerCase();
-        const query = searchQuery.toLowerCase();
         return docName.includes(query) || specialty.includes(query) || appt.status.toLowerCase().includes(query);
+    });
+
+    const filteredMySlots = mySlots.filter((slot) => {
+        const q = searchQuery.toLowerCase();
+        const hosp = (slot.hospital ?? '').toLowerCase();
+        const startLabel = new Date(slot.start_time).toLocaleString().toLowerCase();
+        return hosp.includes(q) || startLabel.includes(q) || (slot.is_booked ? 'booked' : 'available').includes(q);
     });
 
     const statusColor: Record<string, string> = {
@@ -185,6 +304,15 @@ export default function Appointments() {
         cancelled: 'bg-red-50 text-red-500',
         completed: 'bg-slate-100 text-slate-600',
     };
+
+    const initialsFromName = (name: string) =>
+        name
+            .split(/\s+/)
+            .filter(Boolean)
+            .map((w) => w[0])
+            .join('')
+            .slice(0, 2)
+            .toUpperCase() || '?';
 
     return (
         <div className="min-h-screen bg-[#f6f8fa] flex font-sans">
@@ -225,6 +353,7 @@ export default function Appointments() {
                         
                         {isApptMenuOpen && (
                             <div className="ml-9 flex flex-col gap-1 mt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                {!isDoctor && (
                                 <button
                                     onClick={() => setActiveTab('doctors')}
                                     className={`text-left px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
@@ -235,6 +364,7 @@ export default function Appointments() {
                                 >
                                     Book an Appointment
                                 </button>
+                                )}
                                 <button
                                     onClick={() => setActiveTab('appointments')}
                                     className={`text-left px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
@@ -243,8 +373,20 @@ export default function Appointments() {
                                         : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
                                     }`}
                                 >
-                                    See My Appointments
+                                    {isDoctor ? 'Consultations' : 'See My Appointments'}
                                 </button>
+                                {isDoctor && (
+                                    <button
+                                        onClick={() => setActiveTab('slots')}
+                                        className={`text-left px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                            activeTab === 'slots'
+                                                ? 'text-brand font-bold bg-brand/5'
+                                                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        Availability
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -254,12 +396,14 @@ export default function Appointments() {
                     >
                         <User className="h-[18px] w-[18px]" /> Profile
                     </Link>
+                    {!isDoctor && (
                     <Link
                         to="/payments"
                         className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
                     >
                         <CreditCard className="h-[18px] w-[18px]" /> Payments
                     </Link>
+                    )}
                     <Link
                         to="/records"
                         className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
@@ -284,7 +428,13 @@ export default function Appointments() {
                 <header className="h-14 bg-white border-b border-gray-100 flex items-center justify-between px-8 sticky top-0 z-10">
                     <div className="flex items-center gap-8">
                         <h2 className="text-[15px] font-bold text-gray-900">
-                            {activeTab === 'doctors' ? 'Book Appointment' : 'My Appointments'}
+                            {activeTab === 'doctors'
+                                ? 'Book Appointment'
+                                : activeTab === 'slots'
+                                  ? 'Availability'
+                                  : isDoctor
+                                    ? 'Consultations'
+                                    : 'My Appointments'}
                         </h2>
                     </div>
                     <div className="flex items-center gap-4">
@@ -292,12 +442,32 @@ export default function Appointments() {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <input
                                 type="text"
-                                placeholder={`Search ${activeTab === 'doctors' ? 'doctors...' : 'appointments...'}`}
+                                placeholder={`Search ${
+                                    activeTab === 'doctors'
+                                        ? 'doctors...'
+                                        : activeTab === 'slots'
+                                          ? 'slots...'
+                                          : 'appointments...'
+                                }`}
                                 className="w-56 pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand/40 transition-all"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
+                        {isDoctor && activeTab === 'slots' && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSlotModalMode('create');
+                                    setSlotEditing(null);
+                                    setSlotModalOpen(true);
+                                }}
+                                className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-dark transition-colors shadow-sm"
+                            >
+                                <Plus className="h-4 w-4" /> New slot
+                            </button>
+                        )}
+                        {!isDoctor && (
                         <button
                             onClick={() => {
                                 if (activeTab !== 'doctors') setActiveTab('doctors');
@@ -310,6 +480,7 @@ export default function Appointments() {
                         >
                             <Plus className="h-4 w-4" /> Book New
                         </button>
+                        )}
                     </div>
                 </header>
 
@@ -390,11 +561,144 @@ export default function Appointments() {
                                 </div>
                             )}
                         </div>
+                    ) : activeTab === 'slots' ? (
+                        <div className="space-y-6">
+                            <div>
+                                <h3 className="text-base font-semibold text-gray-800">Your availability</h3>
+                                <p className="text-sm text-gray-400 mt-1">
+                                    Create slots at your profile hospital. Patients book into open times; booked slots
+                                    can be released by cancelling the consultation.
+                                </p>
+                            </div>
+
+                            {!profileHospitalStr && (
+                                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+                                    Add your <strong>hospital</strong> on{' '}
+                                    <Link to="/profile" className="font-semibold underline underline-offset-2">
+                                        Profile
+                                    </Link>{' '}
+                                    before creating slots.
+                                </div>
+                            )}
+
+                            {filteredMySlots.length === 0 ? (
+                                <div className="bg-white rounded-2xl border border-gray-100 p-14 text-center">
+                                    <Clock className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                                    <p className="text-sm font-medium text-gray-500">No slots yet</p>
+                                    <p className="text-sm text-gray-400 mt-1">
+                                        Add your first availability window so patients can book.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSlotModalMode('create');
+                                            setSlotEditing(null);
+                                            setSlotModalOpen(true);
+                                        }}
+                                        disabled={!profileHospitalStr}
+                                        className="mt-5 px-5 py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-dark transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Create slot
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="border-b border-gray-100 bg-gray-50/80 text-left text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                                                    <th className="px-5 py-3">Hospital</th>
+                                                    <th className="px-5 py-3">Start</th>
+                                                    <th className="px-5 py-3">End</th>
+                                                    <th className="px-5 py-3">Status</th>
+                                                    <th className="px-5 py-3 text-right">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {filteredMySlots.map((slot) => {
+                                                    const booked = slot.is_booked;
+                                                    return (
+                                                        <tr key={slot.id} className="hover:bg-gray-50/60">
+                                                            <td className="px-5 py-3.5 text-gray-800">
+                                                                {slot.hospital || '—'}
+                                                            </td>
+                                                            <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">
+                                                                {new Date(slot.start_time).toLocaleString([], {
+                                                                    dateStyle: 'medium',
+                                                                    timeStyle: 'short',
+                                                                })}
+                                                            </td>
+                                                            <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">
+                                                                {new Date(slot.end_time).toLocaleString([], {
+                                                                    dateStyle: 'medium',
+                                                                    timeStyle: 'short',
+                                                                })}
+                                                            </td>
+                                                            <td className="px-5 py-3.5">
+                                                                <span
+                                                                    className={`inline-flex px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                                                                        booked
+                                                                            ? 'bg-amber-50 text-amber-700'
+                                                                            : 'bg-emerald-50 text-emerald-700'
+                                                                    }`}
+                                                                >
+                                                                    {booked ? 'Booked' : 'Available'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-5 py-3.5 text-right">
+                                                                <div className="inline-flex items-center gap-2 justify-end">
+                                                                    {!booked ? (
+                                                                        <>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    setSlotModalMode('edit');
+                                                                                    setSlotEditing(slot);
+                                                                                    setSlotModalOpen(true);
+                                                                                }}
+                                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                                                                            >
+                                                                                <Pencil className="h-3.5 w-3.5" />
+                                                                                Edit
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleDeleteSlot(slot)}
+                                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-100 text-xs font-semibold text-red-600 hover:bg-red-50"
+                                                                            >
+                                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                                                Remove
+                                                                            </button>
+                                                                        </>
+                                                                    ) : (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() =>
+                                                                                handleCancelBookedSlot(slot)
+                                                                            }
+                                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 text-xs font-semibold text-amber-800 hover:bg-amber-50"
+                                                                        >
+                                                                            Cancel booking
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     ) : (
                         /* ─── My Appointments Table ─── */
                         <div className="space-y-6">
                             <div>
-                                <h3 className="text-base font-semibold text-gray-800">My Appointments</h3>
+                                <h3 className="text-base font-semibold text-gray-800">
+                                    {isDoctor ? 'Consultations' : 'My Appointments'}
+                                </h3>
                                 <p className="text-sm text-gray-400 mt-1">{appointments.length} total</p>
                             </div>
 
@@ -402,13 +706,17 @@ export default function Appointments() {
                                 <div className="bg-white rounded-2xl border border-gray-100 p-14 text-center">
                                     <Calendar className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                                     <p className="text-sm font-medium text-gray-500">No appointments yet</p>
-                                    <p className="text-sm text-gray-400 mt-1">Book your first appointment with a doctor</p>
+                                    <p className="text-sm text-gray-400 mt-1">
+                                        {isDoctor ? 'Scheduled consultations will appear here.' : 'Book your first appointment with a doctor'}
+                                    </p>
+                                    {!isDoctor && (
                                     <button
                                         onClick={() => setActiveTab('doctors')}
                                         className="mt-5 px-5 py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-dark transition-colors shadow-sm"
                                     >
                                         Browse Doctors
                                     </button>
+                                    )}
                                 </div>
                             ) : filteredAppointments.length === 0 ? (
                                 <div className="bg-white rounded-2xl border border-gray-100 p-14 text-center">
@@ -420,15 +728,26 @@ export default function Appointments() {
                                 <div className="flex flex-col gap-3">
                                     {filteredAppointments.map((appt) => (
                                         <div key={appt.id} className="bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-md transition-all group flex items-center gap-6">
-                                            {/* Dr Avatar */}
                                             <div className="w-14 h-14 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-brand font-bold shrink-0 shadow-sm group-hover:border-brand/20 transition-colors">
-                                                {getDoctorName(appt.doctor_id).split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                                                {isDoctor
+                                                    ? initialsFromName(getPatientDisplayName(appt))
+                                                    : getDoctorName(appt.doctor_id)
+                                                          .split(' ')
+                                                          .map((n: string) => n[0])
+                                                          .join('')
+                                                          .slice(0, 2)
+                                                          .toUpperCase()}
                                             </div>
 
-                                            {/* Dr Info */}
                                             <div className="w-56 shrink-0">
-                                                <h4 className="text-[14px] font-bold text-gray-900 truncate">{getDoctorName(appt.doctor_id)}</h4>
-                                                <p className="text-xs text-brand font-medium mt-0.5 truncate">{getDoctorSpecialty(appt.doctor_id)}</p>
+                                                <h4 className="text-[14px] font-bold text-gray-900 truncate">
+                                                    {isDoctor ? getPatientDisplayName(appt) : getDoctorName(appt.doctor_id)}
+                                                </h4>
+                                                <p className="text-xs text-brand font-medium mt-0.5 truncate">
+                                                    {isDoctor
+                                                        ? `${appt.consultation_mode === 'jitsi' || appt.consultation_mode === 'video' ? 'Video' : 'Physical'} · ${appt.status}`
+                                                        : getDoctorSpecialty(appt.doctor_id)}
+                                                </p>
                                             </div>
 
                                             {/* Date & Time */}
@@ -481,7 +800,11 @@ export default function Appointments() {
                                                 {(appt.consultation_mode === 'jitsi' || appt.consultation_mode === 'video') && appt.join_url && appt.status !== 'cancelled' && (
                                                     <button 
                                                         type="button"
-                                                        onClick={() => navigate(`/telemedicine?join_url=${encodeURIComponent(appt.join_url || '')}&doctor=${encodeURIComponent(getDoctorName(appt.doctor_id))}&title=${encodeURIComponent('Telemedicine Session')}`)}
+                                                        onClick={() =>
+                                                            navigate(
+                                                                `/telemedicine?join_url=${encodeURIComponent(appt.join_url || '')}&peer=${encodeURIComponent(isDoctor ? getPatientDisplayName(appt) : getDoctorName(appt.doctor_id))}&title=${encodeURIComponent('Telemedicine Session')}`
+                                                            )
+                                                        }
                                                         disabled={hasAppointmentEnded(appt)}
                                                         title={hasAppointmentEnded(appt) ? 'This meeting has ended' : 'Join meeting'}
                                                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm shadow-black/5 transition-all ${
@@ -543,6 +866,20 @@ export default function Appointments() {
                     consultationFee={Number(doctors[0].channeling_fee || 0)}
                     hospitalFee={HOSPITAL_FEE}
                     onBook={handleBook}
+                />
+            )}
+
+            {isDoctor && (
+                <DoctorSlotFormModal
+                    isOpen={slotModalOpen}
+                    onClose={() => {
+                        setSlotModalOpen(false);
+                        setSlotEditing(null);
+                    }}
+                    mode={slotModalMode}
+                    slot={slotEditing}
+                    profileHospital={profileHospitalStr}
+                    onSubmit={handleSaveSlot}
                 />
             )}
 
