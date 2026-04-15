@@ -9,16 +9,17 @@ export default function BmiCalculator() {
   const [weight, setWeight] = useState<string>('');
   const [height, setHeight] = useState<string>('');
   const [bmi, setBmi] = useState<number | null>(null);
-  const [role, setRole] = useState<string | null>(null);
+  const [role] = useState<string | null>(() => {
+    const userString = localStorage.getItem('user');
+    const user = userString ? JSON.parse(userString) : null;
+    return user?.role || null;
+  });
   const [profile, setProfile] = useState<PatientProfile | DoctorProfile | null>(null);
 
   useEffect(() => {
     const userString = localStorage.getItem('user');
     const user = userString ? JSON.parse(userString) : null;
-    const userRole = user?.role;
-    setRole(userRole);
-
-    const fetchProfile = async () => {
+    const userRole = user?.role;    const fetchProfile = async () => {
         try {
             if (userRole === 'doctor') {
                const docProfile = await doctorApi.getProfile();
