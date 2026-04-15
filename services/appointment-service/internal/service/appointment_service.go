@@ -484,3 +484,11 @@ func generateRoomName() (string, error) {
 	encoded = strings.ToLower(encoded)
 	return "telemed-" + encoded, nil
 }
+
+func (s *AppointmentService) DeletePatientAppointments(patientID string) error {
+	if err := s.repo.DeleteByPatientID(patientID); err != nil {
+		return fmt.Errorf("service.DeletePatientAppointments: %w", err)
+	}
+	s.log.Info("Patient appointments deleted", "patient_id", patientID)
+	return nil
+}
