@@ -4,6 +4,7 @@ export interface Slot {
     id: string;
     doctor_id: string;
     owner_user_id?: string;
+    hospital?: string;
     start_time: string;
     end_time: string;
     is_booked: boolean;
