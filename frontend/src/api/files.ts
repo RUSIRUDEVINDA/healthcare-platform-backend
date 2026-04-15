@@ -36,12 +36,12 @@ export interface FileResponse {
 
 export const fileApi = {
   listMyFiles: async () => {
-    const response = await apiClient.get<FileListResponse>('v1/files');
+    const response = await apiClient.get<FileListResponse>('/v1/files');
     return response.data.files ?? [];
   },
 
   listPatientFiles: async (patientId: string) => {
-    const response = await apiClient.get<FileListResponse>(`v1/files/patients/${patientId}/files`);
+    const response = await apiClient.get<FileListResponse>(`/v1/files/patients/${patientId}/files`);
     return response.data.files ?? [];
   },
 
@@ -49,7 +49,7 @@ export const fileApi = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await apiClient.post<FileResponse>('v1/files/documents', formData, {
+    const response = await apiClient.post<FileResponse>('/v1/files/documents', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -65,7 +65,7 @@ export const fileApi = {
       formData.append('document_category', documentCategory);
     }
 
-    const response = await apiClient.post<FileResponse>(`v1/files/patients/${patientId}/files`, formData, {
+    const response = await apiClient.post<FileResponse>(`/v1/files/patients/${patientId}/files`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -75,19 +75,19 @@ export const fileApi = {
   },
 
   getFile: async (fileId: string) => {
-    const response = await apiClient.get<{ file: FileRecord }>(`v1/files/${fileId}`);
+    const response = await apiClient.get<{ file: FileRecord }>(`/v1/files/${fileId}`);
     return response.data.file;
   },
 
   downloadFile: async (fileId: string) => {
-    const response = await apiClient.get<Blob>(`v1/files/${fileId}/download`, {
+    const response = await apiClient.get<Blob>(`/v1/files/${fileId}/download`, {
       responseType: 'blob',
     });
     return response.data;
   },
 
   deleteFile: async (fileId: string) => {
-    const response = await apiClient.delete(`v1/files/${fileId}`);
+    const response = await apiClient.delete(`/v1/files/${fileId}`);
     return response.data;
   },
 };
