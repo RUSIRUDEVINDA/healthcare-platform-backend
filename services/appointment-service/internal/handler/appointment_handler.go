@@ -79,7 +79,9 @@ func (h *AppointmentHandler) Book(c *gin.Context) {
 		}
 	}
 
-	appt, err := h.svc.BookAppointment(userID, role, token, &req)
+	patientFirst, _ := middleware.CallerFirstName(c)
+	patientLast, _ := middleware.CallerLastName(c)
+	appt, err := h.svc.BookAppointment(userID, role, token, patientFirst, patientLast, &req)
 	if err != nil {
 		if strings.Contains(err.Error(), "only patients can book appointments") {
 			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
