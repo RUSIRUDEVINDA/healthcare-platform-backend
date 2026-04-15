@@ -105,7 +105,7 @@ func (h *AppointmentHandler) Book(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		if strings.Contains(err.Error(), "doctor channeling fee is not configured") {
+		if strings.Contains(err.Error(), "doctor channeling fee is not configured") || strings.Contains(err.Error(), "doctor channeling fee is invalid") {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
