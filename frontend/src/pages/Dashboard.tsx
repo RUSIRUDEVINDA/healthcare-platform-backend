@@ -1,62 +1,146 @@
-import { useState, useEffect } from 'react';
-import { LogOut, User, Activity, Calendar, ClipboardList, CreditCard } from 'lucide-react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import axios from 'axios';
+import {
+  Activity,
+  ArrowRight,
+  Calendar,
+  ClipboardList,
+  CreditCard,
+  FileText,
+  HeartPulse,
+  Loader2,
+  LogOut,
+  Sparkles,
+  Stethoscope,
+  User,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { doctorApi, type DoctorProfile } from '../api/doctor';
 import { appointmentApi, type Appointment } from '../api/appointments';
 import { doctorApi as doctorsListApi, type Doctor } from '../api/doctors';
+import { fileApi, type FileRecord } from '../api/files';
+import { symptomApi, type SymptomCheckResponse } from '../api/symptom';
+
+type RecordBucket = 'prescriptions' | 'reports';
+
+function formatDate(dateStr: string) {
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return 'Unknown date';
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function formatTime(dateStr: string) {
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return '--:--';
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function uniqueStrings(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value))));
+}
+
+function classifyRecord(file: FileRecord): RecordBucket {
+  const haystack = `${file.original_name} ${file.stored_name}`.toLowerCase();
+
+  if (haystack.includes('prescription') || haystack.includes('rx') || haystack.includes('medication')) {
+    return 'prescriptions';
+  }
+
+  return 'reports';
+}
+
+function getFileTypeLabel(file: FileRecord) {
+  return classifyRecord(file) === 'prescriptions' ? 'Prescription' : 'Report';
+}
+
+function getFileIcon() {
+  return <FileText className="h-5 w-5" />;
+}
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<PatientProfile | DoctorProfile | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<Record<string, Doctor>>({});
+  const [files, setFiles] = useState<FileRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filesLoading, setFilesLoading] = useState(true);
+  const [symptomInput, setSymptomInput] = useState('');
+  const [symptomContext, setSymptomContext] = useState('');
+  const [symptomLoading, setSymptomLoading] = useState(false);
+  const [symptomResult, setSymptomResult] = useState<SymptomCheckResponse | null>(null);
+  const [symptomError, setSymptomError] = useState<string | null>(null);
 
   useEffect(() => {
     const userString = localStorage.getItem('user');
     const user = userString ? JSON.parse(userString) : null;
-    const userRole = user?.role;
+    const userRole = user?.role ?? null;
+    const authUserId = user?.id ?? user?.user_id ?? null;
     setRole(userRole);
 
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Fetch profile
-        let profileData;
-        if (userRole === 'doctor') {
-          profileData = await doctorApi.getProfile();
-        } else {
-          profileData = await patientApi.getProfile();
-        }
+        setFilesLoading(true);
+
+        const profilePromise = userRole === 'doctor' ? doctorApi.getProfile() : patientApi.getProfile();
+        const [profileData, apptsResult, docsResult] = await Promise.all([
+          profilePromise,
+          appointmentApi.listAppointments().catch(() => [] as Appointment[]),
+          doctorsListApi.listDoctors().catch(() => [] as Doctor[]),
+        ]);
+
         setProfile(profileData);
 
-        // Fetch appointments
-        const appts = await appointmentApi.listAppointments();
-        // Filter upcoming ones and sort by date
-        const sortedAppts = appts
-          .filter(a => a.status !== 'cancelled')
+        const sortedAppts = (Array.isArray(apptsResult) ? apptsResult : [])
+          .filter((appointment) => appointment.status !== 'cancelled')
           .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
         setAppointments(sortedAppts);
 
-        // Fetch doctors to map names
-        const docs = await doctorsListApi.listDoctors();
         const docsMap: Record<string, Doctor> = {};
-        docs.forEach(d => {
-          docsMap[String(d.id)] = d;
-          docsMap[d.user_id] = d;
+        (Array.isArray(docsResult) ? docsResult : []).forEach((doctor) => {
+          docsMap[String(doctor.id)] = doctor;
+          docsMap[doctor.user_id] = doctor;
         });
         setDoctors(docsMap);
 
+        let records: FileRecord[] = [];
+        if (userRole === 'doctor') {
+          records = await fileApi.listMyFiles();
+        } else {
+          const patientProfile = profileData as PatientProfile;
+          const candidateOwnerIds = uniqueStrings([authUserId, patientProfile?.user_id, patientProfile?.id]);
+          const results = await Promise.allSettled(
+            candidateOwnerIds.map((ownerId) => fileApi.listPatientFiles(ownerId))
+          );
+          const combined = results.flatMap((result) => (result.status === 'fulfilled' ? result.value : []));
+          const fallbackFiles = combined.length === 0 ? await fileApi.listMyFiles() : [];
+          records = Array.from(new Map([...combined, ...fallbackFiles].map((file) => [file.id, file])).values());
+        }
+
+        records.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        setFiles(records);
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
       } finally {
         setLoading(false);
+        setFilesLoading(false);
       }
     };
 
     if (userRole) {
       fetchData();
+    } else {
+      setLoading(false);
+      setFilesLoading(false);
     }
   }, []);
 
@@ -66,215 +150,435 @@ export default function Dashboard() {
     window.location.href = '/auth/login';
   };
 
-  const getDoctorName = (appt: Appointment) => {
-    // Try mapping by doctor_id (integer ID) first, then doctor_owner_user_id
-    const doc = doctors[appt.doctor_id] || doctors[appt.doctor_owner_user_id || ''];
-    return doc?.name || 'General Doctor';
+  const getDoctorName = (appointment: Appointment) => {
+    const doctor = doctors[appointment.doctor_id] || doctors[appointment.doctor_owner_user_id || ''];
+    return doctor?.name || 'General Doctor';
   };
 
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+  const nextAppointment = appointments[0] ?? null;
 
-  const formatTime = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  };
+  const mostVisitedDoctor = useMemo(() => {
+    type DoctorVisit = {
+      doctorId: string;
+      count: number;
+    };
 
-  const getDay = (dateStr: string) => new Date(dateStr).getDate();
-  const getMonth = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', { month: 'short' });
+    const counts = new Map<string, { count: number; doctorId: string }>();
+
+    appointments.forEach((appointment) => {
+      const doctorKey = appointment.doctor_owner_user_id || appointment.doctor_id;
+      const current = counts.get(doctorKey);
+      counts.set(doctorKey, {
+        doctorId: doctorKey,
+        count: current ? current.count + 1 : 1,
+      });
+    });
+
+    let topEntry: DoctorVisit | null = null;
+    counts.forEach((value: DoctorVisit) => {
+      if (!topEntry || value.count > topEntry.count) {
+        topEntry = value;
+      }
+    });
+
+    if (!topEntry) {
+      return null;
+    }
+
+    const best = topEntry as { doctorId: string; count: number };
+    const doctor = doctors[best.doctorId] || doctors[String(best.doctorId)] || null;
+    return {
+      name: doctor?.name || 'General Doctor',
+      specialty: doctor?.specialization || 'Specialty not set',
+      count: best.count,
+    };
+  }, [appointments, doctors]);
+
+  const records = useMemo(() => files, [files]);
+  const prescriptions = useMemo(() => records.filter((file) => classifyRecord(file) === 'prescriptions'), [records]);
+
+  const latestPrescription = prescriptions[0] ?? null;
+
+  const displayName =
+    role === 'doctor'
+      ? (profile as DoctorProfile | null)?.name || 'Doctor'
+      : `${(profile as PatientProfile | null)?.first_name || 'Patient'} ${(profile as PatientProfile | null)?.last_name || ''}`.trim();
+
+  const handleSymptomCheck = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSymptomError(null);
+    setSymptomResult(null);
+
+    const symptoms = symptomInput.trim();
+    if (!symptoms) {
+      setSymptomError('Please describe the symptoms first.');
+      return;
+    }
+
+    try {
+      setSymptomLoading(true);
+      const result = await symptomApi.checkSymptoms({
+        symptoms,
+        optional_context: symptomContext.trim() || undefined,
+      });
+      setSymptomResult(result);
+    } catch (err) {
+      console.error('Failed to check symptoms:', err);
+      let message = 'We could not analyze your symptoms right now.';
+      if (axios.isAxiosError(err)) {
+        message = err.response?.data?.error || err.response?.data?.message || message;
+      }
+      setSymptomError(message);
+    } finally {
+      setSymptomLoading(false);
+    }
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand"></div>
+      <div className="min-h-screen bg-[#eff9f8] flex items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-[3px] border-brand border-t-transparent" />
       </div>
     );
   }
 
-  const nextAppointment = appointments.length > 0 ? appointments[0] : null;
-
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <aside className="w-60 bg-white border-r border-gray-100 hidden lg:flex flex-col sticky top-0 h-screen">
+    <div className="min-h-screen bg-[#eff9f8] flex font-sans text-slate-900">
+      <aside className="w-60 bg-white/90 backdrop-blur border-r border-teal-100 hidden lg:flex flex-col sticky top-0 h-screen">
         <div className="px-6 pt-6 pb-5">
           <Link to="/dashboard" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
+            <div className="h-9 w-9 rounded-full bg-brand flex items-center justify-center shadow-sm shadow-brand/20">
               <Activity className="h-4 w-4 text-white" />
             </div>
-            <span className="text-lg font-bold text-gray-900 tracking-tight">AyaRX</span>
+            <span className="text-lg font-medium tracking-tight text-slate-900">MediPulse SriLanka</span>
           </Link>
         </div>
 
         <nav className="flex-1 px-4 space-y-1">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-3">Menu</p>
-          <Link
-            to="/dashboard"
-            className="flex items-center gap-3 px-3 py-2.5 bg-brand/10 text-brand rounded-xl font-semibold transition-all text-sm"
-          >
+          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.32em] px-3 mb-3">Menu</p>
+          <Link to="/dashboard" className="flex items-center gap-3 px-3 py-2.5 bg-brand/10 text-brand rounded-full font-semibold text-sm">
             <Activity className="h-[18px] w-[18px]" /> Dashboard
           </Link>
-          <Link
-            to="/profile"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-          >
+          <Link to="/profile" className="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-teal-50 rounded-full transition-colors text-sm">
             <User className="h-[18px] w-[18px]" /> Profile
           </Link>
-          <Link
-            to="/appointments"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-          >
+          <Link to="/appointments" className="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-teal-50 rounded-full transition-colors text-sm">
             <Calendar className="h-[18px] w-[18px]" /> Appointments
           </Link>
           {role !== 'doctor' && (
-            <Link
-              to="/payments"
-              className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-            >
+            <Link to="/payments" className="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-teal-50 rounded-full transition-colors text-sm">
               <CreditCard className="h-[18px] w-[18px]" /> Payments
             </Link>
           )}
-          <a
-            href="#"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-          >
+          <Link to="/records" className="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-teal-50 rounded-full transition-colors text-sm">
             <ClipboardList className="h-[18px] w-[18px]" /> Records
-          </a>
+          </Link>
         </nav>
 
-        <div className="p-4 border-t border-gray-100 mx-4 mb-4">
+        <div className="p-4 border-t border-teal-100 mx-4 mb-4">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors text-sm font-medium"
+            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-red-500 hover:bg-red-50 rounded-full transition-colors text-sm font-medium"
           >
             <LogOut className="h-[18px] w-[18px]" /> Sign Out
           </button>
         </div>
       </aside>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 bg-white/80 backdrop-blur-md sticky top-0 z-10">
-          <h2 className="text-xl font-semibold text-gray-800">Overview</h2>
-          <div className="flex items-center space-x-4">
-            <p className="text-sm font-medium text-gray-600 hidden sm:block">
-              {role === 'doctor' ? (profile as DoctorProfile)?.name : `${(profile as PatientProfile)?.first_name} ${(profile as PatientProfile)?.last_name}`}
-            </p>
-            <div className="w-10 h-10 bg-brand-light rounded-full flex items-center justify-center text-brand border-2 border-brand/20">
-              <User className="h-6 w-6" />
+        <header className="h-16 bg-white border-b border-teal-100 flex items-center justify-between px-6 lg:px-8 sticky top-0 z-10">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.32em] text-slate-400 font-semibold">Overview</p>
+            <h1 className="text-lg font-bold text-slate-900">Dashboard</h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <p className="hidden sm:block text-sm font-medium text-slate-600">{displayName}</p>
+            <div className="h-10 w-10 rounded-full bg-brand-light border border-brand/20 flex items-center justify-center text-brand">
+              <User className="h-5 w-5" />
             </div>
           </div>
         </header>
-        
-        <main className="p-8 overflow-y-auto">
-          <div className="mb-10">
-            <h3 className="text-3xl font-bold text-gray-900">
-              Welcome back, {
-                role === 'doctor' 
-                  ? (profile as DoctorProfile)?.name || 'Doctor' 
-                  : (profile as PatientProfile)?.first_name || 'Patient'
-              }!
-            </h3>
-            <p className="text-gray-500 mt-2">
-              {role === 'doctor' ? "Here's your schedule for today." : "Here's what's happening with your health today."}
-            </p>
-          </div>
 
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-4">
-                <Calendar className="h-6 w-6" />
-              </div>
-              <p className="text-sm font-medium text-gray-500">Next Appointment</p>
-              {nextAppointment ? (
-                <>
-                  <h4 className="text-xl font-bold text-gray-900 mt-1">{formatDate(nextAppointment.scheduled_at)}</h4>
-                  <p className="text-sm text-gray-400 mt-2">
-                    {getDoctorName(nextAppointment)} • {formatTime(nextAppointment.scheduled_at)}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h4 className="text-xl font-bold text-gray-400 mt-1">No upcoming</h4>
-                  <p className="text-sm text-gray-400 mt-2">Book your next session</p>
-                </>
-              )}
-            </div>
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 mb-4">
-                <Activity className="h-6 w-6" />
-              </div>
-              <p className="text-sm font-medium text-gray-500">Waitlist Status</p>
-              <h4 className="text-xl font-bold text-gray-900 mt-1">N/A</h4>
-              <p className="text-sm text-gray-400 mt-2">No active waitlists</p>
-            </div>
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600 mb-4">
-                <ClipboardList className="h-6 w-6" />
-              </div>
-              <p className="text-sm font-medium text-gray-500">Total Appointments</p>
-              <h4 className="text-xl font-bold text-gray-900 mt-1">{appointments.length} Records</h4>
-              <p className="text-sm text-gray-400 mt-2">Across all periods</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-            {/* Upcoming Appointments */}
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
-              <div className="flex items-center justify-between mb-8">
-                <h4 className="text-xl font-bold text-gray-900">Upcoming Appointments</h4>
-                <Link to="/appointments" className="text-brand font-semibold text-sm hover:underline">View All</Link>
-              </div>
-              <div className="space-y-6">
-                {appointments.length > 0 ? (
-                  appointments.slice(0, 3).map((appt) => (
-                    <div key={appt.id} className="flex items-center p-4 rounded-2xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
-                      <div className="w-14 h-14 bg-gray-100 rounded-xl mr-4 flex flex-col items-center justify-center">
-                        <span className="text-xs font-bold text-gray-400 uppercase">{getMonth(appt.scheduled_at)}</span>
-                        <span className="text-lg font-bold text-gray-900">{getDay(appt.scheduled_at)}</span>
-                      </div>
-                      <div className="flex-1">
-                        <h5 className="font-bold text-gray-900 capitalize">{appt.consultation_mode} Consultation</h5>
-                        <p className="text-sm text-gray-500">Dr. {getDoctorName(appt)}</p>
-                      </div>
-                      <div className="text-right text-sm">
-                        <p className="font-semibold text-gray-900">{formatTime(appt.scheduled_at)}</p>
-                        <span className={`px-2 py-1 rounded-md text-xs font-bold uppercase ${
-                          appt.status === 'confirmed' ? 'bg-green-50 text-green-600' : 
-                          appt.status === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-gray-600'
-                        }`}>
-                          {appt.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-10">
-                    <Calendar className="h-10 w-10 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No upcoming appointments found.</p>
-                    <Link to="/appointments" className="text-brand text-sm font-semibold mt-2 inline-block">Book Now</Link>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <div className="max-w-7xl mx-auto space-y-6">
+            <section className="rounded-[2rem] border border-teal-100 bg-white p-6 sm:p-8 shadow-sm">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                <div className="max-w-3xl space-y-4">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-brand/10 px-3 py-1 text-xs font-medium text-brand border border-brand/10">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Care workspace
                   </div>
-                )}
-              </div>
-            </div>
+                  <div>
+                    <h2 className="text-3xl sm:text-4xl font-medium tracking-tight text-slate-900">
+                      Welcome back, {role === 'doctor' ? (profile as DoctorProfile | null)?.name || 'Doctor' : (profile as PatientProfile | null)?.first_name || 'Patient'}.
+                    </h2>
+                    <p className="mt-3 max-w-2xl text-sm sm:text-base leading-6 text-slate-600">
+                      A calmer view of your care history, bookings, and medication flow. Prescriptions, reports, and symptom guidance stay close without clutter.
+                    </p>
+                  </div>
+                </div>
 
-            {/* Recent Records Placeholder (since we don't have a records service fully integrated in frontend yet) */}
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
-              <div className="flex items-center justify-between mb-8">
-                <h4 className="text-xl font-bold text-gray-900">Recent Medical Records</h4>
-                <button className="text-brand font-semibold text-sm hover:underline">See More</button>
-              </div>
-              <div className="space-y-6">
-                <div className="text-center py-10">
-                  <ClipboardList className="h-10 w-10 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">No medical records available yet.</p>
-                  <p className="text-xs text-gray-400 mt-1">Your reports will appear here after consultation.</p>
+                <div className="flex flex-wrap gap-3">
+                  <Link
+                    to="/appointments"
+                    className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-sm"
+                  >
+                    Book appointment
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                  <Link
+                    to="/records"
+                    className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-medium text-brand shadow-sm border border-brand/10"
+                  >
+                    View records
+                    <ClipboardList className="h-4 w-4" />
+                  </Link>
                 </div>
               </div>
-            </div>
+            </section>
+
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <StatCard
+                icon={<Calendar className="h-5 w-5" />}
+                title="Next appointment"
+                value={nextAppointment ? formatDate(nextAppointment.scheduled_at) : 'No appointment'}
+                caption={
+                  nextAppointment
+                    ? `${getDoctorName(nextAppointment)} • ${formatTime(nextAppointment.scheduled_at)}`
+                    : 'Book your next visit when ready'
+                }
+                tone="teal"
+              />
+              <StatCard
+                icon={<Stethoscope className="h-5 w-5" />}
+                title="Most visited doctor"
+                value={mostVisitedDoctor ? mostVisitedDoctor.name : 'No visits yet'}
+                caption={
+                  mostVisitedDoctor
+                    ? `${mostVisitedDoctor.count} visits • ${mostVisitedDoctor.specialty}`
+                    : 'It will appear after a few appointments'
+                }
+                tone="blue"
+              />
+              <StatCard
+                icon={<HeartPulse className="h-5 w-5" />}
+                title="Active prescriptions"
+                value={`${prescriptions.length}`}
+                caption={
+                  latestPrescription
+                    ? `Latest: ${latestPrescription.original_name}`
+                    : 'Your medications will appear here'
+                }
+                tone="emerald"
+              />
+              <StatCard
+                icon={<ClipboardList className="h-5 w-5" />}
+                title="Total appointments"
+                value={`${appointments.length}`}
+                caption="Across all periods"
+                tone="slate"
+              />
+            </section>
+
+            <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+              <div className="space-y-6">
+                <section className="rounded-[2rem] border border-white bg-white shadow-[0_20px_60px_rgba(8,47,73,0.06)] overflow-hidden">
+                  <div className="flex items-center justify-between gap-3 px-5 py-4 sm:px-6 border-b border-slate-100">
+                    <div>
+                      <h3 className="text-lg font-medium text-slate-900">Upcoming appointments</h3>
+                      <p className="mt-1 text-sm text-slate-500">Your nearest visit shows up first.</p>
+                    </div>
+                    <Link to="/appointments" className="inline-flex items-center gap-2 rounded-full bg-brand/10 px-4 py-2 text-sm font-semibold text-brand">
+                      View all
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+
+                  <div className="p-5 sm:p-6">
+                    {appointments.length > 0 ? (
+                      <div className="space-y-3">
+                        {appointments.slice(0, 3).map((appointment) => (
+                          <div
+                            key={appointment.id}
+                            className="flex items-center gap-4 rounded-[1.5rem] border border-slate-100 bg-white px-4 py-4"
+                          >
+                            <div className="flex h-14 w-14 flex-col items-center justify-center rounded-[1.25rem] bg-white border border-brand/10 text-center shadow-sm">
+                              <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-400">
+                                {new Date(appointment.scheduled_at).toLocaleDateString('en-US', { month: 'short' })}
+                              </span>
+                              <span className="text-lg font-medium text-slate-900">{new Date(appointment.scheduled_at).getDate()}</span>
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="truncate text-base font-medium text-slate-900 capitalize">
+                                  {appointment.consultation_mode} consultation
+                                </h4>
+                                <span className="rounded-full bg-brand/10 px-2.5 py-1 text-[11px] font-semibold text-brand">
+                                  {appointment.status}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-sm text-slate-500">{getDoctorName(appointment)}</p>
+                            </div>
+
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-slate-900">{formatTime(appointment.scheduled_at)}</p>
+                              <p className="mt-1 text-xs text-slate-400 uppercase tracking-[0.2em]">{appointment.consultation_mode === 'jitsi' || appointment.consultation_mode === 'video' ? 'Video' : 'Physical'}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
+                        <Calendar className="mx-auto h-10 w-10 text-slate-300" />
+                        <h4 className="mt-4 text-lg font-medium text-slate-900">No upcoming appointments</h4>
+                        <p className="mt-2 text-sm text-slate-500">Once you book a session, it will show up here.</p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                <section className="rounded-[2rem] border border-white bg-white shadow-[0_20px_60px_rgba(8,47,73,0.06)] overflow-hidden">
+                  <div className="flex items-center justify-between gap-3 px-5 py-4 sm:px-6 border-b border-slate-100">
+                    <div>
+                      <h3 className="text-lg font-medium text-slate-900">Recent medical records</h3>
+                      <p className="mt-1 text-sm text-slate-500">Prescriptions and reports from your chart.</p>
+                    </div>
+                    <Link to="/records" className="inline-flex items-center gap-2 rounded-full bg-brand/10 px-4 py-2 text-sm font-semibold text-brand">
+                      See more
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+
+                  <div className="p-5 sm:p-6">
+                    {filesLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-brand" />
+                      </div>
+                    ) : records.length > 0 ? (
+                      <div className="space-y-3">
+                        {records.slice(0, 3).map((file) => (
+                          <div
+                            key={file.id}
+                            className="flex items-center gap-4 rounded-[1.5rem] border border-slate-100 bg-white px-4 py-4"
+                          >
+                              <div className="flex h-12 w-12 items-center justify-center rounded-[1.1rem] bg-white text-brand shadow-sm border border-brand/10">
+                              {getFileIcon()}
+                              </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="truncate text-sm font-medium text-slate-900">{file.original_name}</p>
+                                <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500 border border-slate-100">
+                                  {getFileTypeLabel(file)}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {formatDate(file.created_at)} • {file.mime_type}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
+                        <FileText className="mx-auto h-10 w-10 text-slate-300" />
+                        <h4 className="mt-4 text-lg font-medium text-slate-900">No records yet</h4>
+                        <p className="mt-2 text-sm text-slate-500">Prescriptions and reports will appear here after upload.</p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              </div>
+
+              <section className="rounded-[2rem] border border-white bg-white shadow-[0_20px_60px_rgba(8,47,73,0.06)] overflow-hidden">
+                <div className="flex items-center justify-between gap-3 px-5 py-4 sm:px-6 border-b border-slate-100">
+                  <div>
+                    <h3 className="text-lg font-medium text-slate-900">AI symptom checker</h3>
+                    <p className="mt-1 text-sm text-slate-500">Describe what you feel and get a gentle specialty suggestion.</p>
+                  </div>
+                  <div className="rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">
+                    Connected
+                  </div>
+                </div>
+
+                <div className="p-5 sm:p-6 space-y-5">
+                  {role === 'doctor' ? (
+                    <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center">
+                      <Stethoscope className="mx-auto h-10 w-10 text-brand" />
+                      <h4 className="mt-4 text-lg font-medium text-slate-900">Patient-only tool</h4>
+                      <p className="mt-2 text-sm text-slate-500">
+                        The symptom checker is available for patients, so the backend can keep the response scoped correctly.
+                      </p>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSymptomCheck} className="space-y-4">
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold text-slate-700">Symptoms</label>
+                        <textarea
+                          value={symptomInput}
+                          onChange={(event) => setSymptomInput(event.target.value)}
+                          rows={6}
+                          placeholder="Example: fever, cough, chest tightness, fatigue, or pain..."
+                          className="w-full rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-brand/30 focus:ring-4 focus:ring-brand/10"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold text-slate-700">Optional context</label>
+                        <input
+                          value={symptomContext}
+                          onChange={(event) => setSymptomContext(event.target.value)}
+                          placeholder="Age, duration, any medical history..."
+                          className="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-brand/30 focus:ring-4 focus:ring-brand/10"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={symptomLoading}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand px-5 py-3 text-sm font-medium text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        {symptomLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                        {symptomLoading ? 'Checking symptoms...' : 'Check symptoms'}
+                      </button>
+                    </form>
+                  )}
+
+                  {symptomError && (
+                    <div className="rounded-[1.5rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {symptomError}
+                    </div>
+                  )}
+
+                  {symptomResult ? (
+                    <div className="space-y-3 rounded-[1.75rem] border border-brand/10 bg-[#f8fffe] p-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">Suggested specialty</p>
+                          <h4 className="mt-1 text-2xl font-medium text-slate-900">{symptomResult.suggested_specialty || 'General practice'}</h4>
+                        </div>
+                        <div className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-brand border border-brand/10">
+                          AI guidance
+                        </div>
+                      </div>
+
+                      <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Preliminary notes</p>
+                        <p className="mt-2 text-sm leading-6 text-slate-700">{symptomResult.preliminary_notes}</p>
+                      </div>
+
+                      <div className="rounded-[1.5rem] border border-amber-100 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+                        {symptomResult.disclaimer}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-5 py-6 text-sm text-slate-500">
+                      Your symptom guidance will appear here after you run a check.
+                    </div>
+                  )}
+                </div>
+              </section>
+            </section>
           </div>
         </main>
       </div>
@@ -282,3 +586,36 @@ export default function Dashboard() {
   );
 }
 
+function StatCard({
+  icon,
+  title,
+  value,
+  caption,
+  tone,
+}: {
+  icon: ReactNode;
+  title: string;
+  value: string;
+  caption: string;
+  tone: 'teal' | 'blue' | 'emerald' | 'slate';
+}) {
+  const toneStyles: Record<'teal' | 'blue' | 'emerald' | 'slate', string> = {
+    teal: 'text-brand',
+    blue: 'text-sky-600',
+    emerald: 'text-emerald-600',
+    slate: 'text-slate-600',
+  };
+
+  return (
+    <div className={`rounded-[1.75rem] border border-slate-100 bg-white ${toneStyles[tone]} p-5 shadow-sm`}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm border border-slate-100">
+          {icon}
+        </div>
+      </div>
+      <p className="mt-5 text-sm font-medium text-slate-500">{title}</p>
+      <p className="mt-2 break-words text-[1.1rem] font-medium tracking-tight text-slate-900">{value}</p>
+      <p className="mt-2 text-sm leading-5 text-slate-500">{caption}</p>
+    </div>
+  );
+}
