@@ -8,7 +8,6 @@ export interface Slot {
     start_time: string;
     end_time: string;
     is_booked: boolean;
-    hospital?: string;
     status?: 'available' | 'booked'; // frontend compat
 }
 
