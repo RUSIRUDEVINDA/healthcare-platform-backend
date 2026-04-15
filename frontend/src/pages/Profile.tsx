@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { User, Phone, MapPin, Calendar, Droplets, Shield, Save, Edit2, Medal, Building2, CreditCard, Stethoscope, Trash2, AlertTriangle, Globe, Activity, ClipboardList, LogOut } from 'lucide-react';
+import { User, Phone, MapPin, Calendar, Droplets, Shield, Save, Edit2, Medal, Building2, CreditCard, Stethoscope, Trash2, AlertTriangle, Globe, Activity, ClipboardList, LogOut, Scale, ChevronDown } from 'lucide-react';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { doctorApi, type DoctorProfile } from '../api/doctor';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 export default function Profile() {
+  const location = useLocation();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<PatientProfile | DoctorProfile | null>(null);
   const [role, setRole] = useState<string | null>(null);
@@ -35,7 +36,8 @@ export default function Profile() {
     specialization: '',
     experience: '',
     hospital: '',
-    slmc_no: ''
+    slmc_no: '',
+    channeling_fee: ''
   });
 
   const fetchProfile = async () => {
@@ -55,7 +57,8 @@ export default function Profile() {
           experience: doctorData.experience?.toString() || '',
           hospital: doctorData.hospital || '',
           nic: doctorData.nic || '',
-          slmc_no: doctorData.slmc_no || ''
+          slmc_no: doctorData.slmc_no || '',
+          channeling_fee: doctorData.channeling_fee?.toString() || ''
         }));
       } else {
         const patientData = await patientApi.getProfile();
@@ -110,6 +113,13 @@ export default function Profile() {
           const parsedExperience = Number.parseInt(experienceRaw, 10);
           if (!Number.isNaN(parsedExperience)) {
             updateData.experience = parsedExperience;
+          }
+        }
+        const channelingFeeRaw = formData.channeling_fee.trim();
+        if (channelingFeeRaw !== '') {
+          const parsedFee = Number.parseFloat(channelingFeeRaw);
+          if (!Number.isNaN(parsedFee)) {
+            updateData.channeling_fee = parsedFee;
           }
         }
 
@@ -176,56 +186,89 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-[#f6f8fa] flex font-sans">
       {/* Sidebar */}
-      <aside className="w-60 bg-white border-r border-gray-100 hidden lg:flex flex-col sticky top-0 h-screen">
+      <aside className="w-60 bg-white/90 backdrop-blur border-r border-teal-100 hidden lg:flex flex-col sticky top-0 h-screen">
         <div className="px-6 pt-6 pb-5">
           <Link to="/dashboard" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
+            <div className="h-9 w-9 rounded-full bg-brand flex items-center justify-center shadow-sm shadow-brand/20">
               <Activity className="h-4 w-4 text-white" />
             </div>
-            <span className="text-lg font-medium text-gray-900 tracking-tight">MediPulse SriLanka</span>
+            <span className="text-lg font-medium tracking-tight text-slate-900">MediPulse SriLanka</span>
           </Link>
         </div>
 
         <nav className="flex-1 px-4 space-y-1">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-3">Menu</p>
+          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.32em] px-3 mb-3">Menu</p>
           <Link
             to="/dashboard"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/dashboard'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
           >
             <Activity className="h-[18px] w-[18px]" /> Dashboard
           </Link>
           <Link
             to="/profile"
-            className="flex items-center gap-3 px-3 py-2.5 bg-brand/10 text-brand rounded-xl font-semibold transition-all text-sm shadow-sm"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/profile'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
           >
             <User className="h-[18px] w-[18px]" /> Profile
           </Link>
           <Link
             to="/appointments"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+            className={`flex items-center justify-between px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/appointments'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
           >
-            <Calendar className="h-[18px] w-[18px]" /> Appointments
+            <div className="flex items-center gap-3">
+              <Calendar className="h-[18px] w-[18px]" /> Appointments
+            </div>
+            <ChevronDown className="h-4 w-4 opacity-50" />
           </Link>
           {role !== 'doctor' && (
             <Link
               to="/payments"
-              className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+                location.pathname === '/payments'
+                  ? 'bg-brand/10 text-brand font-semibold'
+                  : 'text-slate-500 hover:bg-teal-50'
+              }`}
             >
               <CreditCard className="h-[18px] w-[18px]" /> Payments
             </Link>
           )}
           <Link
             to="/records"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/records'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
           >
             <ClipboardList className="h-[18px] w-[18px]" /> Records
           </Link>
+          <Link
+            to="/bmi-calculator"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/bmi-calculator'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
+          >
+            <Scale className="h-[18px] w-[18px]" /> BMI Calculator
+          </Link>
         </nav>
 
-        <div className="p-4 border-t border-gray-100 mx-4 mb-4">
+        <div className="p-4 border-t border-teal-100 mx-4 mb-4">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors text-sm font-medium"
+            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-red-500 hover:bg-red-50 rounded-full transition-colors text-sm font-medium"
           >
             <LogOut className="h-[18px] w-[18px]" /> Sign Out
           </button>
@@ -365,6 +408,20 @@ export default function Profile() {
                                   value={formData.slmc_no}
                                   onChange={handleInputChange}
                                   placeholder="e.g. 12345"
+                                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">Channeling Fee (Rs.)</label>
+                              <div className="relative">
+                                <CreditCard className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+                                <input
+                                  type="number"
+                                  name="channeling_fee"
+                                  value={formData.channeling_fee}
+                                  onChange={handleInputChange}
+                                  placeholder="e.g. 2500"
                                   className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
                                 />
                               </div>
@@ -562,6 +619,15 @@ export default function Profile() {
                               <div>
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">NIC Number</p>
                                 <p className="text-gray-900 font-bold">{(profile as DoctorProfile).nic}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-start">
+                              <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600 mr-4">
+                                <CreditCard className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Channeling Fee</p>
+                                <p className="text-gray-900 font-bold">Rs. {(profile as DoctorProfile).channeling_fee?.toFixed(2) || '0.00'}</p>
                               </div>
                             </div>
                           </>
