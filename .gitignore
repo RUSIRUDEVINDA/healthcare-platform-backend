@@ -11,4 +11,5 @@
 
 /scripts
 file-storage-service.postman_collection.json
-/services/ai-symptom-service
+.env
+.env.local

@@ -94,7 +94,6 @@ type Slot struct {
 	StartTime   time.Time `json:"start_time"`
 	EndTime     time.Time `json:"end_time"`
 	IsBooked    bool      `json:"is_booked"`
-	Hospital    string    `json:"hospital"`
 }
 
 // ---- Request / Response DTOs ----
@@ -124,7 +123,6 @@ type CreateSlotRequest struct {
 	Hospital  string    `json:"hospital" binding:"required"`
 	StartTime time.Time `json:"start_time" binding:"required"`
 	EndTime   time.Time `json:"end_time" binding:"required"`
-	Hospital  string    `json:"hospital"`
 }
 
 type UpdateSlotRequest struct {

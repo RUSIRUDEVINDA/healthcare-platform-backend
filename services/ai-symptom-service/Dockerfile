@@ -9,9 +9,11 @@ ENV GOWORK=off
 
 COPY pkg/ ./pkg/
 
-COPY services/ai-symptom-service/ ./services/ai-symptom-service/
-
+COPY services/ai-symptom-service/go.mod services/ai-symptom-service/go.sum ./services/ai-symptom-service/
 WORKDIR /app/services/ai-symptom-service
+RUN go mod download
+
+COPY services/ai-symptom-service/ ./
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-w -s" \
     -o /ai-symptom-service \
