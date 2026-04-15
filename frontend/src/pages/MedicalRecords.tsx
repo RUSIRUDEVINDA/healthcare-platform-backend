@@ -1,19 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-    Activity,
-    AlertCircle,
-    Calendar,
-    ClipboardList,
-    CreditCard,
-    Download,
-    FileText,
-    FileUp,
-    Loader2,
-    LogOut,
-    Shield,
-    User,
-} from 'lucide-react';
+import { AlertCircle, ClipboardList, Download, FileText, FileUp, Loader2, Shield } from 'lucide-react';
 import { appointmentApi, type Appointment } from '../api/appointments';
 import {
     filesApi,
@@ -202,12 +189,6 @@ export default function MedicalRecords() {
         }
     };
 
-    const handleLogout = () => {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user');
-        window.location.href = '/auth/login';
-    };
-
     if (loading) {
         return (
             <div className="min-h-screen bg-[#f6f8fa] flex items-center justify-center">
@@ -238,63 +219,7 @@ export default function MedicalRecords() {
     }
 
     return (
-        <div className="min-h-screen bg-[#f6f8fa] flex font-sans">
-            <aside className="w-60 bg-white border-r border-gray-100 hidden lg:flex flex-col sticky top-0 h-screen">
-                <div className="px-6 pt-6 pb-5">
-                    <Link to="/dashboard" className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
-                            <Activity className="h-4 w-4 text-white" />
-                        </div>
-                        <span className="text-lg font-bold text-gray-900 tracking-tight">AyaRX</span>
-                    </Link>
-                </div>
-                <nav className="flex-1 px-4 space-y-1">
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-3">Menu</p>
-                    <Link
-                        to="/dashboard"
-                        className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-                    >
-                        <Activity className="h-[18px] w-[18px]" /> Dashboard
-                    </Link>
-                    <Link
-                        to="/appointments"
-                        className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-                    >
-                        <Calendar className="h-[18px] w-[18px]" /> Appointments
-                    </Link>
-                    <Link
-                        to="/profile"
-                        className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-                    >
-                        <User className="h-[18px] w-[18px]" /> Profile
-                    </Link>
-                    {!isDoctor && (
-                        <Link
-                            to="/payments"
-                            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-                        >
-                            <CreditCard className="h-[18px] w-[18px]" /> Payments
-                        </Link>
-                    )}
-                    <Link
-                        to="/records"
-                        className="flex items-center gap-3 px-3 py-2.5 bg-brand/10 text-brand rounded-xl font-semibold transition-all text-sm"
-                    >
-                        <ClipboardList className="h-[18px] w-[18px]" /> Records
-                    </Link>
-                </nav>
-                <div className="p-4 border-t border-gray-100 mx-4 mb-4">
-                    <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="flex items-center gap-2.5 w-full px-3 py-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors text-sm font-medium"
-                    >
-                        <LogOut className="h-[18px] w-[18px]" /> Sign Out
-                    </button>
-                </div>
-            </aside>
-
-            <div className="flex-1 flex flex-col min-h-screen">
+        <div className="flex min-h-screen flex-1 flex-col bg-[#f6f8fa] font-sans">
                 <header className="bg-white border-b border-gray-100 px-6 sm:px-8 py-4 sticky top-0 z-10">
                     <div className="max-w-4xl">
                         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -553,7 +478,6 @@ export default function MedicalRecords() {
                         </section>
                     </div>
                 </main>
-            </div>
         </div>
     );
 }

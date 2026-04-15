@@ -8,6 +8,7 @@ import Appointments from './pages/Appointments';
 import Payments from './pages/Payments';
 import PaymentStatus from './pages/PaymentStatus';
 import MedicalRecords from './pages/MedicalRecords';
+import AppShellLayout from './layouts/AppShellLayout';
 
 function App() {
   return (
@@ -17,11 +18,13 @@ function App() {
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
       </Route>
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/profile" element={<Profile />} />
-      <Route path="/appointments" element={<Appointments />} />
-      <Route path="/payments" element={<Payments />} />
-      <Route path="/records" element={<MedicalRecords />} />
+      <Route element={<AppShellLayout />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/appointments" element={<Appointments />} />
+        <Route path="/payments" element={<Payments />} />
+        <Route path="/records" element={<MedicalRecords />} />
+      </Route>
       
       {/* Payment redirection targets */}
       <Route path="/payment/success" element={<PaymentStatus type="success" />} />
