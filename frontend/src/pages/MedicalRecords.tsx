@@ -62,7 +62,7 @@ export default function MedicalRecords() {
     const [listLoading, setListLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [docCategory, setDocCategory] = useState<DocumentCategory>('medical_report');
+    const [docCategory, setDocCategory] = useState<DocumentCategory | ''>('');
 
     const isDoctor = role === 'doctor';
     const activePatientId = isDoctor ? selectedPatientId : userId ?? '';
@@ -83,8 +83,8 @@ export default function MedicalRecords() {
             const list = Array.isArray(data) ? data : [];
             setAppointments(list);
             setSelectedPatientId((prev) => {
-                if (prev) return prev;
-                return list[0]?.patient_id || '';
+                if (prev && list.some((a) => a.patient_id === prev)) return prev;
+                return '';
             });
         } catch (e) {
             console.error(e);
@@ -158,7 +158,7 @@ export default function MedicalRecords() {
         const input = e.target;
         const file = input.files?.[0];
         input.value = '';
-        if (!file || !activePatientId) return;
+        if (!file || !activePatientId || !docCategory) return;
         setUploading(true);
         setError(null);
         try {
@@ -266,17 +266,23 @@ export default function MedicalRecords() {
                                 <select
                                     id="records-patient"
                                     value={selectedPatientId}
-                                    onChange={(e) => setSelectedPatientId(e.target.value)}
+                                    onChange={(e) => {
+                                        setSelectedPatientId(e.target.value);
+                                        setDocCategory('');
+                                    }}
                                     className="w-full max-w-lg px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm bg-white text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/25 focus:border-brand"
                                 >
                                     {patientOptions.length === 0 ? (
                                         <option value="">No eligible patients — book or complete an appointment first</option>
                                     ) : (
-                                        patientOptions.map((p) => (
-                                            <option key={p.id} value={p.id}>
-                                                {p.name}
-                                            </option>
-                                        ))
+                                        <>
+                                            <option value="">Select a patient…</option>
+                                            {patientOptions.map((p) => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.name}
+                                                </option>
+                                            ))}
+                                        </>
                                     )}
                                 </select>
                             </section>
@@ -301,7 +307,7 @@ export default function MedicalRecords() {
                                         </p>
                                     </div>
                                 </div>
-                                <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                                <div className="space-y-4 mb-4">
                                     <div>
                                         <label
                                             htmlFor="doc-category"
@@ -312,9 +318,10 @@ export default function MedicalRecords() {
                                         <select
                                             id="doc-category"
                                             value={docCategory}
-                                            onChange={(e) => setDocCategory(e.target.value as DocumentCategory)}
-                                            className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/25 focus:border-brand"
+                                            onChange={(e) => setDocCategory(e.target.value as DocumentCategory | '')}
+                                            className="w-full max-w-lg px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/25 focus:border-brand"
                                         >
+                                            <option value="">Select record type…</option>
                                             <option value="prescription">Prescription</option>
                                             <option value="medical_report">Medical report</option>
                                             <option value="general">General clinical document</option>
@@ -325,7 +332,7 @@ export default function MedicalRecords() {
                                         <input
                                             type="file"
                                             accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/*"
-                                            disabled={uploading}
+                                            disabled={uploading || !docCategory}
                                             onChange={handleUpload}
                                             className="sr-only"
                                             id="clinical-file-upload"
@@ -333,7 +340,7 @@ export default function MedicalRecords() {
                                         <div className="flex flex-wrap items-center gap-2">
                                             <label
                                                 htmlFor="clinical-file-upload"
-                                                className={`inline-flex cursor-pointer items-center justify-center rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-100 ${uploading ? 'pointer-events-none opacity-50' : ''}`}
+                                                className={`inline-flex items-center justify-center rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-800 shadow-sm transition-colors ${uploading || !docCategory ? 'pointer-events-none cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-gray-100'}`}
                                             >
                                                 Choose file
                                             </label>
