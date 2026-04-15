@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { User, Phone, MapPin, Calendar, Droplets, Shield, Save, Edit2, Medal, Building2, CreditCard, Stethoscope, Trash2, AlertTriangle, Globe, Activity, ClipboardList, LogOut, Scale } from 'lucide-react';
+import { User, Phone, MapPin, Calendar, Droplets, Shield, Save, Edit2, Medal, Building2, CreditCard, Stethoscope, Trash2, AlertTriangle, Globe, Activity, ClipboardList, LogOut } from 'lucide-react';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { doctorApi, type DoctorProfile } from '../api/doctor';
 import { Link, useNavigate } from 'react-router-dom';
@@ -561,7 +561,7 @@ export default function Profile() {
                               </div>
                               <div>
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">NIC Number</p>
-                                <p className="text-gray-900 font-medium font-bold">{(profile as DoctorProfile).nic}</p>
+                                <p className="text-gray-900 font-bold">{(profile as DoctorProfile).nic}</p>
                               </div>
                             </div>
                           </>
