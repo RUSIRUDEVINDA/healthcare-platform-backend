@@ -266,6 +266,10 @@ func (h *AppointmentHandler) CreateSlot(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		if strings.Contains(err.Error(), "cannot be in the past") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		if strings.Contains(err.Error(), "slot overlaps an existing slot for this doctor") {
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			return
@@ -322,7 +326,8 @@ func (h *AppointmentHandler) UpdateSlot(c *gin.Context) {
 		}
 		if strings.Contains(err.Error(), "end time must be after start time") ||
 			strings.Contains(err.Error(), "add your hospital") ||
-			strings.Contains(err.Error(), "hospital must match") {
+			strings.Contains(err.Error(), "hospital must match") ||
+			strings.Contains(err.Error(), "cannot be in the past") {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

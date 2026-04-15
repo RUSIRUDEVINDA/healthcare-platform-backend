@@ -300,6 +300,16 @@ func (s *AppointmentService) CreateSlot(callerID, callerToken, role string, req 
 		return nil, fmt.Errorf("end time must be after start time")
 	}
 
+	now := time.Now().UTC()
+	st := req.StartTime.UTC()
+	et := req.EndTime.UTC()
+	if st.Before(now) {
+		return nil, fmt.Errorf("slot start time cannot be in the past")
+	}
+	if et.Before(now) {
+		return nil, fmt.Errorf("slot end time cannot be in the past")
+	}
+
 	doctorProfileID := strings.TrimSpace(req.DoctorID)
 	slotHospital := strings.TrimSpace(req.Hospital)
 
@@ -393,6 +403,14 @@ func (s *AppointmentService) UpdateSlot(id, callerID, callerToken, role string, 
 	}
 	if !slot.EndTime.After(slot.StartTime) {
 		return nil, fmt.Errorf("end time must be after start time")
+	}
+
+	now := time.Now().UTC()
+	if slot.StartTime.UTC().Before(now) {
+		return nil, fmt.Errorf("slot start time cannot be in the past")
+	}
+	if slot.EndTime.UTC().Before(now) {
+		return nil, fmt.Errorf("slot end time cannot be in the past")
 	}
 
 	if err := s.repo.UpdateSlot(slot); err != nil {

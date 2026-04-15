@@ -8,6 +8,14 @@ function toDatetimeLocalValue(iso: string): string {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** Current local time floored to the minute — minimum for datetime-local inputs. */
+function currentMinuteDatetimeLocal(): string {
+    const d = new Date();
+    d.setSeconds(0, 0);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export interface DoctorSlotFormModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -37,15 +45,24 @@ export default function DoctorSlotFormModal({
             setStartLocal(toDatetimeLocalValue(slot.start_time));
             setEndLocal(toDatetimeLocalValue(slot.end_time));
         } else {
-            const now = new Date();
-            now.setMinutes(now.getMinutes() - (now.getMinutes() % 15), 0, 0);
-            const end = new Date(now.getTime() + 30 * 60 * 1000);
-            setStartLocal(toDatetimeLocalValue(now.toISOString()));
+            const start = new Date();
+            start.setSeconds(0, 0);
+            const step = 15;
+            const rem = start.getMinutes() % step;
+            if (rem !== 0) start.setMinutes(start.getMinutes() + (step - rem), 0, 0);
+            if (start.getTime() <= Date.now()) {
+                start.setMinutes(start.getMinutes() + step, 0, 0);
+            }
+            const end = new Date(start.getTime() + 30 * 60 * 1000);
+            setStartLocal(toDatetimeLocalValue(start.toISOString()));
             setEndLocal(toDatetimeLocalValue(end.toISOString()));
         }
     }, [isOpen, mode, slot]);
 
     if (!isOpen) return null;
+
+    const minStart = currentMinuteDatetimeLocal();
+    const minEnd = startLocal && startLocal >= minStart ? startLocal : minStart;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -54,6 +71,15 @@ export default function DoctorSlotFormModal({
         const end = new Date(endLocal);
         if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
             setError('Please enter valid start and end times.');
+            return;
+        }
+        const nowMs = Date.now();
+        if (start.getTime() < nowMs) {
+            setError('Start time cannot be in the past.');
+            return;
+        }
+        if (end.getTime() < nowMs) {
+            setError('End time cannot be in the past.');
             return;
         }
         if (end <= start) {
@@ -120,8 +146,22 @@ export default function DoctorSlotFormModal({
                             id="slot-start"
                             type="datetime-local"
                             required
+                            min={minStart}
                             value={startLocal}
-                            onChange={(e) => setStartLocal(e.target.value)}
+                            onChange={(e) => {
+                                const v = e.target.value;
+                                setStartLocal(v);
+                                setEndLocal((prev) => {
+                                    if (!v || !prev) return prev;
+                                    if (new Date(prev).getTime() <= new Date(v).getTime()) {
+                                        const s = new Date(v);
+                                        return toDatetimeLocalValue(
+                                            new Date(s.getTime() + 30 * 60 * 1000).toISOString()
+                                        );
+                                    }
+                                    return prev;
+                                });
+                            }}
                             className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand/40"
                         />
                     </div>
@@ -133,6 +173,7 @@ export default function DoctorSlotFormModal({
                             id="slot-end"
                             type="datetime-local"
                             required
+                            min={minEnd}
                             value={endLocal}
                             onChange={(e) => setEndLocal(e.target.value)}
                             className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand/40"
