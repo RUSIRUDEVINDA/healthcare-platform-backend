@@ -131,9 +131,16 @@ func runMigrations(db *sql.DB, log *logger.Logger) error {
 		address            TEXT,
 		emergency_contact  VARCHAR(255),
 		blood_group        VARCHAR(5),
+		nationality        VARCHAR(100),
+		nic                VARCHAR(20),
 		created_at         TIMESTAMPTZ DEFAULT NOW(),
 		updated_at         TIMESTAMPTZ DEFAULT NOW()
 	);
+
+	-- Add columns if they don't exist (for existing databases)
+	ALTER TABLE patients ADD COLUMN IF NOT EXISTS nationality VARCHAR(100);
+	ALTER TABLE patients ADD COLUMN IF NOT EXISTS nic         VARCHAR(20);
+
 	CREATE INDEX IF NOT EXISTS idx_patients_user_id ON patients(user_id);
 	`
 	_, err := db.Exec(migrationSQL)
