@@ -8,11 +8,12 @@ import (
 )
 
 type Config struct {
-	AppEnv      string
-	Port        string
-	DatabaseURL string
-	RabbitMQURL string
-	JWTSecret   string
+	AppEnv          string
+	Port            string
+	DatabaseURL     string
+	RabbitMQURL     string
+	JWTSecret       string
+	InternalAPIKey  string // optional; enables /internal/v1 routes when set
 }
 
 func Load() (*Config, error) {
@@ -20,11 +21,12 @@ func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		AppEnv:      getEnv("APP_ENV", "development"),
-		Port:        getEnv("PORT", "8002"),
-		DatabaseURL: getEnv("DATABASE_URL", ""),
-		RabbitMQURL: getEnv("RABBITMQ_URL", ""),
-		JWTSecret:   getEnv("JWT_SECRET", ""),
+		AppEnv:         getEnv("APP_ENV", "development"),
+		Port:           getEnv("PORT", "8002"),
+		DatabaseURL:    getEnv("DATABASE_URL", ""),
+		RabbitMQURL:    getEnv("RABBITMQ_URL", ""),
+		JWTSecret:      getEnv("JWT_SECRET", ""),
+		InternalAPIKey: getEnv("INTERNAL_API_KEY", ""),
 	}
 
 	if cfg.DatabaseURL == "" {
