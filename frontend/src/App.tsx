@@ -5,6 +5,7 @@ import Register from './pages/Register.tsx';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import Appointments from './pages/Appointments';
+import Payments from './pages/Payments';
 import PaymentStatus from './pages/PaymentStatus';
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/appointments" element={<Appointments />} />
+      <Route path="/payments" element={<Payments />} />
       
       {/* Payment redirection targets */}
       <Route path="/payment/success" element={<PaymentStatus type="success" />} />

@@ -23,6 +23,7 @@ type PaymentService interface {
 	Checkout(req *model.CheckoutRequest) (*model.CheckoutResponse, error)
 	HandlePayHereNotification(n *model.PayHereNotification) error
 	GetPaymentByID(id string) (*model.Payment, error)
+	ListPaymentsByPatient(patientID string) ([]*model.Payment, error)
 }
 
 func NewPaymentHandler(svc PaymentService, log *logger.Logger) *PaymentHandler {
@@ -36,6 +37,7 @@ func (h *PaymentHandler) RegisterRoutes(router *gin.Engine) {
 		payments.POST("/checkout", h.CheckoutPayment)
 		payments.POST("/webhook/payhere", h.PayHereWebhook)
 		payments.GET("/:id", h.GetPayment)
+		payments.GET("/patient/:patient_id", h.ListPayments)
 	}
 }
 
@@ -90,6 +92,27 @@ func (h *PaymentHandler) GetPayment(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, p)
+}
+
+func (h *PaymentHandler) ListPayments(c *gin.Context) {
+	patientID := c.Param("patient_id")
+	if _, err := uuid.Parse(patientID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid patient ID format"})
+		return
+	}
+
+	payments, err := h.svc.ListPaymentsByPatient(patientID)
+	if err != nil {
+		h.log.Error("Failed to list payments", "patient_id", patientID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list payments"})
+		return
+	}
+
+	if payments == nil {
+		payments = []*model.Payment{}
+	}
+
+	c.JSON(http.StatusOK, payments)
 }
 
 func (h *PaymentHandler) CheckoutPayment(c *gin.Context) {

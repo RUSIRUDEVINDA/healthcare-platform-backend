@@ -68,6 +68,14 @@ type AppointmentBookedEvent struct {
 	Timestamp         string  `json:"timestamp"`
 }
 
+// AppointmentCancelledEvent is published by appointment-service
+type AppointmentCancelledEvent struct {
+	AppointmentID string `json:"appointment_id"`
+	PatientID     string `json:"patient_id"`
+	Reason        string `json:"reason,omitempty"`
+	Timestamp     string `json:"timestamp"`
+}
+
 // PaymentCompletedEvent is published by payment-service
 // Subscribers:
 //   - appointment-service: marks appointment as paid
@@ -228,6 +236,11 @@ func (c *Client) PublishUserLoggedIn(event UserRegisteredEvent) error {
 func (c *Client) PublishAppointmentBooked(event AppointmentBookedEvent) error {
 	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
 	return c.publish(ExchangeAppointmentEvents, RoutingKeyAppointmentBooked, event)
+}
+
+func (c *Client) PublishAppointmentCancelled(event AppointmentCancelledEvent) error {
+	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	return c.publish(ExchangeAppointmentEvents, RoutingKeyAppointmentCancelled, event)
 }
 
 func (c *Client) PublishPaymentCompleted(event PaymentCompletedEvent) error {

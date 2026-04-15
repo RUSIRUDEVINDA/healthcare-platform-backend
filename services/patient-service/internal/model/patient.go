@@ -16,6 +16,8 @@ type Patient struct {
 	Address          *string    `json:"address,omitempty"`
 	EmergencyContact *string    `json:"emergency_contact,omitempty"`
 	BloodGroup       *string    `json:"blood_group,omitempty"`
+	Nationality      *string    `json:"nationality,omitempty"`
+	NIC              *string    `json:"nic,omitempty"`
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 }
@@ -27,6 +29,8 @@ type UpdatePatientRequest struct {
 	Address          *string       `json:"address"`
 	EmergencyContact *string       `json:"emergency_contact"`
 	BloodGroup       *string       `json:"blood_group"`
+	Nationality      *string       `json:"nationality"`
+	NIC              *string       `json:"nic"`
 }
 
 type PatchPatientRequest struct {
@@ -36,4 +40,6 @@ type PatchPatientRequest struct {
 	Address          *string       `json:"address,omitempty"`
 	EmergencyContact *string       `json:"emergency_contact,omitempty"`
 	BloodGroup       *string       `json:"blood_group,omitempty"`
+	Nationality      *string       `json:"nationality,omitempty"`
+	NIC              *string       `json:"nic,omitempty"`
 }
