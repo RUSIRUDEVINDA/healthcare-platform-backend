@@ -17,26 +17,30 @@ import (
 )
 
 type AppointmentService struct {
-	repo             *repository.AppointmentRepository
-	mq               *rabbitmq.Client
-	log              *logger.Logger
-	doctorServiceURL string
-	jitsiBaseURL     string
-	httpClient       *http.Client
+	repo              *repository.AppointmentRepository
+	mq                *rabbitmq.Client
+	log               *logger.Logger
+	doctorServiceURL  string
+	jitsiBaseURL      string
+	patientServiceURL string
+	internalAPIKey    string
+	httpClient        *http.Client
 }
 
-func NewAppointmentService(repo *repository.AppointmentRepository, mq *rabbitmq.Client, log *logger.Logger, doctorServiceURL, jitsiBaseURL string) *AppointmentService {
+func NewAppointmentService(repo *repository.AppointmentRepository, mq *rabbitmq.Client, log *logger.Logger, doctorServiceURL, jitsiBaseURL, patientServiceURL, internalAPIKey string) *AppointmentService {
 	return &AppointmentService{
-		repo:             repo,
-		mq:               mq,
-		log:              log,
-		doctorServiceURL: strings.TrimRight(doctorServiceURL, "/"),
-		jitsiBaseURL:     strings.TrimRight(jitsiBaseURL, "/"),
-		httpClient:       &http.Client{Timeout: 10 * time.Second},
+		repo:              repo,
+		mq:                mq,
+		log:               log,
+		doctorServiceURL:  strings.TrimRight(doctorServiceURL, "/"),
+		jitsiBaseURL:      strings.TrimRight(jitsiBaseURL, "/"),
+		patientServiceURL: strings.TrimRight(patientServiceURL, "/"),
+		internalAPIKey:    internalAPIKey,
+		httpClient:        &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
-func (s *AppointmentService) BookAppointment(patientID, role, callerToken string, req *model.BookAppointmentRequest) (*model.Appointment, error) {
+func (s *AppointmentService) BookAppointment(patientID, role, callerToken, patientFirstName, patientLastName string, req *model.BookAppointmentRequest) (*model.Appointment, error) {
 	if role != "patient" {
 		return nil, fmt.Errorf("only patients can book appointments")
 	}
@@ -57,6 +61,8 @@ func (s *AppointmentService) BookAppointment(patientID, role, callerToken string
 	now := time.Now().UTC()
 	appt := &model.Appointment{
 		PatientID:        patientID,
+		PatientFirstName: strings.TrimSpace(patientFirstName),
+		PatientLastName:  strings.TrimSpace(patientLastName),
 		Notes:            req.Notes,
 		ConsultationMode: consultationMode,
 		PaymentStatus:    model.PaymentPending,
@@ -154,6 +160,11 @@ func (s *AppointmentService) GetStatus(id, callerID, role string) (*model.Appoin
 	if !s.canAccessAppointment(appt, callerID, role) {
 		return nil, fmt.Errorf("forbidden: not your appointment")
 	}
+	if role == "doctor" {
+		batch := []model.Appointment{*appt}
+		s.enrichDoctorAppointmentPatientNames(batch)
+		*appt = batch[0]
+	}
 	return appt, nil
 }
 
@@ -162,12 +173,81 @@ func (s *AppointmentService) ListAppointments(callerID, role string) ([]model.Ap
 	case "patient":
 		return s.repo.ListAppointmentsByPatient(callerID)
 	case "doctor":
-		return s.repo.ListAppointmentsByDoctorOwner(callerID)
+		appts, err := s.repo.ListAppointmentsByDoctorOwner(callerID)
+		if err != nil {
+			return nil, err
+		}
+		s.enrichDoctorAppointmentPatientNames(appts)
+		return appts, nil
 	case "admin":
 		return s.repo.ListAppointmentsAll()
 	default:
 		return nil, fmt.Errorf("forbidden: invalid role")
 	}
+}
+
+func (s *AppointmentService) enrichDoctorAppointmentPatientNames(appts []model.Appointment) {
+	if len(appts) == 0 || s.patientServiceURL == "" || s.internalAPIKey == "" {
+		return
+	}
+	need := make(map[string]struct{})
+	for i := range appts {
+		a := &appts[i]
+		if strings.TrimSpace(a.PatientFirstName) != "" || strings.TrimSpace(a.PatientLastName) != "" {
+			continue
+		}
+		if pid := strings.TrimSpace(a.PatientID); pid != "" {
+			need[pid] = struct{}{}
+		}
+	}
+	cache := make(map[string]struct{ fn, ln string })
+	for pid := range need {
+		fn, ln, ok := s.lookupPatientDisplayName(pid)
+		if ok {
+			cache[pid] = struct{ fn, ln string }{fn, ln}
+		}
+	}
+	for i := range appts {
+		a := &appts[i]
+		if strings.TrimSpace(a.PatientFirstName) != "" || strings.TrimSpace(a.PatientLastName) != "" {
+			continue
+		}
+		if c, ok := cache[strings.TrimSpace(a.PatientID)]; ok {
+			a.PatientFirstName = c.fn
+			a.PatientLastName = c.ln
+		}
+	}
+}
+
+func (s *AppointmentService) lookupPatientDisplayName(patientUserID string) (firstName, lastName string, ok bool) {
+	u := fmt.Sprintf("%s/internal/v1/patients/by-user/%s", s.patientServiceURL, url.PathEscape(patientUserID))
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return "", "", false
+	}
+	req.Header.Set("X-Internal-Api-Key", s.internalAPIKey)
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		s.log.Warn("patient-service lookup failed", "error", err)
+		return "", "", false
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", "", false
+	}
+	var body struct {
+		FirstName string `json:"first_name"`
+		LastName  string `json:"last_name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return "", "", false
+	}
+	fn := strings.TrimSpace(body.FirstName)
+	ln := strings.TrimSpace(body.LastName)
+	if fn == "" && ln == "" {
+		return "", "", false
+	}
+	return fn, ln, true
 }
 
 func (s *AppointmentService) CancelAppointment(id, callerID, role string) error {
@@ -221,18 +301,31 @@ func (s *AppointmentService) CreateSlot(callerID, callerToken, role string, req 
 	}
 
 	doctorProfileID := strings.TrimSpace(req.DoctorID)
+	slotHospital := strings.TrimSpace(req.Hospital)
+
 	if role == "doctor" {
-		resolvedID, err := s.getCallerDoctorProfileID(callerToken)
+		resolvedID, profileHospital, err := s.fetchCallerDoctorMe(callerToken)
 		if err != nil {
 			return nil, err
+		}
+		profHosp := strings.TrimSpace(profileHospital)
+		if profHosp == "" {
+			return nil, fmt.Errorf("add your hospital on your profile before creating slots")
 		}
 		if doctorProfileID != "" && doctorProfileID != resolvedID {
 			return nil, fmt.Errorf("forbidden: you can only create slots for your own doctor profile")
 		}
 		doctorProfileID = resolvedID
-	}
-	if doctorProfileID == "" {
-		return nil, fmt.Errorf("doctor_id is required")
+		if slotHospital == "" {
+			slotHospital = profHosp
+		}
+		if slotHospital != profHosp {
+			return nil, fmt.Errorf("hospital must match your profile hospital (%s)", profHosp)
+		}
+	} else if role == "admin" {
+		if doctorProfileID == "" {
+			return nil, fmt.Errorf("doctor_id is required")
+		}
 	}
 
 	slot := &model.Slot{
@@ -241,6 +334,7 @@ func (s *AppointmentService) CreateSlot(callerID, callerToken, role string, req 
 		StartTime:   req.StartTime.UTC(),
 		EndTime:     req.EndTime.UTC(),
 		IsBooked:    false,
+		Hospital:    slotHospital,
 	}
 
 	if err := s.repo.CreateSlot(slot); err != nil {
@@ -250,7 +344,7 @@ func (s *AppointmentService) CreateSlot(callerID, callerToken, role string, req 
 	return slot, nil
 }
 
-func (s *AppointmentService) UpdateSlot(id, callerID, role string, req *model.UpdateSlotRequest) (*model.Slot, error) {
+func (s *AppointmentService) UpdateSlot(id, callerID, callerToken, role string, req *model.UpdateSlotRequest) (*model.Slot, error) {
 	if role != "doctor" && role != "admin" {
 		return nil, fmt.Errorf("only doctors or admins can update slots")
 	}
@@ -262,6 +356,9 @@ func (s *AppointmentService) UpdateSlot(id, callerID, role string, req *model.Up
 	if role != "admin" && slot.OwnerUserID != callerID {
 		return nil, fmt.Errorf("forbidden: not your slot")
 	}
+	if slot.IsBooked {
+		return nil, fmt.Errorf("cannot update a booked slot")
+	}
 
 	if req.IsBooked != nil {
 		return nil, fmt.Errorf("slot booking state is managed by the system")
@@ -271,6 +368,28 @@ func (s *AppointmentService) UpdateSlot(id, callerID, role string, req *model.Up
 	}
 	if req.EndTime != nil {
 		slot.EndTime = req.EndTime.UTC()
+	}
+	if req.Hospital != nil {
+		h := strings.TrimSpace(*req.Hospital)
+		if role == "doctor" {
+			_, profileHospital, derr := s.fetchCallerDoctorMe(callerToken)
+			if derr != nil {
+				return nil, derr
+			}
+			profHosp := strings.TrimSpace(profileHospital)
+			if profHosp == "" {
+				return nil, fmt.Errorf("add your hospital on your profile before updating slots")
+			}
+			if h == "" {
+				h = profHosp
+			}
+			if h != profHosp {
+				return nil, fmt.Errorf("hospital must match your profile hospital (%s)", profHosp)
+			}
+			slot.Hospital = h
+		} else {
+			slot.Hospital = h
+		}
 	}
 	if !slot.EndTime.After(slot.StartTime) {
 		return nil, fmt.Errorf("end time must be after start time")
@@ -401,40 +520,47 @@ func (s *AppointmentService) canManageAppointment(appt *model.Appointment, calle
 	}
 }
 
-type doctorProfileResponse struct {
-	Success bool `json:"success"`
-	Data    struct {
-		ID json.RawMessage `json:"id"`
-	} `json:"data"`
+type doctorMePayload struct {
+	ID       json.RawMessage `json:"id"`
+	Hospital string          `json:"hospital"`
 }
 
-func (s *AppointmentService) getCallerDoctorProfileID(token string) (string, error) {
+type doctorMeResponse struct {
+	Success bool            `json:"success"`
+	Data    doctorMePayload `json:"data"`
+}
+
+func normalizeDoctorProfileID(raw json.RawMessage) string {
+	s := strings.TrimSpace(string(raw))
+	return strings.Trim(s, `"`)
+}
+
+func (s *AppointmentService) fetchCallerDoctorMe(token string) (string, string, error) {
 	req, err := http.NewRequest(http.MethodGet, s.doctorServiceURL+"/doctors/me", nil)
 	if err != nil {
-		return "", fmt.Errorf("build doctor profile request: %w", err)
+		return "", "", fmt.Errorf("build doctor profile request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("doctor service unavailable")
+		return "", "", fmt.Errorf("doctor service unavailable")
 	}
 	defer resp.Body.Close()
 
-	var body doctorProfileResponse
+	var body doctorMeResponse
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		return "", fmt.Errorf("invalid doctor service response")
+		return "", "", fmt.Errorf("invalid doctor service response")
 	}
 	if !body.Success || len(body.Data.ID) == 0 || resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("doctor profile not found for current user")
+		return "", "", fmt.Errorf("doctor profile not found for current user")
 	}
 
-	id := strings.TrimSpace(string(body.Data.ID))
-	id = strings.Trim(id, `"`)
+	id := normalizeDoctorProfileID(body.Data.ID)
 	if id == "" {
-		return "", fmt.Errorf("doctor profile not found for current user")
+		return "", "", fmt.Errorf("doctor profile not found for current user")
 	}
-	return id, nil
+	return id, body.Data.Hospital, nil
 }
 
 func (s *AppointmentService) joinURL(roomName string) string {

@@ -202,7 +202,20 @@ func (s *FileService) profileImageExists(ctx context.Context, ownerID string) (*
 	return nil, nil
 }
 
-func (s *FileService) UploadPatientFile(ctx context.Context, callerID, role, callerToken, patientID string, fileHeader *multipart.FileHeader) (*model.FileRecord, bool, error) {
+func normalizeDocumentCategory(s string) string {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "prescription":
+		return "prescription"
+	case "medical_report", "report":
+		return "medical_report"
+	case "general":
+		return "general"
+	default:
+		return "general"
+	}
+}
+
+func (s *FileService) UploadPatientFile(ctx context.Context, callerID, role, callerToken, patientID, documentCategory string, fileHeader *multipart.FileHeader) (*model.FileRecord, bool, error) {
 	if err := s.canAccessPatientFiles(ctx, callerID, role, callerToken, patientID); err != nil {
 		return nil, false, err
 	}
@@ -211,6 +224,8 @@ func (s *FileService) UploadPatientFile(ctx context.Context, callerID, role, cal
 	if err != nil {
 		return nil, false, err
 	}
+
+	category := normalizeDocumentCategory(documentCategory)
 
 	if strings.HasPrefix(mimeType, "image/") {
 		stored, err := s.cloud.Upload(fileHeader.Filename, data, mimeType, patientID)
@@ -222,6 +237,7 @@ func (s *FileService) UploadPatientFile(ctx context.Context, callerID, role, cal
 			OwnerID:            patientID,
 			UploaderID:         callerID,
 			Kind:               model.FileKindImage,
+			DocumentCategory:   category,
 			StorageProvider:    model.StorageProviderCloudinary,
 			OriginalName:       fileHeader.Filename,
 			StoredName:         stored.StoredName,
@@ -265,18 +281,19 @@ func (s *FileService) UploadPatientFile(ctx context.Context, callerID, role, cal
 	}
 
 	record := &model.FileRecord{
-		OwnerID:         patientID,
-		UploaderID:      callerID,
-		Kind:            model.FileKindDocument,
-		StorageProvider: model.StorageProviderR2,
-		OriginalName:    fileHeader.Filename,
-		StoredName:      stored.StoredName,
-		MimeType:        mimeType,
-		SizeBytes:       int64(len(data)),
-		Checksum:        checksum,
-		R2Bucket:        stored.R2Bucket,
-		R2ObjectKey:     stored.R2ObjectKey,
-		IsPublic:        false,
+		OwnerID:          patientID,
+		UploaderID:       callerID,
+		Kind:             model.FileKindDocument,
+		DocumentCategory: category,
+		StorageProvider:  model.StorageProviderR2,
+		OriginalName:     fileHeader.Filename,
+		StoredName:       stored.StoredName,
+		MimeType:         mimeType,
+		SizeBytes:        int64(len(data)),
+		Checksum:         checksum,
+		R2Bucket:         stored.R2Bucket,
+		R2ObjectKey:      stored.R2ObjectKey,
+		IsPublic:         false,
 	}
 
 	if err := s.repo.Create(ctx, record); err != nil {
@@ -433,6 +450,7 @@ func (s *FileService) canAccessPatientFiles(ctx context.Context, callerID, role,
 
 type appointmentSummary struct {
 	PatientID string `json:"patient_id"`
+	Status    string `json:"status"`
 }
 
 func (s *FileService) doctorAssignedToPatient(ctx context.Context, callerToken, patientID string) (bool, error) {
@@ -460,8 +478,9 @@ func (s *FileService) doctorAssignedToPatient(ctx context.Context, callerToken, 
 	if err := json.NewDecoder(resp.Body).Decode(&appointments); err != nil {
 		return false, ErrRelationshipLookupFailed
 	}
+	want := strings.TrimSpace(patientID)
 	for _, appt := range appointments {
-		if strings.TrimSpace(appt.PatientID) == strings.TrimSpace(patientID) {
+		if strings.TrimSpace(appt.PatientID) == want {
 			return true, nil
 		}
 	}

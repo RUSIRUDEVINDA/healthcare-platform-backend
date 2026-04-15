@@ -157,6 +157,8 @@ func runMigrations(db *sql.DB) error {
 		CREATE INDEX IF NOT EXISTS idx_files_kind ON files(kind);
 		CREATE INDEX IF NOT EXISTS idx_files_storage_provider ON files(storage_provider);
 		CREATE INDEX IF NOT EXISTS idx_files_created_at ON files(created_at);
+
+		ALTER TABLE files ADD COLUMN IF NOT EXISTS document_category TEXT NOT NULL DEFAULT '';
 	`)
 	return err
 }

@@ -51,7 +51,7 @@ func main() {
 
 	// Setup Business Logic
 	appointmentRepo := repository.NewAppointmentRepository(db)
-	appointmentSvc := service.NewAppointmentService(appointmentRepo, mqClient, log, cfg.DoctorServiceURL, cfg.JitsiBaseURL)
+	appointmentSvc := service.NewAppointmentService(appointmentRepo, mqClient, log, cfg.DoctorServiceURL, cfg.JitsiBaseURL, cfg.PatientServiceURL, cfg.InternalAPIKey)
 	appointmentHandler := handler.NewAppointmentHandler(appointmentSvc, log)
 	appointmentConsumer := messaging.NewAppointmentConsumer(mqClient, appointmentSvc, log)
 
@@ -174,8 +174,11 @@ func runMigrations(db *sql.DB, log *logger.Logger) error {
 	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'pending';
 	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS payment_due_at TIMESTAMPTZ;
 	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
+	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS patient_first_name TEXT NOT NULL DEFAULT '';
+	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS patient_last_name TEXT NOT NULL DEFAULT '';
 	ALTER TABLE slots ALTER COLUMN doctor_id TYPE TEXT USING doctor_id::text;
 	ALTER TABLE slots ADD COLUMN IF NOT EXISTS owner_user_id TEXT NOT NULL DEFAULT '';
+	ALTER TABLE slots ADD COLUMN IF NOT EXISTS hospital TEXT NOT NULL DEFAULT '';
 
 	CREATE INDEX IF NOT EXISTS idx_appointments_patient ON appointments(patient_id);
 	CREATE INDEX IF NOT EXISTS idx_appointments_doctor  ON appointments(doctor_id);

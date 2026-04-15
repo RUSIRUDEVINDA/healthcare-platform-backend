@@ -29,6 +29,7 @@ type FileRecord struct {
 	OwnerID            string          `json:"owner_id"`
 	UploaderID         string          `json:"uploader_id"`
 	Kind               FileKind        `json:"kind"`
+	DocumentCategory   string          `json:"document_category,omitempty"`
 	StorageProvider    StorageProvider `json:"storage_provider"`
 	OriginalName       string          `json:"original_name"`
 	StoredName         string          `json:"stored_name"`

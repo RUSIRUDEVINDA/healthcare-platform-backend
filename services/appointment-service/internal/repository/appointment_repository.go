@@ -79,12 +79,12 @@ func (r *AppointmentRepository) Create(a *model.Appointment) error {
 
 	_, err = tx.Exec(`
 		INSERT INTO appointments (
-			id, patient_id, doctor_id, doctor_owner_user_id, slot_id, consultation_mode, room_name, join_url, scheduled_at,
+			id, patient_id, patient_first_name, patient_last_name, doctor_id, doctor_owner_user_id, slot_id, consultation_mode, room_name, join_url, scheduled_at,
 			duration_minutes, status, payment_status, payment_due_at, paid_at,
 			notes, created_at, updated_at
 		)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
-		a.ID, a.PatientID, a.DoctorID, a.DoctorOwnerUserID, a.SlotID, a.ConsultationMode, a.RoomName, a.JoinURL, a.ScheduledAt,
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+		a.ID, a.PatientID, a.PatientFirstName, a.PatientLastName, a.DoctorID, a.DoctorOwnerUserID, a.SlotID, a.ConsultationMode, a.RoomName, a.JoinURL, a.ScheduledAt,
 		a.DurationMinutes, a.Status, a.PaymentStatus, a.PaymentDueAt, a.PaidAt,
 		a.Notes, a.CreatedAt, a.UpdatedAt,
 	)
@@ -104,11 +104,11 @@ func (r *AppointmentRepository) GetByID(id string) (*model.Appointment, error) {
 	var joinURL sql.NullString
 
 	err := r.db.QueryRow(`
-		SELECT id, patient_id, doctor_id, doctor_owner_user_id, slot_id, consultation_mode, room_name, join_url, scheduled_at, duration_minutes,
+		SELECT id, patient_id, patient_first_name, patient_last_name, doctor_id, doctor_owner_user_id, slot_id, consultation_mode, room_name, join_url, scheduled_at, duration_minutes,
 		       status, payment_status, payment_due_at, paid_at, notes, created_at, updated_at
 		FROM appointments WHERE id = $1`, id).
 		Scan(
-			&a.ID, &a.PatientID, &a.DoctorID, &a.DoctorOwnerUserID, &slotID, &a.ConsultationMode, &roomName, &joinURL, &a.ScheduledAt, &a.DurationMinutes,
+			&a.ID, &a.PatientID, &a.PatientFirstName, &a.PatientLastName, &a.DoctorID, &a.DoctorOwnerUserID, &slotID, &a.ConsultationMode, &roomName, &joinURL, &a.ScheduledAt, &a.DurationMinutes,
 			&a.Status, &a.PaymentStatus, &paymentDueAt, &paidAt, &a.Notes, &a.CreatedAt, &a.UpdatedAt,
 		)
 	if err == sql.ErrNoRows {
@@ -151,7 +151,7 @@ func (r *AppointmentRepository) ListAppointmentsAll() ([]model.Appointment, erro
 
 func (r *AppointmentRepository) listAppointments(clause string, args ...interface{}) ([]model.Appointment, error) {
 	query := `
-		SELECT id, patient_id, doctor_id, doctor_owner_user_id, slot_id, consultation_mode, room_name, join_url, scheduled_at, duration_minutes,
+		SELECT id, patient_id, patient_first_name, patient_last_name, doctor_id, doctor_owner_user_id, slot_id, consultation_mode, room_name, join_url, scheduled_at, duration_minutes,
 		       status, payment_status, payment_due_at, paid_at, notes, created_at, updated_at
 		FROM appointments `
 	query += clause
@@ -171,7 +171,7 @@ func (r *AppointmentRepository) listAppointments(clause string, args ...interfac
 		var roomName sql.NullString
 		var joinURL sql.NullString
 		if err := rows.Scan(
-			&a.ID, &a.PatientID, &a.DoctorID, &a.DoctorOwnerUserID, &slotID, &a.ConsultationMode, &roomName, &joinURL, &a.ScheduledAt, &a.DurationMinutes,
+			&a.ID, &a.PatientID, &a.PatientFirstName, &a.PatientLastName, &a.DoctorID, &a.DoctorOwnerUserID, &slotID, &a.ConsultationMode, &roomName, &joinURL, &a.ScheduledAt, &a.DurationMinutes,
 			&a.Status, &a.PaymentStatus, &paymentDueAt, &paidAt, &a.Notes, &a.CreatedAt, &a.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -218,7 +218,7 @@ func (r *AppointmentRepository) MarkPaymentCompleted(id string) error {
 
 func (r *AppointmentRepository) FindOverdueUnpaid(now time.Time) ([]model.Appointment, error) {
 	rows, err := r.db.Query(`
-		SELECT id, patient_id, doctor_id, doctor_owner_user_id, slot_id, consultation_mode, room_name, join_url, scheduled_at, duration_minutes,
+		SELECT id, patient_id, patient_first_name, patient_last_name, doctor_id, doctor_owner_user_id, slot_id, consultation_mode, room_name, join_url, scheduled_at, duration_minutes,
 		       status, payment_status, payment_due_at, paid_at, notes, created_at, updated_at
 		FROM appointments
 		WHERE payment_status = $1
@@ -241,7 +241,7 @@ func (r *AppointmentRepository) FindOverdueUnpaid(now time.Time) ([]model.Appoin
 		var roomName sql.NullString
 		var joinURL sql.NullString
 		if err := rows.Scan(
-			&a.ID, &a.PatientID, &a.DoctorID, &a.DoctorOwnerUserID, &slotID, &a.ConsultationMode, &roomName, &joinURL, &a.ScheduledAt, &a.DurationMinutes,
+			&a.ID, &a.PatientID, &a.PatientFirstName, &a.PatientLastName, &a.DoctorID, &a.DoctorOwnerUserID, &slotID, &a.ConsultationMode, &roomName, &joinURL, &a.ScheduledAt, &a.DurationMinutes,
 			&a.Status, &a.PaymentStatus, &paymentDueAt, &paidAt, &a.Notes, &a.CreatedAt, &a.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -311,7 +311,7 @@ func (r *AppointmentRepository) ReleaseSlot(slotID string) error {
 
 func (r *AppointmentRepository) GetSlotsByDoctor(doctorID, status string) ([]model.Slot, error) {
 	query := `
-		SELECT id, doctor_id, owner_user_id, start_time, end_time, is_booked
+		SELECT id, doctor_id, owner_user_id, start_time, end_time, is_booked, hospital
 		FROM slots
 		WHERE doctor_id = $1
 		  AND start_time > NOW()`
@@ -338,7 +338,7 @@ func (r *AppointmentRepository) GetSlotsByDoctor(doctorID, status string) ([]mod
 	var slots []model.Slot
 	for rows.Next() {
 		var s model.Slot
-		if err := rows.Scan(&s.ID, &s.DoctorID, &s.OwnerUserID, &s.StartTime, &s.EndTime, &s.IsBooked); err != nil {
+		if err := rows.Scan(&s.ID, &s.DoctorID, &s.OwnerUserID, &s.StartTime, &s.EndTime, &s.IsBooked, &s.Hospital); err != nil {
 			return nil, err
 		}
 		slots = append(slots, s)
@@ -360,9 +360,9 @@ func (r *AppointmentRepository) CreateSlot(s *model.Slot) error {
 	}
 
 	_, err = r.db.Exec(`
-		INSERT INTO slots (id, doctor_id, owner_user_id, start_time, end_time, is_booked)
-		VALUES ($1, $2, $3, $4, $5, $6)`,
-		s.ID, s.DoctorID, s.OwnerUserID, s.StartTime, s.EndTime, s.IsBooked,
+		INSERT INTO slots (id, doctor_id, owner_user_id, start_time, end_time, is_booked, hospital)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		s.ID, s.DoctorID, s.OwnerUserID, s.StartTime, s.EndTime, s.IsBooked, s.Hospital,
 	)
 	return err
 }
@@ -370,9 +370,9 @@ func (r *AppointmentRepository) CreateSlot(s *model.Slot) error {
 func (r *AppointmentRepository) GetSlotByID(id string) (*model.Slot, error) {
 	s := &model.Slot{}
 	err := r.db.QueryRow(`
-		SELECT id, doctor_id, owner_user_id, start_time, end_time, is_booked
+		SELECT id, doctor_id, owner_user_id, start_time, end_time, is_booked, hospital
 		FROM slots WHERE id = $1`, id).
-		Scan(&s.ID, &s.DoctorID, &s.OwnerUserID, &s.StartTime, &s.EndTime, &s.IsBooked)
+		Scan(&s.ID, &s.DoctorID, &s.OwnerUserID, &s.StartTime, &s.EndTime, &s.IsBooked, &s.Hospital)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -393,9 +393,9 @@ func (r *AppointmentRepository) UpdateSlot(s *model.Slot) error {
 
 	_, err = r.db.Exec(`
 		UPDATE slots
-		SET start_time = $1, end_time = $2, is_booked = $3
-		WHERE id = $4`,
-		s.StartTime, s.EndTime, s.IsBooked, s.ID,
+		SET start_time = $1, end_time = $2, is_booked = $3, hospital = $4
+		WHERE id = $5`,
+		s.StartTime, s.EndTime, s.IsBooked, s.Hospital, s.ID,
 	)
 	return err
 }
@@ -439,7 +439,7 @@ func (r *AppointmentRepository) DeleteByPatientID(patientID string) error {
 }
 
 func (r *AppointmentRepository) ListSlots() ([]model.Slot, error) {
-	rows, err := r.db.Query(`SELECT id, doctor_id, owner_user_id, start_time, end_time, is_booked FROM slots ORDER BY start_time DESC`)
+	rows, err := r.db.Query(`SELECT id, doctor_id, owner_user_id, start_time, end_time, is_booked, hospital FROM slots ORDER BY start_time DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -448,7 +448,7 @@ func (r *AppointmentRepository) ListSlots() ([]model.Slot, error) {
 	var slots []model.Slot
 	for rows.Next() {
 		var s model.Slot
-		if err := rows.Scan(&s.ID, &s.DoctorID, &s.OwnerUserID, &s.StartTime, &s.EndTime, &s.IsBooked); err != nil {
+		if err := rows.Scan(&s.ID, &s.DoctorID, &s.OwnerUserID, &s.StartTime, &s.EndTime, &s.IsBooked, &s.Hospital); err != nil {
 			return nil, err
 		}
 		slots = append(slots, s)
@@ -458,7 +458,7 @@ func (r *AppointmentRepository) ListSlots() ([]model.Slot, error) {
 
 func (r *AppointmentRepository) ListSlotsByOwner(ownerUserID string) ([]model.Slot, error) {
 	rows, err := r.db.Query(`
-		SELECT id, doctor_id, owner_user_id, start_time, end_time, is_booked
+		SELECT id, doctor_id, owner_user_id, start_time, end_time, is_booked, hospital
 		FROM slots
 		WHERE owner_user_id = $1
 		ORDER BY start_time DESC`, ownerUserID)
@@ -470,7 +470,7 @@ func (r *AppointmentRepository) ListSlotsByOwner(ownerUserID string) ([]model.Sl
 	var slots []model.Slot
 	for rows.Next() {
 		var s model.Slot
-		if err := rows.Scan(&s.ID, &s.DoctorID, &s.OwnerUserID, &s.StartTime, &s.EndTime, &s.IsBooked); err != nil {
+		if err := rows.Scan(&s.ID, &s.DoctorID, &s.OwnerUserID, &s.StartTime, &s.EndTime, &s.IsBooked, &s.Hospital); err != nil {
 			return nil, err
 		}
 		slots = append(slots, s)

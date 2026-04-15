@@ -8,6 +8,7 @@ export interface Doctor {
     specialization: string;
     experience: number;
     hospital: string;
+    channeling_fee: number;
     nic: string;
     slmc_no: string;
     created_at: string;
