@@ -105,6 +105,18 @@ func (h *AppointmentHandler) Book(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		if strings.Contains(err.Error(), "doctor channeling fee is not configured") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if strings.Contains(err.Error(), "doctor profile not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		if strings.Contains(err.Error(), "doctor service unavailable") {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
 		if strings.Contains(err.Error(), "slot not found") {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
@@ -141,7 +153,6 @@ func (h *AppointmentHandler) GetStatus(c *gin.Context) {
 func (h *AppointmentHandler) ListAppointments(c *gin.Context) {
 	userID, _ := middleware.CallerID(c)
 	role, _ := middleware.CallerRole(c)
-
 	appointments, err := h.svc.ListAppointments(userID, role)
 	if err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
@@ -264,6 +275,10 @@ func (h *AppointmentHandler) CreateSlot(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		if strings.Contains(err.Error(), "hospital is required") || strings.Contains(err.Error(), "doctor_id is required") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		if strings.Contains(err.Error(), "slot overlaps an existing slot for this doctor") {
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			return
@@ -299,6 +314,10 @@ func (h *AppointmentHandler) UpdateSlot(c *gin.Context) {
 	slot, err := h.svc.UpdateSlot(id, userID, role, &req)
 	if err != nil {
 		if strings.Contains(err.Error(), "end time must be after start time") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if strings.Contains(err.Error(), "hospital is required") {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
