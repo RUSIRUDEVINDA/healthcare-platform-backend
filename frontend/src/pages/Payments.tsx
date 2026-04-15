@@ -137,12 +137,12 @@ export default function Payments() {
               <CreditCard className="h-[18px] w-[18px]" /> Payments
             </Link>
           )}
-          <a
-            href="#"
+          <Link
+            to="/records"
             className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
           >
             <ClipboardList className="h-[18px] w-[18px]" /> Records
-          </a>
+          </Link>
         </nav>
 
         <div className="p-4 border-t border-gray-100 mx-4 mb-4">
