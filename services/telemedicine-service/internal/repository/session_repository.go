@@ -213,3 +213,11 @@ func (r *SessionRepository) MarkEnded(id string) error {
 	}
 	return nil
 }
+
+func (r *SessionRepository) DeleteByPatientID(patientID string) error {
+	_, err := r.db.Exec(`DELETE FROM telemedicine_sessions WHERE patient_id = $1`, patientID)
+	if err != nil {
+		return fmt.Errorf("repository.DeleteByPatientID: %w", err)
+	}
+	return nil
+}
