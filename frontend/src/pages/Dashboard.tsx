@@ -1,10 +1,32 @@
 import { useState, useEffect } from 'react';
-import { LogOut, User, Activity, Calendar, ClipboardList, CreditCard } from 'lucide-react';
+import { LogOut, User, Activity, Calendar, ClipboardList, CreditCard, Video } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { doctorApi, type DoctorProfile } from '../api/doctor';
 import { appointmentApi, type Appointment } from '../api/appointments';
 import { doctorApi as doctorsListApi, type Doctor } from '../api/doctors';
+
+function getPatientDisplayName(appt: Appointment): string {
+  const f = appt.patient_first_name?.trim() || '';
+  const l = appt.patient_last_name?.trim() || '';
+  if (f || l) {
+    return `${f} ${l}`.trim();
+  }
+  const id = appt.patient_id || '';
+  return id.length > 10 ? `Patient ${id.slice(0, 8)}…` : 'Patient';
+}
+
+function canJoinJitsiVisit(appt: Appointment): boolean {
+  const mode = appt.consultation_mode;
+  const video = mode === 'jitsi' || mode === 'video';
+  if (!video || !(appt.join_url && appt.join_url.trim())) {
+    return false;
+  }
+  if (appt.status === 'cancelled' || appt.status === 'completed') {
+    return false;
+  }
+  return true;
+}
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<PatientProfile | DoctorProfile | null>(null);
@@ -136,12 +158,12 @@ export default function Dashboard() {
               <CreditCard className="h-[18px] w-[18px]" /> Payments
             </Link>
           )}
-          <a
-            href="#"
+          <Link
+            to="/records"
             className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
           >
             <ClipboardList className="h-[18px] w-[18px]" /> Records
-          </a>
+          </Link>
         </nav>
 
         <div className="p-4 border-t border-gray-100 mx-4 mb-4">
@@ -193,13 +215,17 @@ export default function Dashboard() {
                 <>
                   <h4 className="text-xl font-bold text-gray-900 mt-1">{formatDate(nextAppointment.scheduled_at)}</h4>
                   <p className="text-sm text-gray-400 mt-2">
-                    {getDoctorName(nextAppointment)} • {formatTime(nextAppointment.scheduled_at)}
+                    {role === 'doctor'
+                      ? `${getPatientDisplayName(nextAppointment)} • ${formatTime(nextAppointment.scheduled_at)}`
+                      : `${getDoctorName(nextAppointment)} • ${formatTime(nextAppointment.scheduled_at)}`}
                   </p>
                 </>
               ) : (
                 <>
                   <h4 className="text-xl font-bold text-gray-400 mt-1">No upcoming</h4>
-                  <p className="text-sm text-gray-400 mt-2">Book your next session</p>
+                  <p className="text-sm text-gray-400 mt-2">
+                    {role === 'doctor' ? 'No visits scheduled yet' : 'Book your next session'}
+                  </p>
                 </>
               )}
             </div>
@@ -238,16 +264,31 @@ export default function Dashboard() {
                       </div>
                       <div className="flex-1">
                         <h5 className="font-bold text-gray-900 capitalize">{appt.consultation_mode} Consultation</h5>
-                        <p className="text-sm text-gray-500">Dr. {getDoctorName(appt)}</p>
+                        <p className="text-sm text-gray-500">
+                          {role === 'doctor' ? getPatientDisplayName(appt) : `Dr. ${getDoctorName(appt)}`}
+                        </p>
                       </div>
-                      <div className="text-right text-sm">
-                        <p className="font-semibold text-gray-900">{formatTime(appt.scheduled_at)}</p>
-                        <span className={`px-2 py-1 rounded-md text-xs font-bold uppercase ${
-                          appt.status === 'confirmed' ? 'bg-green-50 text-green-600' : 
-                          appt.status === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-gray-600'
-                        }`}>
-                          {appt.status}
-                        </span>
+                      <div className="text-right text-sm flex flex-col items-end gap-2">
+                        <div>
+                          <p className="font-semibold text-gray-900">{formatTime(appt.scheduled_at)}</p>
+                          <span className={`px-2 py-1 rounded-md text-xs font-bold uppercase ${
+                            appt.status === 'confirmed' ? 'bg-green-50 text-green-600' : 
+                            appt.status === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-gray-600'
+                          }`}>
+                            {appt.status}
+                          </span>
+                        </div>
+                        {canJoinJitsiVisit(appt) && (
+                          <a
+                            href={appt.join_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs font-bold text-brand hover:underline"
+                          >
+                            <Video className="h-3.5 w-3.5" />
+                            {role === 'doctor' ? 'Join Jitsi' : 'Join'}
+                          </a>
+                        )}
                       </div>
                     </div>
                   ))
@@ -255,7 +296,9 @@ export default function Dashboard() {
                   <div className="text-center py-10">
                     <Calendar className="h-10 w-10 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500">No upcoming appointments found.</p>
-                    <Link to="/appointments" className="text-brand text-sm font-semibold mt-2 inline-block">Book Now</Link>
+                    {role !== 'doctor' && (
+                      <Link to="/appointments" className="text-brand text-sm font-semibold mt-2 inline-block">Book Now</Link>
+                    )}
                   </div>
                 )}
               </div>
