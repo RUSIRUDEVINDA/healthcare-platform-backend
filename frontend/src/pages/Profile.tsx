@@ -175,7 +175,7 @@ export default function Profile() {
             <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
               <Activity className="h-4 w-4 text-white" />
             </div>
-            <span className="text-lg font-bold text-gray-900 tracking-tight">AyaRX</span>
+            <span className="text-lg font-medium text-gray-900 tracking-tight">MediPulse SriLanka</span>
           </Link>
         </div>
 
@@ -207,12 +207,12 @@ export default function Profile() {
               <CreditCard className="h-[18px] w-[18px]" /> Payments
             </Link>
           )}
-          <a
-            href="#"
+          <Link
+            to="/records"
             className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
           >
             <ClipboardList className="h-[18px] w-[18px]" /> Records
-          </a>
+          </Link>
         </nav>
 
         <div className="p-4 border-t border-gray-100 mx-4 mb-4">
@@ -549,13 +549,13 @@ export default function Profile() {
                               </div>
                             </div>
                             <div className="flex items-start">
-                                <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600 mr-4">
-                                    <CreditCard className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">NIC Number</p>
-                                    <p className="text-gray-900 font-medium font-bold">{(profile as DoctorProfile).nic}</p>
-                                </div>
+                              <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600 mr-4">
+                                <CreditCard className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">NIC Number</p>
+                                <p className="text-gray-900 font-medium font-bold">{(profile as DoctorProfile).nic}</p>
+                              </div>
                             </div>
                           </>
                         ) : (
