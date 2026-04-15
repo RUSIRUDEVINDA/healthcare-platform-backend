@@ -79,9 +79,7 @@ func (h *AppointmentHandler) Book(c *gin.Context) {
 		}
 	}
 
-	patientFirst, _ := middleware.CallerFirstName(c)
-	patientLast, _ := middleware.CallerLastName(c)
-	appt, err := h.svc.BookAppointment(userID, role, token, patientFirst, patientLast, &req)
+	appt, err := h.svc.BookAppointment(userID, role, token, &req)
 	if err != nil {
 		if strings.Contains(err.Error(), "only patients can book appointments") {
 			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
@@ -278,6 +276,9 @@ func (h *AppointmentHandler) CreateSlot(c *gin.Context) {
 			return
 		}
 		if strings.Contains(err.Error(), "hospital is required") || strings.Contains(err.Error(), "doctor_id is required") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		if strings.Contains(err.Error(), "cannot be in the past") {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
@@ -320,13 +321,7 @@ func (h *AppointmentHandler) UpdateSlot(c *gin.Context) {
 		return
 	}
 
-	token, ok := middleware.CallerToken(c)
-	if !ok || token == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing caller token"})
-		return
-	}
-
-	slot, err := h.svc.UpdateSlot(id, userID, token, role, &req)
+	slot, err := h.svc.UpdateSlot(id, userID, role, &req)
 	if err != nil {
 		if strings.Contains(err.Error(), "slot not found") {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
