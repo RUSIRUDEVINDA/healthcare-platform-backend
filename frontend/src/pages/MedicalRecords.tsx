@@ -219,9 +219,9 @@ export default function MedicalRecords() {
     }
 
     return (
-        <div className="flex min-h-screen flex-1 flex-col bg-[#f6f8fa] font-sans">
-                <header className="bg-white border-b border-gray-100 px-6 sm:px-8 py-4 sticky top-0 z-10">
-                    <div className="max-w-4xl">
+        <div className="flex min-h-screen min-w-0 w-full flex-1 flex-col bg-[#f6f8fa] font-sans">
+                <header className="sticky top-0 z-10 w-full border-b border-gray-100 bg-white px-6 sm:px-8 py-4">
+                    <div className="w-full max-w-none">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">
@@ -246,8 +246,8 @@ export default function MedicalRecords() {
                         </div>
                     </div>
                 </header>
-                <main className="flex-1 p-6 sm:p-8 overflow-y-auto">
-                    <div className="max-w-4xl space-y-6">
+                <main className="min-w-0 w-full flex-1 overflow-y-auto overflow-x-hidden p-6 sm:p-8">
+                    <div className="w-full max-w-none space-y-6">
                         {isDoctor && (
                             <section
                                 className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6"
@@ -414,25 +414,28 @@ export default function MedicalRecords() {
                                     </p>
                                 </div>
                             ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-sm">
+                                <div className="w-full min-w-0 overflow-x-auto">
+                                    <table className="w-full min-w-0 text-left text-sm">
                                         <thead>
                                             <tr className="border-b border-gray-100 text-xs font-semibold uppercase tracking-wide text-gray-400 bg-white">
-                                                <th className="px-5 py-3 font-medium">Document</th>
-                                                <th className="px-5 py-3 font-medium hidden sm:table-cell">Category</th>
-                                                <th className="px-5 py-3 font-medium hidden md:table-cell">Format</th>
-                                                <th className="px-5 py-3 font-medium hidden lg:table-cell">Size</th>
-                                                <th className="px-5 py-3 font-medium hidden md:table-cell">Added</th>
-                                                <th className="px-5 py-3 font-medium text-right w-[1%]">Action</th>
+                                                <th className="min-w-0 px-5 py-3 font-medium">Document</th>
+                                                <th className="whitespace-nowrap px-5 py-3 font-medium hidden sm:table-cell">Category</th>
+                                                <th className="whitespace-nowrap px-5 py-3 font-medium hidden md:table-cell">Format</th>
+                                                <th className="whitespace-nowrap px-5 py-3 font-medium hidden lg:table-cell">Size</th>
+                                                <th className="whitespace-nowrap px-5 py-3 font-medium hidden md:table-cell">Added</th>
+                                                <th className="w-px whitespace-nowrap px-5 py-3 text-right font-medium">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-50">
                                             {clinicalFiles.map((f) => (
                                                 <tr key={f.id} className="hover:bg-gray-50/80 transition-colors">
-                                                    <td className="px-5 py-3.5">
-                                                        <div className="flex items-start gap-2 min-w-0 max-w-[240px] sm:max-w-xs">
-                                                            <FileText className="h-4 w-4 text-gray-400 shrink-0 mt-0.5" aria-hidden />
-                                                            <span className="font-medium text-gray-900 truncate" title={f.original_name}>
+                                                    <td className="min-w-0 px-5 py-3.5 align-top">
+                                                        <div className="flex min-w-0 items-start gap-2">
+                                                            <FileText className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" aria-hidden />
+                                                            <span
+                                                                className="min-w-0 break-words font-medium text-gray-900"
+                                                                title={f.original_name}
+                                                            >
                                                                 {f.original_name}
                                                             </span>
                                                         </div>

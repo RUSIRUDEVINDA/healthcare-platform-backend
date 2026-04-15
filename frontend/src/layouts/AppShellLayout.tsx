@@ -85,7 +85,7 @@ export default function AppShellLayout() {
                 </div>
             </aside>
 
-            <div className="min-h-screen lg:pl-60">
+            <div className="min-h-screen min-w-0 w-full lg:pl-60">
                 <Outlet />
             </div>
         </div>
