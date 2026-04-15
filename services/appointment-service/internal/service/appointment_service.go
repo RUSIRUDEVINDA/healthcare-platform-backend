@@ -184,7 +184,19 @@ func (s *AppointmentService) CancelAppointment(id, callerID, role string) error 
 		paymentStatus = model.PaymentExpired
 	}
 
-	return s.repo.CancelAndRelease(id, paymentStatus)
+	if err := s.repo.CancelAndRelease(id, paymentStatus); err != nil {
+		return err
+	}
+
+	event := rabbitmq.AppointmentCancelledEvent{
+		AppointmentID: appt.ID,
+		PatientID:     appt.PatientID,
+	}
+	if err := s.mq.PublishAppointmentCancelled(event); err != nil {
+		s.log.Error("Failed to publish appointment.cancelled event", "error", err)
+	}
+
+	return nil
 }
 
 func (s *AppointmentService) GetDoctorSlots(doctorID, status string) ([]model.Slot, error) {
