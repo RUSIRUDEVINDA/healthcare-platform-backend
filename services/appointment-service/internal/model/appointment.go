@@ -88,6 +88,7 @@ type Slot struct {
 	ID          string    `json:"id"`
 	DoctorID    string    `json:"doctor_id"`
 	OwnerUserID string    `json:"owner_user_id"`
+	Hospital    string    `json:"hospital"`
 	StartTime   time.Time `json:"start_time"`
 	EndTime     time.Time `json:"end_time"`
 	IsBooked    bool      `json:"is_booked"`
@@ -117,6 +118,7 @@ type AppointmentStatusUpdateRequest struct {
 
 type CreateSlotRequest struct {
 	DoctorID  string    `json:"doctor_id" binding:"required"`
+	Hospital  string    `json:"hospital" binding:"required"`
 	StartTime time.Time `json:"start_time" binding:"required"`
 	EndTime   time.Time `json:"end_time" binding:"required"`
 }
@@ -125,6 +127,7 @@ type UpdateSlotRequest struct {
 	StartTime *time.Time `json:"start_time"`
 	EndTime   *time.Time `json:"end_time"`
 	IsBooked  *bool      `json:"is_booked"`
+	Hospital  *string    `json:"hospital"`
 }
 
 // ---- RabbitMQ Event ----
