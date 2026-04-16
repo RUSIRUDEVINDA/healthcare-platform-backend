@@ -353,24 +353,24 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-nowrap gap-2.5">
                     <Link
                       to="/appointments"
-                      className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-sm"
+                      className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm whitespace-nowrap"
                     >
                       Consultations · slots
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                     <Link
                       to="/profile"
-                      className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-medium text-brand shadow-sm border border-brand/10"
+                      className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-3 text-sm font-medium text-brand shadow-sm border border-brand/10 whitespace-nowrap"
                     >
                       Profile
                       <User className="h-4 w-4" />
                     </Link>
                     <Link
                       to="/records"
-                      className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-medium text-brand shadow-sm border border-brand/10"
+                      className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-3 text-sm font-medium text-brand shadow-sm border border-brand/10 whitespace-nowrap"
                     >
                       Medical records
                       <ClipboardList className="h-4 w-4" />
