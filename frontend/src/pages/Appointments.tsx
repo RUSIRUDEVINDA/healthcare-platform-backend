@@ -320,7 +320,9 @@ export default function Appointments() {
         const q = searchQuery.toLowerCase();
         const hosp = (slot.hospital ?? '').toLowerCase();
         const startLabel = new Date(slot.start_time).toLocaleString().toLowerCase();
-        return hosp.includes(q) || startLabel.includes(q) || (slot.is_booked ? 'booked' : 'available').includes(q);
+        const hasEnded = new Date(slot.end_time).getTime() <= Date.now();
+        const slotState = slot.is_booked ? 'booked' : hasEnded ? 'unavailable' : 'available';
+        return hosp.includes(q) || startLabel.includes(q) || slotState.includes(q);
     });
 
     const consultationsTotalPages = Math.max(1, Math.ceil(filteredAppointments.length / consultationsPageSize));
@@ -564,7 +566,7 @@ export default function Appointments() {
                                             released by cancelling the associated consultation.
                                         </p>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:min-w-[27rem]">
+                                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 lg:min-w-[35rem]">
                                         <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                                             <p className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">Total slots</p>
                                             <p className="mt-1 text-xl font-semibold text-gray-900">{filteredMySlots.length}</p>
@@ -572,7 +574,21 @@ export default function Appointments() {
                                         <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
                                             <p className="text-[11px] uppercase tracking-wider text-emerald-600 font-semibold">Available</p>
                                             <p className="mt-1 text-xl font-semibold text-emerald-700">
-                                                {filteredMySlots.filter((s) => !s.is_booked).length}
+                                                {
+                                                    filteredMySlots.filter(
+                                                        (s) => !s.is_booked && new Date(s.end_time).getTime() > Date.now()
+                                                    ).length
+                                                }
+                                            </p>
+                                        </div>
+                                        <div className="rounded-xl border border-slate-200 bg-slate-100 px-4 py-3">
+                                            <p className="text-[11px] uppercase tracking-wider text-slate-600 font-semibold">Unavailable</p>
+                                            <p className="mt-1 text-xl font-semibold text-slate-700">
+                                                {
+                                                    filteredMySlots.filter(
+                                                        (s) => !s.is_booked && new Date(s.end_time).getTime() <= Date.now()
+                                                    ).length
+                                                }
                                             </p>
                                         </div>
                                         <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
@@ -657,6 +673,7 @@ export default function Appointments() {
                                             <tbody className="divide-y divide-gray-100">
                                                 {paginatedAvailability.map((slot) => {
                                                     const booked = slot.is_booked;
+                                                    const unavailable = !booked && new Date(slot.end_time).getTime() <= Date.now();
                                                     return (
                                                         <tr key={slot.id} className="hover:bg-gray-50/70 transition-colors">
                                                             <td className="px-5 py-3.5 text-gray-800">
@@ -679,15 +696,17 @@ export default function Appointments() {
                                                                     className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                                                                         booked
                                                                             ? 'bg-amber-50 text-amber-700 border border-amber-100'
-                                                                            : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                                                            : unavailable
+                                                                                ? 'bg-slate-100 text-slate-700 border border-slate-200'
+                                                                                : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                                                                     }`}
                                                                 >
-                                                                    {booked ? 'Booked' : 'Available'}
+                                                                    {booked ? 'Booked' : unavailable ? 'Unavailable' : 'Available'}
                                                                 </span>
                                                             </td>
                                                             <td className="px-5 py-3.5 text-right">
                                                                 <div className="inline-flex items-center gap-2 justify-end">
-                                                                    {!booked ? (
+                                                                    {!booked && !unavailable ? (
                                                                         <>
                                                                             <button
                                                                                 type="button"
@@ -710,7 +729,7 @@ export default function Appointments() {
                                                                                 Remove
                                                                             </button>
                                                                         </>
-                                                                    ) : (
+                                                                    ) : booked ? (
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => handleCancelBookedSlot(slot)}
@@ -718,6 +737,10 @@ export default function Appointments() {
                                                                         >
                                                                             Cancel booking
                                                                         </button>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600">
+                                                                            Slot ended
+                                                                        </span>
                                                                     )}
                                                                 </div>
                                                             </td>
