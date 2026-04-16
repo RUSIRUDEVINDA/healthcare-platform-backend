@@ -110,8 +110,8 @@ export default function Landing() {
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-900">MediPulse</p>
-              <p className="text-[10px] font-medium text-slate-500">Sri Lanka Edition</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-900">MediPulse</p>
+              <p className="text-[10px] text-slate-500">Sri Lanka Edition</p>
             </div>
           </Link>
 
@@ -149,7 +149,7 @@ export default function Landing() {
             </div>
 
             <div className="space-y-6">
-              <h1 className="text-5xl font-extrabold tracking-tight text-slate-900 sm:text-6xl lg:text-7xl leading-[1.1]">
+              <h1 className="text-5xl font-bold tracking-tight text-slate-900 sm:text-6xl lg:text-7xl leading-[1.1]">
                 Modern care, <br />
                 <span className="bg-gradient-to-r from-brand to-brand-dark bg-clip-text text-transparent">unified.</span>
               </h1>
@@ -224,8 +224,8 @@ export default function Landing() {
         {/* Services Section */}
         <section id="services" className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-brand">The Platform</h2>
-            <h3 className="text-3xl font-extrabold text-slate-900 sm:text-4xl">Everything you need for smart healthcare</h3>
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-brand">The Platform</h2>
+            <h3 className="text-3xl font-bold text-slate-900 sm:text-4xl">Everything you need for smart healthcare</h3>
             <p className="text-slate-600">Built to handle the complexities of medical workflows with a simple, modern interface.</p>
           </div>
 
@@ -237,7 +237,7 @@ export default function Landing() {
                   <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${item.bgColor} ${item.color} mb-6 transition-transform group-hover:scale-110`}>
                     <Icon className="h-6 w-6" />
                   </div>
-                  <h4 className="text-xl font-bold text-slate-900 mb-3">{item.title}</h4>
+                  <h4 className="text-xl font-semibold text-slate-900 mb-3">{item.title}</h4>
                   <p className="text-sm leading-relaxed text-slate-500">{item.text}</p>
                 </div>
               );
@@ -251,8 +251,8 @@ export default function Landing() {
             <div className="grid gap-12 lg:grid-cols-2 items-center">
               <div className="space-y-8">
                 <div>
-                  <h2 className="text-sm font-bold uppercase tracking-widest text-brand">Why MediPulse</h2>
-                  <h3 className="mt-4 text-3xl font-extrabold text-slate-900 sm:text-4xl">Designed for the modern patient flow</h3>
+                  <h2 className="text-sm font-semibold uppercase tracking-widest text-brand">Why MediPulse</h2>
+                  <h3 className="mt-4 text-3xl font-bold text-slate-900 sm:text-4xl">Designed for the modern patient flow</h3>
                 </div>
                 
                 <div className="grid gap-6">
@@ -264,7 +264,7 @@ export default function Landing() {
                           <Icon className="h-5 w-5" />
                         </div>
                         <div>
-                          <h4 className="text-base font-bold text-slate-900">{item.title}</h4>
+                          <h4 className="text-base font-semibold text-slate-900">{item.title}</h4>
                           <p className="mt-1 text-sm text-slate-500">{item.text}</p>
                         </div>
                       </div>
@@ -319,8 +319,8 @@ export default function Landing() {
             
             <div className="relative z-10 grid gap-16 lg:grid-cols-2 items-center">
               <div>
-                <h2 className="text-sm font-bold uppercase tracking-widest text-brand">The Journey</h2>
-                <h3 className="mt-4 text-3xl font-extrabold sm:text-5xl leading-tight">Start your health journey in three simple steps</h3>
+                <h2 className="text-sm font-semibold uppercase tracking-widest text-brand">The Journey</h2>
+                <h3 className="mt-4 text-3xl font-bold sm:text-5xl leading-tight">Start your health journey in three simple steps</h3>
                 <p className="mt-6 text-slate-400 text-lg leading-relaxed">
                   We've simplified healthcare management so you can focus on what matters most—your well-being. 
                   Experience the MediPulse way today.
@@ -344,7 +344,7 @@ export default function Landing() {
                       {index + 1}
                     </div>
                     <div>
-                      <h4 className="text-xl font-bold text-white">{step.title}</h4>
+                      <h4 className="text-xl font-semibold text-white">{step.title}</h4>
                       <p className="mt-2 text-slate-400 leading-relaxed">{step.desc}</p>
                     </div>
                   </div>
@@ -362,7 +362,7 @@ export default function Landing() {
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white">
                   <Sparkles className="h-4 w-4" />
                 </div>
-                <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-900 underline decoration-brand/30 decoration-2 underline-offset-4">MediPulse</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-900 underline decoration-brand/30 decoration-2 underline-offset-4">MediPulse</p>
               </div>
               
               <p className="text-sm text-slate-500">

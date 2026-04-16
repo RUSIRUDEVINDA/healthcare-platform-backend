@@ -41,6 +41,31 @@ func (h *AuthHandler) RegisterRoutes(router *gin.Engine) {
 		// Not exposed publicly via Nginx
 		auth.GET("/validate", h.ValidateToken)
 	}
+
+	// Protected endpoints (Require authentication)
+	// Usually these are handled by API Gateway, but for direct service access or local testing:
+	// protected := router.Group("/auth")
+	// protected.Use(middleware.RequireAuth(h.authSvc.JWTHelper())) // Need to expose JWTHelper
+	// {
+	// 	protected.POST("/deactivate", h.Deactivate)
+	// }
+}
+
+func (h *AuthHandler) Deactivate(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, model.ErrorResponse("User identity not found in context"))
+		return
+	}
+
+	uidStr, _ := userID.(string)
+	if err := h.authSvc.Deactivate(uidStr); err != nil {
+		h.log.Error("Deactivation failed", "user_id", uidStr, "error", err)
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse("Failed to deactivate account"))
+		return
+	}
+
+	c.JSON(http.StatusOK, model.MessageResponse("Your account has been deactivated. You have been logged out."))
 }
 
 // Register godoc
