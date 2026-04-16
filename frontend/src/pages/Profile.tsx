@@ -212,7 +212,7 @@ export default function Profile() {
       <div className="flex min-h-screen flex-col overflow-y-auto">
         <header className="min-h-14 bg-white border-b border-gray-100 flex items-center justify-between px-6 sm:px-8 py-3 sticky top-0 z-10">
           <div>
-            <h2 className="text-[15px] font-bold text-gray-900">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">
               {role === 'doctor' ? 'Doctor profile' : 'Your profile'}
             </h2>
             
