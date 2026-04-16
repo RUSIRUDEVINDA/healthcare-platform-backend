@@ -294,6 +294,14 @@ export default function Appointments() {
         return endTime.getTime() <= Date.now();
     };
 
+    const getAppointmentDisplayStatus = (appt: Appointment) => {
+        const normalizedStatus = (appt.status || '').toLowerCase();
+        if (normalizedStatus === 'cancelled' || normalizedStatus === 'completed') {
+            return normalizedStatus;
+        }
+        return hasAppointmentEnded(appt) ? 'unavailable' : normalizedStatus || 'pending';
+    };
+
     const filteredDoctors = doctors.filter(
         (d) =>
             d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -305,15 +313,17 @@ export default function Appointments() {
         const query = searchQuery.toLowerCase();
         if (isDoctor) {
             const patientName = getPatientDisplayName(appt).toLowerCase();
+            const displayStatus = getAppointmentDisplayStatus(appt);
             return (
                 patientName.includes(query) ||
-                appt.status.toLowerCase().includes(query) ||
+                displayStatus.includes(query) ||
                 (appt.payment_status && appt.payment_status.toLowerCase().includes(query))
             );
         }
         const docName = getDoctorName(appt.doctor_id).toLowerCase();
         const specialty = getDoctorSpecialty(appt.doctor_id).toLowerCase();
-        return docName.includes(query) || specialty.includes(query) || appt.status.toLowerCase().includes(query);
+        const displayStatus = getAppointmentDisplayStatus(appt);
+        return docName.includes(query) || specialty.includes(query) || displayStatus.includes(query);
     });
 
     const filteredMySlots = mySlots.filter((slot) => {
@@ -363,6 +373,7 @@ export default function Appointments() {
         pending: 'bg-amber-50 text-amber-600',
         cancelled: 'bg-red-50 text-red-500',
         completed: 'bg-slate-100 text-slate-600',
+        unavailable: 'bg-slate-100 text-slate-700',
     };
 
     const initialsFromName = (name: string) =>
@@ -837,7 +848,10 @@ export default function Appointments() {
                                         </label>
                                     </div>
 
-                                    {paginatedConsultations.map((appt) => (
+                                    {paginatedConsultations.map((appt) => {
+                                        const displayStatus = getAppointmentDisplayStatus(appt);
+                                        const hasEnded = displayStatus === 'unavailable';
+                                        return (
                                         <div key={appt.id} className="bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-md transition-all group flex items-center gap-6">
                                             <div className="w-14 h-14 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-brand font-bold shrink-0 shadow-sm group-hover:border-brand/20 transition-colors">
                                                 {isDoctor
@@ -856,7 +870,7 @@ export default function Appointments() {
                                                 </h4>
                                                 <p className="text-xs text-brand font-medium mt-0.5 truncate">
                                                     {isDoctor
-                                                        ? `${appt.consultation_mode === 'jitsi' || appt.consultation_mode === 'video' ? 'Video' : 'Physical'} · ${appt.status}`
+                                                        ? `${appt.consultation_mode === 'jitsi' || appt.consultation_mode === 'video' ? 'Video' : 'Physical'} · ${displayStatus}`
                                                         : getDoctorSpecialty(appt.doctor_id)}
                                                 </p>
                                             </div>
@@ -888,10 +902,10 @@ export default function Appointments() {
                                                 </span>
                                                 <span 
                                                     className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
-                                                        statusColor[appt.status] || 'bg-gray-100 text-gray-500'
+                                                        statusColor[displayStatus] || 'bg-gray-100 text-gray-500'
                                                     }`}
                                                 >
-                                                    {appt.status}
+                                                    {displayStatus}
                                                 </span>
                                             </div>
 
@@ -916,20 +930,20 @@ export default function Appointments() {
                                                                 `/telemedicine?join_url=${encodeURIComponent(appt.join_url || '')}&peer=${encodeURIComponent(isDoctor ? getPatientDisplayName(appt) : getDoctorName(appt.doctor_id))}&title=${encodeURIComponent('Telemedicine Session')}`
                                                             )
                                                         }
-                                                        disabled={hasAppointmentEnded(appt)}
-                                                        title={hasAppointmentEnded(appt) ? 'This meeting has ended' : 'Join meeting'}
+                                                        disabled={hasEnded}
+                                                        title={hasEnded ? 'This meeting has ended' : 'Join meeting'}
                                                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm shadow-black/5 transition-all ${
-                                                            hasAppointmentEnded(appt)
+                                                            hasEnded
                                                                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                                                 : 'bg-gray-900 text-white hover:bg-brand active:scale-95'
                                                         }`}
                                                     >
                                                         <Video className="h-3.5 w-3.5" /> 
-                                                        {hasAppointmentEnded(appt) ? 'Ended' : 'Join'}
+                                                        {hasEnded ? 'Ended' : 'Join'}
                                                     </button>
                                                 )}
 
-                                                {appt.status !== 'cancelled' && appt.status !== 'completed' && !hasAppointmentEnded(appt) && (
+                                                {appt.status !== 'cancelled' && appt.status !== 'completed' && !hasEnded && (
                                                     <button
                                                         type="button"
                                                         onClick={() => {
@@ -944,7 +958,7 @@ export default function Appointments() {
                                                 )}
                                             </div>
                                         </div>
-                                    ))}
+                                    );})}
 
                                     <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                                         <span className="text-sm text-gray-500">
