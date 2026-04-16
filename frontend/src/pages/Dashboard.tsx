@@ -164,14 +164,14 @@ export default function Dashboard() {
           records = await fileApi.listMyFiles();
         } else {
           const patientProfile = resolvedProfile as PatientProfile;
-          // File service authorises listPatientFiles when caller JWT user_id matches the requested patient id.
-          const candidateOwnerIds = uniqueStrings([authUserId, patientProfile?.user_id, patientProfile?.id]);
-          const results = await Promise.allSettled(
-            candidateOwnerIds.map((ownerId) => fileApi.listPatientFiles(ownerId))
-          );
-          const combined = results.flatMap((result) => (result.status === 'fulfilled' ? result.value : []));
-          const fallbackFiles = combined.length === 0 ? await fileApi.listMyFiles() : [];
-          records = Array.from(new Map([...combined, ...fallbackFiles].map((file) => [file.id, file])).values());
+          // Use the best known owner id once to avoid predictable 403 noise from extra probes.
+          const ownerId = uniqueStrings([authUserId, patientProfile?.user_id, patientProfile?.id])[0];
+          if (ownerId) {
+            records = await fileApi.listPatientFiles(ownerId).catch(() => [] as FileRecord[]);
+          }
+          if (records.length === 0) {
+            records = await fileApi.listMyFiles().catch(() => [] as FileRecord[]);
+          }
         }
 
         records.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
