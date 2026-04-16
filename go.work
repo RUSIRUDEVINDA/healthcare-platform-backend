@@ -1,7 +1,9 @@
 go 1.25.0
 
 use (
+	*.env
 	./pkg
+	./services/admin-service
 	./services/ai-symptom-service
 	./services/appointment-service
 	./services/api-gateway
