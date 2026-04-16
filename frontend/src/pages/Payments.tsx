@@ -88,7 +88,7 @@ export default function Payments() {
     <div className="min-h-screen bg-[#f6f8fa] font-sans">
       <div className="flex min-h-screen flex-col">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 bg-white/80 backdrop-blur-md sticky top-0 z-10">
-          <h2 className="text-xl font-semibold text-gray-800">Payment History</h2>
+          <h2 className="text-lg font-semibold tracking-tight text-slate-900">Payment history</h2>
           <div className="flex items-center space-x-4">
             <p className="text-sm font-medium text-gray-600 hidden sm:block">
               {profile ? `${profile.first_name} ${profile.last_name}` : ''}
