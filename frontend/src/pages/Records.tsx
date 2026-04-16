@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 import { appointmentApi, type Appointment } from '../api/appointments';
 import { doctorApi } from '../api/doctor';
 import { fileApi, patientLabelFromAppointment, type DocumentCategory, type FileRecord } from '../api/files';
@@ -381,9 +382,13 @@ export default function Records() {
                 Secure upload
               </div>
             )}
-            <div className="w-10 h-10 shrink-0 bg-brand-light rounded-full flex items-center justify-center text-brand border border-brand/20">
+            <Link
+              to="/profile"
+              aria-label="Go to profile"
+              className="w-10 h-10 shrink-0 bg-brand-light rounded-full flex items-center justify-center text-brand border border-brand/20 hover:border-brand/40 transition-colors"
+            >
               <User className="h-5 w-5" />
-            </div>
+            </Link>
           </div>
         </header>
 
