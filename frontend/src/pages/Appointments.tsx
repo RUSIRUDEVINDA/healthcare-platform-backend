@@ -555,17 +555,39 @@ export default function Appointments() {
                         </div>
                     ) : activeTab === 'slots' ? (
                         <div className="space-y-6">
-                            <div>
-                                <h3 className="text-base font-semibold text-gray-800">Your availability</h3>
-                                <p className="text-sm text-gray-400 mt-1">
-                                    Create slots at your profile hospital. Patients book into open times; booked slots
-                                    can be released by cancelling the consultation.
-                                </p>
+                            <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-900">Availability management</h3>
+                                        <p className="mt-1 text-sm text-gray-500 max-w-2xl">
+                                            Define your consulting windows so patients can book reliably. Booked slots can be
+                                            released by cancelling the associated consultation.
+                                        </p>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:min-w-[27rem]">
+                                        <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                                            <p className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">Total slots</p>
+                                            <p className="mt-1 text-xl font-semibold text-gray-900">{filteredMySlots.length}</p>
+                                        </div>
+                                        <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                                            <p className="text-[11px] uppercase tracking-wider text-emerald-600 font-semibold">Available</p>
+                                            <p className="mt-1 text-xl font-semibold text-emerald-700">
+                                                {filteredMySlots.filter((s) => !s.is_booked).length}
+                                            </p>
+                                        </div>
+                                        <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
+                                            <p className="text-[11px] uppercase tracking-wider text-amber-700 font-semibold">Booked</p>
+                                            <p className="mt-1 text-xl font-semibold text-amber-700">
+                                                {filteredMySlots.filter((s) => s.is_booked).length}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
 
                             {!profileHospitalStr && (
-                                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+                                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900 shadow-sm">
                                     Add your <strong>hospital</strong> on{' '}
                                     <Link to="/profile" className="font-semibold underline underline-offset-2">
                                         Profile
@@ -575,7 +597,7 @@ export default function Appointments() {
                             )}
 
                             {filteredMySlots.length === 0 ? (
-                                <div className="bg-white rounded-2xl border border-gray-100 p-14 text-center">
+                                <div className="bg-white rounded-2xl border border-gray-100 p-14 text-center shadow-sm">
                                     <Clock className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                                     <p className="text-sm font-medium text-gray-500">No slots yet</p>
                                     <p className="text-sm text-gray-400 mt-1">
@@ -624,21 +646,21 @@ export default function Appointments() {
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm">
                                             <thead>
-                                                <tr className="border-b border-gray-100 bg-gray-50/80 text-left text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                                                    <th className="px-5 py-3">Hospital</th>
-                                                    <th className="px-5 py-3">Start</th>
-                                                    <th className="px-5 py-3">End</th>
-                                                    <th className="px-5 py-3">Status</th>
-                                                    <th className="px-5 py-3 text-right">Actions</th>
+                                                <tr className="border-b border-gray-100 bg-gray-50 text-left text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                                                    <th className="px-5 py-3.5">Hospital</th>
+                                                    <th className="px-5 py-3.5">Start</th>
+                                                    <th className="px-5 py-3.5">End</th>
+                                                    <th className="px-5 py-3.5">Status</th>
+                                                    <th className="px-5 py-3.5 text-right">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100">
                                                 {paginatedAvailability.map((slot) => {
                                                     const booked = slot.is_booked;
                                                     return (
-                                                        <tr key={slot.id} className="hover:bg-gray-50/60">
+                                                        <tr key={slot.id} className="hover:bg-gray-50/70 transition-colors">
                                                             <td className="px-5 py-3.5 text-gray-800">
-                                                                {slot.hospital || '—'}
+                                                                <div className="font-medium text-gray-900">{slot.hospital || '—'}</div>
                                                             </td>
                                                             <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">
                                                                 {new Date(slot.start_time).toLocaleString([], {
@@ -654,10 +676,10 @@ export default function Appointments() {
                                                             </td>
                                                             <td className="px-5 py-3.5">
                                                                 <span
-                                                                    className={`inline-flex px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                                                                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                                                                         booked
-                                                                            ? 'bg-amber-50 text-amber-700'
-                                                                            : 'bg-emerald-50 text-emerald-700'
+                                                                            ? 'bg-amber-50 text-amber-700 border border-amber-100'
+                                                                            : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                                                                     }`}
                                                                 >
                                                                     {booked ? 'Booked' : 'Available'}
@@ -674,7 +696,7 @@ export default function Appointments() {
                                                                                     setSlotEditing(slot);
                                                                                     setSlotModalOpen(true);
                                                                                 }}
-                                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
                                                                             >
                                                                                 <Pencil className="h-3.5 w-3.5" />
                                                                                 Edit
@@ -682,7 +704,7 @@ export default function Appointments() {
                                                                             <button
                                                                                 type="button"
                                                                                 onClick={() => handleDeleteSlot(slot)}
-                                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-100 text-xs font-semibold text-red-600 hover:bg-red-50"
+                                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100"
                                                                             >
                                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                                                 Remove
@@ -692,7 +714,7 @@ export default function Appointments() {
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => handleCancelBookedSlot(slot)}
-                                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 text-xs font-semibold text-amber-800 hover:bg-amber-50"
+                                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-xs font-semibold text-amber-800 hover:bg-amber-100"
                                                                         >
                                                                             Cancel booking
                                                                         </button>
