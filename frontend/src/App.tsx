@@ -9,7 +9,6 @@ import Appointments from './pages/Appointments';
 import Payments from './pages/Payments';
 import PaymentStatus from './pages/PaymentStatus';
 import Telemedicine from './pages/Telemedicine';
-import Records from './pages/Records';
 import BmiCalculator from './pages/BmiCalculator';
 import SymptomChecker from './pages/SymptomChecker';
 import MedicalRecords from './pages/MedicalRecords';
@@ -24,21 +23,16 @@ function App() {
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
       </Route>
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/profile" element={<Profile />} />
-      <Route path="/appointments" element={<Appointments />} />
-      <Route path="/payments" element={<Payments />} />
-      <Route path="/records" element={<Records />} />
-      <Route path="/telemedicine" element={<Telemedicine />} />
 
-      <Route path="/bmi-calculator" element={<BmiCalculator />} />
-      <Route path="/symptom-checker" element={<SymptomChecker />} />
       <Route element={<AppShellLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/appointments" element={<Appointments />} />
         <Route path="/payments" element={<Payments />} />
         <Route path="/records" element={<MedicalRecords />} />
+        <Route path="/telemedicine" element={<Telemedicine />} />
+        <Route path="/bmi-calculator" element={<BmiCalculator />} />
+        <Route path="/symptom-checker" element={<SymptomChecker />} />
       </Route>
       
       {/* Payment redirection targets */}
