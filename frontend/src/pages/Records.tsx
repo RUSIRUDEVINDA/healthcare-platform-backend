@@ -366,8 +366,8 @@ export default function Records() {
       <div className="flex min-h-screen flex-col">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.32em] text-slate-400">Medical Records</p>
-            <h1 className="text-lg font-medium text-slate-900">Your chart</h1>
+            <p className="text-[10px] uppercase tracking-[0.32em] text-slate-400">Health Records</p>
+            <h1 className="text-lg font-semibold text-slate-900">Medical Records</h1>
           </div>
           <div className="flex min-w-0 items-center gap-3">
             {isDoctor ? (
@@ -404,11 +404,13 @@ export default function Records() {
                 <div className={`w-full min-w-0 space-y-3 ${!isDoctor ? 'lg:flex-1' : ''}`}>
                   <div className="inline-flex items-center gap-2 rounded-full bg-brand/10 px-3 py-1 text-[11px] text-brand border border-brand/10">
                     <Shield className="h-3.5 w-3.5" />
-                    Secure chart
+                    Encrypted storage
                   </div>
                   <div>
-                    <h2 className="text-xl font-medium tracking-tight text-slate-900">Medical records</h2>
-                    <p className="mt-1 text-sm text-slate-600 leading-6">Prescriptions and reports in one compact view.</p>
+                    <h2 className="text-xl font-semibold tracking-tight text-slate-900">Clinical documents</h2>
+                    <p className="mt-1 text-sm text-slate-600 leading-6">
+                      Access prescriptions, diagnostic reports, and supporting files in one professional chart view.
+                    </p>
                   </div>
                   <div className="flex flex-wrap gap-2 text-sm text-slate-600">
                     <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-2 border border-slate-100">
@@ -439,11 +441,11 @@ export default function Records() {
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm text-slate-900">Upload a record</p>
+                      <p className="text-sm font-medium text-slate-900">Upload document</p>
                       <p className="text-xs text-slate-500 mt-1">
                         {isDoctor
-                          ? 'Choose patient and record type, then add a file.'
-                          : 'Prescriptions, reports, notes.'}
+                          ? 'Select a patient and document category before uploading.'
+                          : 'Accepted: prescriptions, reports, referral notes, and related documents.'}
                       </p>
                     </div>
                     <div className="h-11 w-11 rounded-full bg-brand/10 flex items-center justify-center text-brand">
@@ -516,12 +518,12 @@ export default function Records() {
                     <Upload className="mx-auto h-7 w-7 text-brand" />
                     <p className="mt-3 text-sm text-slate-900">
                       {uploading
-                        ? 'Uploading...'
+                        ? 'Uploading document...'
                         : isDoctor && !doctorUploadReady
-                          ? 'Select patient and type to enable upload'
-                          : 'Click to upload or drop a file'}
+                          ? 'Select patient and category to enable upload'
+                          : 'Click to upload or drag and drop'}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">Keeps the original file name.</p>
+                    <p className="mt-1 text-xs text-slate-500">Original filename and metadata are preserved.</p>
                   </label>
 
                   {selectedFile && (
@@ -544,8 +546,8 @@ export default function Records() {
             <section className="rounded-[1.5rem] bg-white border border-slate-200 shadow-sm overflow-hidden">
               <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <h3 className="text-base text-slate-900">All records</h3>
-                  <p className="text-sm text-slate-500 mt-1">Search prescriptions and reports.</p>
+                  <h3 className="text-base font-semibold text-slate-900">All records</h3>
+                  <p className="text-sm text-slate-500 mt-1">Search and filter by document type, file name, or metadata.</p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <div className="relative">
@@ -597,10 +599,10 @@ export default function Records() {
                   <h4 className="mt-4 text-lg text-slate-900">No records found</h4>
                   <p className="mt-2 text-sm text-slate-500 max-w-lg mx-auto">
                     {isDoctor && !selectedPatientId
-                      ? 'Select a patient above to view their chart and upload documents.'
+                      ? 'Select a patient to review their chart and upload documentation.'
                       : files.length === 0
-                        ? 'Once a doctor uploads a prescription or report, it will show up here.'
-                        : 'Try a different search term or filter to narrow the list.'}
+                        ? 'Documents will appear here after the first upload.'
+                        : 'Try a different keyword or filter to refine your results.'}
                   </p>
                 </div>
               ) : (
