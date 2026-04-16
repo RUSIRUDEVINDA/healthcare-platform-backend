@@ -52,7 +52,7 @@ func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 		SELECT id, email, password_hash, role, first_name, last_name, 
 		       is_verified, is_active, created_at, updated_at
 		FROM users
-		WHERE email = $1 AND is_active = TRUE
+		WHERE email = $1
 	`
 	return r.scanUser(r.db.QueryRow(query, email))
 }
@@ -62,7 +62,7 @@ func (r *UserRepository) FindByID(id string) (*model.User, error) {
 		SELECT id, email, password_hash, role, first_name, last_name, 
 		       is_verified, is_active, created_at, updated_at
 		FROM users
-		WHERE id = $1 AND is_active = TRUE
+		WHERE id = $1
 	`
 	return r.scanUser(r.db.QueryRow(query, id))
 }

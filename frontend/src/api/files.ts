@@ -8,7 +8,7 @@ export interface FileRecord {
   owner_id: string;
   uploader_id: string;
   kind: 'image' | 'document' | string;
-  document_category?: DocumentCategory | string;
+  document_category?: string;
   storage_provider: 'cloudinary' | 'r2' | string;
   original_name: string;
   stored_name: string;
@@ -22,7 +22,7 @@ export interface FileRecord {
   is_public: boolean;
   created_at: string;
   updated_at: string;
-  deleted_at?: string | null;
+  deleted_at?: string;
 }
 
 export interface FileListResponse {

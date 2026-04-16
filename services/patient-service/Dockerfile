@@ -10,13 +10,21 @@ WORKDIR /app
 # using only its own go.mod and the local 'pkg' directory.
 ENV GOWORK=off
 
-# 1. Copy shared libraries (pkg)
+# 1. Copy go.mod files for caching
+COPY services/patient-service/go.mod ./services/patient-service/
+# If there's a pkg/go.mod, copy that too
 COPY pkg/ ./pkg/
 
-# 2. Copy only this service's code
+WORKDIR /app/services/patient-service
+# Use a GOPROXY that might be more stable if proxy.golang.org fails
+ENV GOPROXY=https://proxy.golang.org,direct
+RUN go mod download
+
+# 2. Copy the rest of the source code
+WORKDIR /app
 COPY services/patient-service/ ./services/patient-service/
 
-# 3. Compile binary from within the service directory
+# 3. Compile binary
 WORKDIR /app/services/patient-service
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-w -s" \

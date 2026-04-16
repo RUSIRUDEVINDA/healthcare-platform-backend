@@ -11,6 +11,26 @@ services:
   # Infrastructure Services
   # ────────────────────────────────
 
+  support-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: support_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5443:5432"
+    volumes:
+      - support-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d support_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - healthcare-net
+
   auth-db:
     image: postgres:17-alpine
     restart: unless-stopped
@@ -393,6 +413,23 @@ services:
     networks:
       - healthcare-net
 
+  support-service:
+    build:
+      context: .
+      dockerfile: ./services/support-service/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8011:8011"
+    environment:
+      APP_ENV: development
+      PORT: "8011"
+      DATABASE_URL: "postgres://postgres:password123@support-db:5432/support_db?sslmode=disable"
+    depends_on:
+      support-db:
+        condition: service_healthy
+    networks:
+      - healthcare-net
+
   nginx:
     build:
       context: ./nginx
@@ -410,6 +447,7 @@ services:
       - ai-symptom-service
       - appointment-service
       - telemedicine-service
+      - support-service
       - frontend
     networks:
       - healthcare-net
@@ -437,6 +475,7 @@ volumes:
   appointment-db-data:
   file-storage-db-data:
   telemedicine-db-data:
+  support-db-data:
 
 # ────────────────────────────────
 # Internal network

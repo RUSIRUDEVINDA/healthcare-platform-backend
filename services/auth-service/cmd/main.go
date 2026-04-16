@@ -84,11 +84,10 @@ func main() {
 
 	// Register routes
 	authHandler.RegisterRoutes(router)
-	router.POST("/api/auth/register", authHandler.Register)
-	router.POST("/api/auth/login", authHandler.Login)
-	router.POST("/api/auth/logout", authHandler.Logout)
-	router.POST("/api/auth/refresh", authHandler.Refresh)
-	router.GET("/api/auth/validate", authHandler.ValidateToken)
+	// The following are redundant if RegisterRoutes already covers them, 
+	// but let's ensure the protected deactivate endpoint is correct.
+	// Nginx rewrites /api/auth/* to /auth/*, so we listen on /auth/*
+	router.POST("/auth/deactivate", middleware.RequireAuth(jwtHelper), authHandler.Deactivate)
 
 	// Create HTTP server
 	srv := &http.Server{

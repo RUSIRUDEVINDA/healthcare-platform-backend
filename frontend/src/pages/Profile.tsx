@@ -13,7 +13,6 @@ import {
   Building2,
   CreditCard,
   Stethoscope,
-  Trash2,
   AlertTriangle,
   Globe,
   Activity,
@@ -25,6 +24,9 @@ import {
 import { patientApi, type PatientProfile } from '../api/patient';
 import { doctorApi, type DoctorProfile } from '../api/doctor';
 import { useNavigate } from 'react-router-dom';
+import { authApi } from '../api/auth';
+import Dialog from '../components/ui/Dialog';
+import toast from 'react-hot-toast';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -32,7 +34,7 @@ export default function Profile() {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
 
   const formatDateOnly = (value?: string | null) => {
     if (!value) return 'Not set';
@@ -175,23 +177,23 @@ export default function Profile() {
     }
   };
 
-  const handleDeleteProfile = async () => {
+  const handleDeactivateAccount = async () => {
     try {
       setLoading(true);
-      if (role === 'patient') {
-        await patientApi.deleteProfile();
-        // Clear auth data and redirect
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user');
-        navigate('/auth/login');
-      }
+      await authApi.deactivateAccount();
+      toast.success('Account deactivated successfully');
+      
+      // Clear auth data and redirect
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
+      navigate('/auth/login');
     } catch (err: unknown) {
-      console.error('Error deleting profile:', err);
-      let message = 'Failed to delete profile';
+      console.error('Error deactivating profile:', err);
+      let message = 'Failed to deactivate account';
       if (axios.isAxiosError(err)) {
         message = err.response?.data?.error || message;
       }
-      alert(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -755,45 +757,40 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* Danger Zone for Patients */}
-              {role === 'patient' && !isEditing && (
-                <div className="mt-8 bg-white rounded-3xl shadow-sm border border-red-100 overflow-hidden">
+              {/* Danger Zone */}
+              {!isEditing && (
+                <div className="mt-8 bg-white rounded-3xl shadow-sm border border-amber-100 overflow-hidden">
                   <div className="px-8 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
                     <div>
-                      <h3 className="text-lg font-bold text-red-600 flex items-center">
-                        <AlertTriangle className="mr-2 h-5 w-5" /> Danger Zone
+                      <h3 className="text-lg font-bold text-amber-600 flex items-center">
+                        <AlertTriangle className="mr-2 h-5 w-5" /> Account Suspension
                       </h3>
                       <p className="text-gray-500 text-sm mt-1">
-                        Once you delete your profile, your patient record will be removed. This action cannot be undone.
+                        Temporarily deactivate your profile. You will be logged out and won't be able to log back in without admin approval.
                       </p>
                     </div>
-                    {!showDeleteConfirm ? (
-                      <button
-                        onClick={() => setShowDeleteConfirm(true)}
-                        className="w-full md:w-auto px-6 py-2 border-2 border-red-600 text-red-600 rounded-xl font-semibold hover:bg-red-50 transition-colors"
-                      >
-                        Delete Account
-                      </button>
-                    ) : (
-                      <div className="flex space-x-3 w-full md:w-auto">
-                        <button
-                          onClick={handleDeleteProfile}
-                          className="flex-1 md:flex-none px-6 py-2 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-all flex items-center justify-center"
-                          disabled={loading}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" /> {loading ? 'Deleting...' : 'Confirm'}
-                        </button>
-                        <button
-                          onClick={() => setShowDeleteConfirm(false)}
-                          className="flex-1 md:flex-none px-6 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    )}
+                    <button
+                      onClick={() => setShowDeactivateConfirm(true)}
+                      className="w-full md:w-auto px-6 py-2 border-2 border-amber-600 text-amber-600 rounded-xl font-semibold hover:bg-amber-50 transition-colors"
+                    >
+                      Deactivate Profile
+                    </button>
                   </div>
                 </div>
               )}
+
+              {/* Deactivation Confirmation Modal */}
+              <Dialog
+                isOpen={showDeactivateConfirm}
+                onClose={() => setShowDeactivateConfirm(false)}
+                onConfirm={handleDeactivateAccount}
+                title="Deactivate Account?"
+                description="Your profile will be suspended and you will be immediately logged out. You can request reactivation from support anytime."
+                confirmText="Yes, Deactivate"
+                cancelText="Keep My Account"
+                variant="warning"
+                isLoading={loading}
+              />
             </div>
           )}
         </main>
