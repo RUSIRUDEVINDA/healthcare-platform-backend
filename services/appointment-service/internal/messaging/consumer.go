@@ -20,17 +20,26 @@ func NewAppointmentConsumer(mqClient *rabbitmq.Client, svc *service.AppointmentS
 }
 
 func (c *AppointmentConsumer) Start() error {
-	// Root-level queue name for the payment completion handler.
-	// This keeps appointment payment updates isolated from other consumers.
-	queueName := "appointment_payment_completed_queue"
-
+	// Queue for payment completion events
+	paymentQueueName := "appointment_payment_completed_queue"
 	if err := c.mqClient.ConsumeQueue(
-		queueName,
+		paymentQueueName,
 		rabbitmq.ExchangePaymentEvents,
 		c.handlePaymentCompleted,
 		rabbitmq.RoutingKeyPaymentCompleted,
 	); err != nil {
-		return fmt.Errorf("messaging.Start: %w", err)
+		return fmt.Errorf("messaging.Start payment: %w", err)
+	}
+
+	// Queue for patient deletion events
+	patientDeletedQueueName := "appointment_patient_deleted_queue"
+	if err := c.mqClient.ConsumeQueue(
+		patientDeletedQueueName,
+		rabbitmq.ExchangeUserEvents,
+		c.handlePatientDeleted,
+		rabbitmq.RoutingKeyPatientDeleted,
+	); err != nil {
+		return fmt.Errorf("messaging.Start patient.deleted: %w", err)
 	}
 
 	c.log.Info("Appointment service consumer started successfully")
@@ -46,4 +55,15 @@ func (c *AppointmentConsumer) handlePaymentCompleted(body []byte) error {
 	c.log.Info("Processing payment.completed event", "appointment_id", event.AppointmentID)
 
 	return c.svc.HandlePaymentCompleted(event.AppointmentID)
+}
+
+func (c *AppointmentConsumer) handlePatientDeleted(body []byte) error {
+	var event rabbitmq.PatientDeletedEvent
+	if err := json.Unmarshal(body, &event); err != nil {
+		return fmt.Errorf("consumer.handlePatientDeleted unmarshal: %w", err)
+	}
+
+	c.log.Info("Processing patient.deleted event", "patient_id", event.PatientID)
+
+	return c.svc.DeletePatientAppointments(event.PatientID)
 }

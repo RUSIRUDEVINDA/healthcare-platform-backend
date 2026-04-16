@@ -8,11 +8,12 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Config holds environment-driven settings. Stateless service — no database.
+// Config holds environment-driven settings.
 type Config struct {
 	Port           string
 	AppEnv         string
 	AuthServiceURL string
+	DatabaseURL    string // optional; when set, symptom chat history is persisted
 	AIProvider     string // openai | gemini
 
 	OpenAIAPIKey  string
@@ -29,6 +30,7 @@ func Load() (*Config, error) {
 		Port:           getEnv("PORT", "8008"),
 		AppEnv:         getEnv("APP_ENV", "development"),
 		AuthServiceURL: getEnv("AUTH_SERVICE_URL", "http://localhost:8001"),
+		DatabaseURL:    strings.TrimSpace(os.Getenv("DATABASE_URL")),
 		AIProvider:     strings.ToLower(strings.TrimSpace(getEnv("AI_PROVIDER", "openai"))),
 		OpenAIAPIKey:   getEnv("OPENAI_API_KEY", ""),
 		OpenAIModel:    getEnv("OPENAI_MODEL", "gpt-4o-mini"),

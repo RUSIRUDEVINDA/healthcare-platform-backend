@@ -1,18 +1,31 @@
 # ─────────────────────────────────────────────
 # Stage 1: Build (same layout as auth-service Dockerfile)
 # ─────────────────────────────────────────────
+# syntax=docker/dockerfile:1.7
 FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
 ENV GOWORK=off
 
+COPY pkg/go.mod pkg/go.sum ./pkg/
+COPY services/doctor-service/go.mod services/doctor-service/go.sum ./services/doctor-service/
+
+WORKDIR /app/services/doctor-service
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go mod download
+
+WORKDIR /app
+
 COPY pkg/ ./pkg/
 
 COPY services/doctor-service/ ./services/doctor-service/
 
 WORKDIR /app/services/doctor-service
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-w -s" \
     -o /doctor-service \
     ./cmd/main.go

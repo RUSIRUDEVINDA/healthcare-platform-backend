@@ -29,6 +29,8 @@ func JWTAuth(jwtHelper *jwt.Helper) gin.HandlerFunc {
 		c.Set("caller_id", claims.UserID)
 		c.Set("caller_email", claims.Email)
 		c.Set("caller_role", claims.Role)
+		c.Set("caller_first_name", claims.FirstName)
+		c.Set("caller_last_name", claims.LastName)
 		c.Set("caller_token", tokenStr)
 		c.Next()
 	}
@@ -85,6 +87,24 @@ func CallerToken(c *gin.Context) (string, bool) {
 	}
 	token, ok := v.(string)
 	return token, ok
+}
+
+func CallerFirstName(c *gin.Context) (string, bool) {
+	v, ok := c.Get("caller_first_name")
+	if !ok {
+		return "", false
+	}
+	s, ok := v.(string)
+	return s, ok
+}
+
+func CallerLastName(c *gin.Context) (string, bool) {
+	v, ok := c.Get("caller_last_name")
+	if !ok {
+		return "", false
+	}
+	s, ok := v.(string)
+	return s, ok
 }
 
 func CORS() gin.HandlerFunc {

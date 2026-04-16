@@ -40,6 +40,7 @@ COPY --from=builder /payment-service .
 # Copy migration files
 COPY services/payment-service/migrations/ ./migrations/
 
+
 # Run as non-root user for security
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser

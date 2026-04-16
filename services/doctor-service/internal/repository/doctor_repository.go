@@ -21,16 +21,20 @@ func NewDoctorRepository(db *sql.DB) *DoctorRepository {
 // Create inserts a doctor and returns the persisted row (including generated id and timestamps).
 func (r *DoctorRepository) Create(d *model.Doctor) error {
 	query := `
-		INSERT INTO doctors (name, specialization, experience, hospital, nic, slmc_no, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO doctors (user_id, email, password_hash, name, specialization, experience, hospital, channeling_fee, nic, slmc_no, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id, created_at, updated_at
 	`
 	now := time.Now().UTC()
 	err := r.db.QueryRow(query,
+		d.UserID,
+		d.Email,
+		d.PasswordHash,
 		d.Name,
 		d.Specialization,
 		d.Experience,
 		d.Hospital,
+		d.ChannelingFee,
 		d.NIC,
 		d.SLMCNo,
 		now,
@@ -44,7 +48,7 @@ func (r *DoctorRepository) Create(d *model.Doctor) error {
 
 // List returns all doctors, optionally filtered by specialization (case-insensitive partial match).
 func (r *DoctorRepository) List(specializationFilter string) ([]model.Doctor, error) {
-	base := `SELECT id, name, specialization, experience, hospital, nic, slmc_no, created_at, updated_at FROM doctors`
+	base := `SELECT id, user_id, email, password_hash, name, specialization, experience, hospital, channeling_fee, nic, slmc_no, created_at, updated_at FROM doctors`
 	var args []interface{}
 	var sb strings.Builder
 	sb.WriteString(base)
@@ -64,8 +68,8 @@ func (r *DoctorRepository) List(specializationFilter string) ([]model.Doctor, er
 	for rows.Next() {
 		var d model.Doctor
 		if err := rows.Scan(
-			&d.ID, &d.Name, &d.Specialization, &d.Experience, &d.Hospital,
-			&d.NIC, &d.SLMCNo, &d.CreatedAt, &d.UpdatedAt,
+			&d.ID, &d.UserID, &d.Email, &d.PasswordHash, &d.Name, &d.Specialization, &d.Experience, &d.Hospital,
+			&d.ChannelingFee, &d.NIC, &d.SLMCNo, &d.CreatedAt, &d.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("repository.List scan: %w", err)
 		}
@@ -112,14 +116,14 @@ func (r *DoctorRepository) OtherDoctorIDWithSLMC(excludeID int64, slmcNo string)
 // FindByID returns a doctor by primary key, or nil if not found.
 func (r *DoctorRepository) FindByID(id int64) (*model.Doctor, error) {
 	query := `
-		SELECT id, name, specialization, experience, hospital, nic, slmc_no, created_at, updated_at
+		SELECT id, user_id, email, password_hash, name, specialization, experience, hospital, channeling_fee, nic, slmc_no, created_at, updated_at
 		FROM doctors WHERE id = $1
 	`
 	row := r.db.QueryRow(query, id)
 	d := &model.Doctor{}
 	err := row.Scan(
-		&d.ID, &d.Name, &d.Specialization, &d.Experience, &d.Hospital,
-		&d.NIC, &d.SLMCNo, &d.CreatedAt, &d.UpdatedAt,
+		&d.ID, &d.UserID, &d.Email, &d.PasswordHash, &d.Name, &d.Specialization, &d.Experience, &d.Hospital,
+		&d.ChannelingFee, &d.NIC, &d.SLMCNo, &d.CreatedAt, &d.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -130,18 +134,39 @@ func (r *DoctorRepository) FindByID(id int64) (*model.Doctor, error) {
 	return d, nil
 }
 
+// FindByUserID returns a doctor by auth-service user id, or nil if not found.
+func (r *DoctorRepository) FindByUserID(userID string) (*model.Doctor, error) {
+	query := `
+		SELECT id, user_id, email, password_hash, name, specialization, experience, hospital, channeling_fee, nic, slmc_no, created_at, updated_at
+		FROM doctors WHERE user_id = $1
+	`
+	row := r.db.QueryRow(query, userID)
+	d := &model.Doctor{}
+	err := row.Scan(
+		&d.ID, &d.UserID, &d.Email, &d.PasswordHash, &d.Name, &d.Specialization, &d.Experience, &d.Hospital,
+		&d.ChannelingFee, &d.NIC, &d.SLMCNo, &d.CreatedAt, &d.UpdatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("repository.FindByUserID: %w", err)
+	}
+	return d, nil
+}
+
 // Update replaces mutable fields for an existing doctor.
 func (r *DoctorRepository) Update(d *model.Doctor) error {
 	query := `
 		UPDATE doctors
-		SET name = $1, specialization = $2, experience = $3, hospital = $4,
-		    nic = $5, slmc_no = $6, updated_at = $7
-		WHERE id = $8
+		SET email = $1, name = $2, specialization = $3, experience = $4, hospital = $5,
+		    channeling_fee = $6, nic = $7, slmc_no = $8, updated_at = $9
+		WHERE id = $10
 		RETURNING updated_at
 	`
 	now := time.Now().UTC()
 	err := r.db.QueryRow(query,
-		d.Name, d.Specialization, d.Experience, d.Hospital, d.NIC, d.SLMCNo, now, d.ID,
+		d.Email, d.Name, d.Specialization, d.Experience, d.Hospital, d.ChannelingFee, d.NIC, d.SLMCNo, now, d.ID,
 	).Scan(&d.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return sql.ErrNoRows

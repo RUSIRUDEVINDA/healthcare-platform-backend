@@ -3,10 +3,12 @@ go 1.25.0
 use (
 	./pkg
 	./services/ai-symptom-service
+	./services/appointment-service
 	//./services/api-gateway
 	./services/auth-service
+	./services/doctor-service
+	./services/file-storage-service
 	./services/patient-service
 	./services/payment-service
-	./services/appointment-service
-	./services/doctor-service
+	./services/telemedicine-service
 )

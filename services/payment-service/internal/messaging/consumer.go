@@ -22,15 +22,37 @@ func NewPaymentConsumer(mqClient *rabbitmq.Client, svc *service.PaymentService, 
 func (c *PaymentConsumer) Start() error {
 	queueName := "payment_service_queue"
 
+	// Existing: Handle Booked
 	err := c.mqClient.ConsumeQueue(
 		queueName,
 		rabbitmq.ExchangeAppointmentEvents,
 		c.handleAppointmentBooked,
 		rabbitmq.RoutingKeyAppointmentBooked,
 	)
-
 	if err != nil {
-		return fmt.Errorf("messaging.Start: %w", err)
+		return fmt.Errorf("messaging.Start: booked: %w", err)
+	}
+
+	// New: Handle Cancelled
+	err = c.mqClient.ConsumeQueue(
+		queueName,
+		rabbitmq.ExchangeAppointmentEvents,
+		c.handleAppointmentCancelled,
+		rabbitmq.RoutingKeyAppointmentCancelled,
+	)
+	if err != nil {
+		return fmt.Errorf("messaging.Start: cancelled: %w", err)
+	}
+
+	// New: Handle Patient Deleted
+	errP := c.mqClient.ConsumeQueue(
+		queueName,
+		rabbitmq.ExchangeUserEvents,
+		c.handlePatientDeleted,
+		rabbitmq.RoutingKeyPatientDeleted,
+	)
+	if errP != nil {
+		return fmt.Errorf("messaging.Start: patient.deleted: %w", errP)
 	}
 
 	c.log.Info("Payment service consumer started")
@@ -50,7 +72,7 @@ func (c *PaymentConsumer) handleAppointmentBooked(body []byte) error {
 		AppointmentID: event.AppointmentID,
 		PatientID:     event.PatientID,
 		Amount:        event.ConsultFee,
-		Currency:      "USD", // Default
+		Currency:      "LKR", // Default for local consultations
 	}
 
 	_, err := c.svc.CreatePayment(req)
@@ -59,4 +81,30 @@ func (c *PaymentConsumer) handleAppointmentBooked(body []byte) error {
 	}
 
 	return nil
+}
+
+func (c *PaymentConsumer) handleAppointmentCancelled(body []byte) error {
+	var event rabbitmq.AppointmentCancelledEvent
+	if err := json.Unmarshal(body, &event); err != nil {
+		return fmt.Errorf("messaging.handleAppointmentCancelled unmarshal: %w", err)
+	}
+
+	c.log.Info("Processing appointment.cancelled event", "appointment_id", event.AppointmentID)
+
+	if err := c.svc.CancelPaymentByAppointmentID(event.AppointmentID); err != nil {
+		return fmt.Errorf("messaging.handleAppointmentCancelled service: %w", err)
+	}
+
+	return nil
+}
+
+func (c *PaymentConsumer) handlePatientDeleted(body []byte) error {
+	var event rabbitmq.PatientDeletedEvent
+	if err := json.Unmarshal(body, &event); err != nil {
+		return fmt.Errorf("consumer.handlePatientDeleted unmarshal: %w", err)
+	}
+
+	c.log.Info("Processing patient.deleted event", "patient_id", event.PatientID)
+
+	return c.svc.DeletePatientPayments(event.PatientID)
 }

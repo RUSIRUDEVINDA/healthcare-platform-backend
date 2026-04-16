@@ -3,8 +3,15 @@ name: Appointment Service CI
 on:
   push:
     branches: [main, dev]
+    paths:
+      - 'services/appointment-service/**'
+      - 'k8s/appointment-service/**'
+      - '.github/workflows/appointment-service.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'services/appointment-service/**'
+      - 'k8s/appointment-service/**'
 
 jobs:
   build:
@@ -29,4 +36,5 @@ jobs:
         run: go build -o appointment-service ./cmd
 
       - name: Build Docker image
-        run: docker build -t appointment-service:latest .
+        working-directory: .
+        run: docker build -f services/appointment-service/Dockerfile -t appointment-service:latest .

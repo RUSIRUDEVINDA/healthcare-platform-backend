@@ -1,9 +1,12 @@
 package service
 
 import (
+	"crypto/rand"
+	"encoding/base32"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -18,20 +21,29 @@ type AppointmentService struct {
 	mq               *rabbitmq.Client
 	log              *logger.Logger
 	doctorServiceURL string
+	jitsiBaseURL     string
 	httpClient       *http.Client
 }
 
-func NewAppointmentService(repo *repository.AppointmentRepository, mq *rabbitmq.Client, log *logger.Logger, doctorServiceURL string) *AppointmentService {
+const hospitalFee = 500.0
+
+func NewAppointmentService(repo *repository.AppointmentRepository, mq *rabbitmq.Client, log *logger.Logger, doctorServiceURL, jitsiBaseURL string) *AppointmentService {
 	return &AppointmentService{
 		repo:             repo,
 		mq:               mq,
 		log:              log,
 		doctorServiceURL: strings.TrimRight(doctorServiceURL, "/"),
+		jitsiBaseURL:     strings.TrimRight(jitsiBaseURL, "/"),
 		httpClient:       &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
-func (s *AppointmentService) BookAppointment(patientID, role string, req *model.BookAppointmentRequest) (*model.Appointment, error) {
+func (s *AppointmentService) DeletePatientAppointments(patientID string) error {
+	s.log.Info("Deleting all appointments for patient", "patient_id", patientID)
+	return s.repo.DeleteByPatientID(patientID)
+}
+
+func (s *AppointmentService) BookAppointment(patientID, role, callerToken, firstName, lastName string, req *model.BookAppointmentRequest) (*model.Appointment, error) {
 	if role != "patient" {
 		return nil, fmt.Errorf("only patients can book appointments")
 	}
@@ -41,11 +53,22 @@ func (s *AppointmentService) BookAppointment(patientID, role string, req *model.
 		paymentMode = model.PaymentModePayNow
 	}
 
+	consultationMode := req.ConsultationMode
+	if consultationMode == "" {
+		consultationMode = model.ConsultationModePhysical
+	}
+	if !model.IsValidConsultationMode(consultationMode) {
+		return nil, fmt.Errorf("invalid consultation mode; allowed values: physical, jitsi")
+	}
+
 	now := time.Now().UTC()
 	appt := &model.Appointment{
-		PatientID:     patientID,
-		Notes:         req.Notes,
-		PaymentStatus: model.PaymentPending,
+		PatientID:        patientID,
+		PatientFirstName: firstName,
+		PatientLastName:  lastName,
+		Notes:            req.Notes,
+		ConsultationMode: consultationMode,
+		PaymentStatus:    model.PaymentPending,
 	}
 
 	if strings.TrimSpace(req.SlotID) != "" {
@@ -100,15 +123,35 @@ func (s *AppointmentService) BookAppointment(patientID, role string, req *model.
 		appt.PaymentDueAt = &dueAt
 	}
 
+	if consultationMode == model.ConsultationModeJitsi {
+		roomName, err := generateRoomName()
+		if err != nil {
+			return nil, fmt.Errorf("generate room name: %w", err)
+		}
+		appt.RoomName = roomName
+		appt.JoinURL = s.joinURL(roomName)
+	}
+
+	doctorFee, err := s.getDoctorConsultationFee(appt.DoctorID)
+	if err != nil {
+		return nil, err
+	}
+	totalConsultFee := doctorFee + hospitalFee
+
 	if err := s.repo.Create(appt); err != nil {
 		return nil, fmt.Errorf("service.BookAppointment: %w", err)
 	}
 
 	event := rabbitmq.AppointmentBookedEvent{
-		AppointmentID: appt.ID,
-		PatientID:     appt.PatientID,
-		DoctorID:      appt.DoctorID,
-		ScheduledAt:   appt.ScheduledAt.Format(time.RFC3339),
+		AppointmentID:     appt.ID,
+		PatientID:         appt.PatientID,
+		DoctorID:          appt.DoctorID,
+		DoctorOwnerUserID: appt.DoctorOwnerUserID,
+		ConsultationMode:  string(appt.ConsultationMode),
+		RoomName:          appt.RoomName,
+		JoinURL:           appt.JoinURL,
+		ScheduledAt:       appt.ScheduledAt.Format(time.RFC3339),
+		ConsultFee:        totalConsultFee,
 	}
 	if err := s.mq.PublishAppointmentBooked(event); err != nil {
 		s.log.Error("Failed to publish appointment.booked event", "error", err)
@@ -156,7 +199,19 @@ func (s *AppointmentService) CancelAppointment(id, callerID, role string) error 
 		paymentStatus = model.PaymentExpired
 	}
 
-	return s.repo.CancelAndRelease(id, paymentStatus)
+	if err := s.repo.CancelAndRelease(id, paymentStatus); err != nil {
+		return err
+	}
+
+	event := rabbitmq.AppointmentCancelledEvent{
+		AppointmentID: appt.ID,
+		PatientID:     appt.PatientID,
+	}
+	if err := s.mq.PublishAppointmentCancelled(event); err != nil {
+		s.log.Error("Failed to publish appointment.cancelled event", "error", err)
+	}
+
+	return nil
 }
 
 func (s *AppointmentService) GetDoctorSlots(doctorID, status string) ([]model.Slot, error) {
@@ -194,10 +249,15 @@ func (s *AppointmentService) CreateSlot(callerID, callerToken, role string, req 
 	if doctorProfileID == "" {
 		return nil, fmt.Errorf("doctor_id is required")
 	}
+	hospital := strings.TrimSpace(req.Hospital)
+	if hospital == "" {
+		return nil, fmt.Errorf("hospital is required")
+	}
 
 	slot := &model.Slot{
 		DoctorID:    doctorProfileID,
 		OwnerUserID: callerID,
+		Hospital:    hospital,
 		StartTime:   req.StartTime.UTC(),
 		EndTime:     req.EndTime.UTC(),
 		IsBooked:    false,
@@ -231,6 +291,12 @@ func (s *AppointmentService) UpdateSlot(id, callerID, role string, req *model.Up
 	}
 	if req.EndTime != nil {
 		slot.EndTime = req.EndTime.UTC()
+	}
+	if req.Hospital != nil {
+		slot.Hospital = strings.TrimSpace(*req.Hospital)
+		if slot.Hospital == "" {
+			return nil, fmt.Errorf("hospital is required")
+		}
 	}
 	if !slot.EndTime.After(slot.StartTime) {
 		return nil, fmt.Errorf("end time must be after start time")
@@ -356,35 +422,75 @@ func (s *AppointmentService) canManageAppointment(appt *model.Appointment, calle
 type doctorProfileResponse struct {
 	Success bool `json:"success"`
 	Data    struct {
-		ID json.RawMessage `json:"id"`
+		ID            json.RawMessage `json:"id"`
+		ChannelingFee float64         `json:"channeling_fee"`
 	} `json:"data"`
 }
 
 func (s *AppointmentService) getCallerDoctorProfileID(token string) (string, error) {
-	req, err := http.NewRequest(http.MethodGet, s.doctorServiceURL+"/doctors/me", nil)
+	profile, err := s.getDoctorProfile(token, "/doctors/me")
 	if err != nil {
-		return "", fmt.Errorf("build doctor profile request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("doctor service unavailable")
-	}
-	defer resp.Body.Close()
-
-	var body doctorProfileResponse
-	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		return "", fmt.Errorf("invalid doctor service response")
-	}
-	if !body.Success || len(body.Data.ID) == 0 || resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("doctor profile not found for current user")
+		return "", err
 	}
 
-	id := strings.TrimSpace(string(body.Data.ID))
+	id := strings.TrimSpace(string(profile.Data.ID))
 	id = strings.Trim(id, `"`)
 	if id == "" {
 		return "", fmt.Errorf("doctor profile not found for current user")
 	}
 	return id, nil
+}
+
+func (s *AppointmentService) getDoctorConsultationFee(doctorID string) (float64, error) {
+	profile, err := s.getDoctorProfile("", "/doctors/"+url.PathEscape(strings.TrimSpace(doctorID)))
+	if err != nil {
+		return 0, err
+	}
+	if profile.Data.ChannelingFee < 0 {
+		return 0, fmt.Errorf("doctor channeling fee is invalid")
+	}
+	if profile.Data.ChannelingFee == 0 {
+		s.log.Warn("Doctor channeling fee is zero; proceeding with hospital fee only", "doctor_id", doctorID)
+	}
+	return profile.Data.ChannelingFee, nil
+}
+
+func (s *AppointmentService) getDoctorProfile(token, path string) (*doctorProfileResponse, error) {
+	req, err := http.NewRequest(http.MethodGet, s.doctorServiceURL+path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("build doctor profile request: %w", err)
+	}
+	if strings.TrimSpace(token) != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("doctor service unavailable")
+	}
+	defer resp.Body.Close()
+
+	var body doctorProfileResponse
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return nil, fmt.Errorf("invalid doctor service response")
+	}
+	if !body.Success || resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("doctor profile not found")
+	}
+	return &body, nil
+}
+
+func (s *AppointmentService) joinURL(roomName string) string {
+	return s.jitsiBaseURL + "/" + url.PathEscape(roomName)
+}
+
+func generateRoomName() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+
+	encoded := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b)
+	encoded = strings.ToLower(encoded)
+	return "telemed-" + encoded, nil
 }

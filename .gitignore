@@ -1,1 +1,15 @@
+/.gocache
+
+# Temp files accidentally created by editors/tools (e.g., `file.go.<digits>`)
+*.go.[0-9]*
 .gocache
+.gocache/
+.gomodcache/
+**/.gocache/
+**/.gomodcache/
+*.exe
+
+/scripts
+file-storage-service.postman_collection.json
+.env
+.env.local

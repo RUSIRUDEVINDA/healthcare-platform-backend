@@ -1,0 +1,157 @@
+name: Patient Service CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'services/patient-service/**'
+      - '.github/workflows/patient-service.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'services/patient-service/**'
+      - '.github/workflows/patient-service.yml'
+
+env:
+  SERVICE_NAME: patient-service
+  SERVICE_PATH: services/patient-service
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/patient-service
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: patient_db_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      rabbitmq:
+        image: rabbitmq:3.13-alpine
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache-dependency-path: ${{ env.SERVICE_PATH }}/go.sum
+
+      - name: Download dependencies
+        working-directory: ./${{ env.SERVICE_PATH }}
+        run: go mod download
+
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v3
+        with:
+          working-directory: ./${{ env.SERVICE_PATH }}
+          version: latest
+
+      - name: Run tests
+        working-directory: ./${{ env.SERVICE_PATH }}
+        env:
+          DATABASE_URL: postgres://postgres:testpassword@localhost:5432/patient_db_test?sslmode=disable
+          RABBITMQ_URL: amqp://guest:guest@localhost:5672/
+          JWT_SECRET: test-jwt-secret-32-characters-ok!!
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: patient-service-coverage
+          path: ./${{ env.SERVICE_PATH }}/coverage.out
+          if-no-files-found: warn
+
+  build-and-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata for Docker tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          dockerfile: ./${{ env.SERVICE_PATH }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: v1.28.0
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Update image tag in deployment
+        run: |
+          kubectl set image deployment/${{ env.SERVICE_NAME }} \
+            ${{ env.SERVICE_NAME }}=${{ env.IMAGE_NAME }}:sha-${{ github.sha }} \
+            -n healthcare
+
+      - name: Wait for rollout to complete
+        run: |
+          kubectl rollout status deployment/${{ env.SERVICE_NAME }} -n healthcare --timeout=120s
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n healthcare -l app=${{ env.SERVICE_NAME }}

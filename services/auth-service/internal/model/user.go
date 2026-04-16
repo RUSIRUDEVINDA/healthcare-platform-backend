@@ -31,24 +31,24 @@ type User struct {
 // ──────────────────────────────────────────────
 
 type RegisterRequest struct {
-	Email     string `json:"email"      binding:"required,email"`
+	Email     string `json:"email"      binding:"required,email,max=255"`
 	Password  string `json:"password"   binding:"required,min=8,max=72"`
-	FirstName string `json:"first_name" binding:"required,min=2,max=50"`
-	LastName  string `json:"last_name"  binding:"required,min=2,max=50"`
+	FirstName string `json:"first_name" binding:"required,min=2,max=100"`
+	LastName  string `json:"last_name"  binding:"required,min=2,max=100"`
 	Role      Role   `json:"role"       binding:"required,oneof=patient doctor"`
 }
 
 type LoginRequest struct {
-	Email    string `json:"email"    binding:"required,email"`
+	Email    string `json:"email"    binding:"required,email,max=255"`
 	Password string `json:"password" binding:"required"`
 }
 
 type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
+	RefreshToken string `json:"refresh_token" binding:"required,min=20"`
 }
 
 type LogoutRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
+	RefreshToken string `json:"refresh_token" binding:"required,min=20"`
 }
 
 // ──────────────────────────────────────────────
@@ -76,10 +76,12 @@ type UserInfo struct {
 // ValidateTokenResponse is returned to API Gateway / other services
 // when they call GET /auth/validate to check a JWT
 type ValidateTokenResponse struct {
-	Valid  bool   `json:"valid"`
-	UserID string `json:"user_id,omitempty"`
-	Email  string `json:"email,omitempty"`
-	Role   Role   `json:"role,omitempty"`
+	Valid     bool   `json:"valid"`
+	UserID    string `json:"user_id,omitempty"`
+	Email     string `json:"email,omitempty"`
+	Role      Role   `json:"role,omitempty"`
+	FirstName string `json:"first_name,omitempty"`
+	LastName  string `json:"last_name,omitempty"`
 }
 
 // APIResponse is a generic wrapper for all HTTP responses

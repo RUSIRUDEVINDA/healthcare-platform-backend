@@ -12,13 +12,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"healthcare-platform/pkg/logger"
+	"healthcare-platform/pkg/rabbitmq"
 	"healthcare-platform/services/doctor-service/internal/config"
 	"healthcare-platform/services/doctor-service/internal/handler"
 	"healthcare-platform/services/doctor-service/internal/middleware"
+	"healthcare-platform/services/doctor-service/internal/messaging"
 	"healthcare-platform/services/doctor-service/internal/repository"
 	"healthcare-platform/services/doctor-service/internal/service"
-	"healthcare-platform/pkg/logger"
-	"healthcare-platform/pkg/rabbitmq"
 
 	_ "github.com/lib/pq"
 )
@@ -56,6 +57,14 @@ func main() {
 	docRepo := repository.NewDoctorRepository(db)
 	docSvc := service.NewDoctorService(docRepo, mqClient, log)
 	docHandler := handler.NewDoctorHandler(docSvc, log)
+
+	// Start RabbitMQ Consumer for synchronizing doctor registration
+	if mqClient != nil {
+		docConsumer := messaging.NewDoctorConsumer(mqClient, docSvc, log)
+		if err := docConsumer.Start(); err != nil {
+			log.Error("Failed to start doctor consumer", "error", err)
+		}
+	}
 
 	authHTTP := &http.Client{Timeout: 10 * time.Second}
 
@@ -138,6 +147,10 @@ func runMigrations(db *sql.DB, log *logger.Logger) error {
 	}{
 		{"migrations/0001_doctors.up.sql", embeddedDoctorsMigration},
 		{"migrations/0002_doctors_nic_slmc.up.sql", embeddedDoctorsNicSlmcMigration},
+		{"migrations/0003_doctors_user_id.up.sql", embeddedDoctorsUserIDMigration},
+		{"migrations/0004_doctors_email_password.up.sql", embeddedDoctorsEmailPasswordMigration},
+		{"migrations/0005_relax_doctor_constraints.up.sql", ""},
+		{"migrations/0006_doctors_channeling_fee.up.sql", embeddedDoctorsChannelingFeeMigration},
 	}
 	for _, f := range files {
 		sqlBytes, err := os.ReadFile(f.path)
@@ -160,6 +173,7 @@ CREATE TABLE IF NOT EXISTS doctors (
     specialization  VARCHAR(255) NOT NULL,
     experience      INT NOT NULL CHECK (experience >= 0 AND experience <= 80),
     hospital        VARCHAR(255) NOT NULL,
+    channeling_fee  NUMERIC(10,2) NOT NULL DEFAULT 0,
     nic             VARCHAR(12) NOT NULL,
     slmc_no         VARCHAR(5) NOT NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -179,4 +193,37 @@ ALTER TABLE doctors ALTER COLUMN nic SET NOT NULL;
 ALTER TABLE doctors ALTER COLUMN slmc_no SET NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_nic ON doctors (nic);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_slmc_no ON doctors (slmc_no);
+`
+
+const embeddedDoctorsUserIDMigration = `
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns c
+        WHERE c.table_schema = 'public'
+          AND c.table_name = 'doctors'
+          AND c.column_name = 'user_id'
+          AND c.data_type = 'uuid'
+    ) THEN
+        DROP INDEX IF EXISTS idx_doctors_user_id;
+        ALTER TABLE doctors
+            ALTER COLUMN user_id TYPE TEXT USING COALESCE(user_id::text, '');
+        ALTER TABLE doctors ALTER COLUMN user_id SET DEFAULT '';
+        ALTER TABLE doctors ALTER COLUMN user_id SET NOT NULL;
+    END IF;
+END $$;
+
+ALTER TABLE doctors ADD COLUMN IF NOT EXISTS user_id TEXT NOT NULL DEFAULT '';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_user_id ON doctors (user_id) WHERE user_id <> '';
+`
+
+const embeddedDoctorsEmailPasswordMigration = `
+ALTER TABLE doctors ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT '';
+ALTER TABLE doctors ADD COLUMN IF NOT EXISTS password_hash TEXT NOT NULL DEFAULT '';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_email ON doctors (email) WHERE email <> '';
+`
+
+const embeddedDoctorsChannelingFeeMigration = `
+ALTER TABLE doctors ADD COLUMN IF NOT EXISTS channeling_fee NUMERIC(10,2) NOT NULL DEFAULT 0;
 `

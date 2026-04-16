@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"healthcare-platform/pkg/logger"
+	"healthcare-platform/pkg/rabbitmq"
 	"healthcare-platform/services/patient-service/internal/model"
 	"healthcare-platform/services/patient-service/internal/repository"
 )
@@ -15,11 +16,12 @@ var ErrPatientNotFound = errors.New("patient not found")
 
 type PatientService struct {
 	repo *repository.PatientRepository
+	mq   *rabbitmq.Client
 	log  *logger.Logger
 }
 
-func NewPatientService(repo *repository.PatientRepository, log *logger.Logger) *PatientService {
-	return &PatientService{repo: repo, log: log}
+func NewPatientService(repo *repository.PatientRepository, mq *rabbitmq.Client, log *logger.Logger) *PatientService {
+	return &PatientService{repo: repo, mq: mq, log: log}
 }
 
 func (s *PatientService) CreateFromUserEvent(userID, email, firstName, lastName string) error {
@@ -48,6 +50,34 @@ func (s *PatientService) GetProfile(userID string) (*model.Patient, error) {
 		return nil, fmt.Errorf("service.GetProfile: %w", err)
 	}
 	return p, nil
+}
+
+// GetDisplayByUserID returns stored patient profile names for a user (for internal service callers).
+func (s *PatientService) GetDisplayByUserID(userID string) (firstName, lastName string, found bool, err error) {
+	p, e := s.repo.FindByUserID(userID)
+	if e != nil {
+		return "", "", false, fmt.Errorf("service.GetDisplayByUserID: %w", e)
+	}
+	if p == nil {
+		return "", "", false, nil
+	}
+	return p.FirstName, p.LastName, true, nil
+}
+
+func (s *PatientService) EnsureProfile(userID, email, firstName, lastName string) (*model.Patient, error) {
+	p, err := s.GetProfile(userID)
+	if err != nil {
+		return nil, err
+	}
+	if p != nil {
+		return p, nil
+	}
+
+	s.log.Info("Patient profile not found during GetProfile, attempting lazy creation", "user_id", userID)
+	if err := s.CreateFromUserEvent(userID, email, firstName, lastName); err != nil {
+		return nil, fmt.Errorf("service.EnsureProfile: %w", err)
+	}
+	return s.GetProfile(userID)
 }
 
 func (s *PatientService) UpdateProfile(userID string, req *model.UpdatePatientRequest) error {
@@ -91,14 +121,25 @@ func (s *PatientService) DeleteProfile(userID string) error {
 		return ErrPatientNotFound
 	}
 
-	deleted, err := s.repo.DeleteByUserID(userID)
+	patientID, err := s.repo.DeleteByUserID(userID)
 	if err != nil {
 		return fmt.Errorf("service.DeleteProfile: %w", err)
 	}
-	if !deleted {
+	if patientID == "" {
 		return ErrPatientNotFound
 	}
 
-	s.log.Info("Patient profile deleted", "user_id", userID)
+	s.log.Info("Patient profile deleted", "user_id", userID, "patient_id", patientID)
+
+	// Publish patient.deleted event to notify other services
+	event := rabbitmq.PatientDeletedEvent{
+		PatientID: patientID,
+		UserID:    userID,
+	}
+	if err := s.mq.PublishPatientDeleted(event); err != nil {
+		// Log the error but don't fail the deletion
+		s.log.Error("Failed to publish patient.deleted event", "user_id", userID, "patient_id", patientID, "error", err)
+	}
+
 	return nil
 }

@@ -91,8 +91,8 @@ services:
       # Set AUTH_DATABASE_URL in repo-root .env to use Neon (sslmode=require). Default stays local auth-db.
       DATABASE_URL: "${AUTH_DATABASE_URL:-postgres://postgres:password123@auth-db:5432/auth_db?sslmode=disable}"
       RABBITMQ_URL: "amqp://admin:password123@rabbitmq:5672/"
-      JWT_SECRET: "local-dev-jwt-secret-minimum-32-characters!!"
-      JWT_REFRESH_SECRET: "local-dev-refresh-secret-minimum-32-chars!"
+      JWT_SECRET: "local-dev-secret-change-this-in-production-32chars"
+      JWT_REFRESH_SECRET: "local-dev-refresh-secret-change-in-production-32chars"
       ACCESS_TOKEN_TTL_MINUTES: "15"
       REFRESH_TOKEN_TTL_DAYS: "7"
     depends_on:
@@ -131,7 +131,8 @@ services:
       PORT: "8002"
       DATABASE_URL: "postgres://postgres:password123@patient-db:5432/patient_db?sslmode=disable"
       RABBITMQ_URL: "amqp://admin:password123@rabbitmq:5672/"
-      JWT_SECRET: "local-dev-jwt-secret-minimum-32-characters!!"
+      JWT_SECRET: "local-dev-secret-change-this-in-production-32chars"
+      INTERNAL_API_KEY: "dev-inter-service-appointments-patients"
     depends_on:
       patient-db:
         condition: service_healthy
@@ -164,7 +165,26 @@ services:
     networks:
       - healthcare-net
 
-  # Set OPENAI_API_KEY or GEMINI_API_KEY in repo-root .env; use AI_PROVIDER=openai|gemini.
+  ai-symptom-db:
+    image: postgres:17-alpine
+    container_name: ai-symptom-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: symptom_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    volumes:
+      - ai-symptom-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d symptom_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - healthcare-net
+
+  # LLM keys in repo-root .env. DATABASE_URL defaults to local ai-symptom-db (override for Neon, etc.).
   ai-symptom-service:
     build:
       context: .
@@ -177,12 +197,15 @@ services:
       APP_ENV: development
       PORT: "8008"
       AUTH_SERVICE_URL: "http://auth-service:8001"
+      DATABASE_URL: "${AI_SYMPTOM_DATABASE_URL:-postgres://postgres:password123@ai-symptom-db:5432/symptom_db?sslmode=disable}"
       AI_PROVIDER: "${AI_PROVIDER:-openai}"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
       OPENAI_MODEL: "gpt-4o-mini"
       GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
       GEMINI_MODEL: "${GEMINI_MODEL:-gemini-2.5-flash}"
     depends_on:
+      ai-symptom-db:
+        condition: service_healthy
       auth-service:
         condition: service_started
     networks:
@@ -213,6 +236,8 @@ services:
     container_name: payment-service
     ports:
       - "8005:8005"
+    env_file:
+      - ./services/payment-service/.env
     environment:
       APP_ENV: development
       PORT: "8005"
@@ -223,6 +248,57 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    networks:
+      - healthcare-net
+
+  file-storage-db:
+    image: postgres:17-alpine
+    container_name: file-storage-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: file_storage_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5436:5432"
+    volumes:
+      - file-storage-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d file_storage_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - healthcare-net
+
+  file-storage-service:
+    build:
+      context: .
+      dockerfile: ./services/file-storage-service/Dockerfile
+    container_name: file-storage-service
+    restart: unless-stopped
+    ports:
+      - "8010:8010"
+    env_file:
+      - ./services/file-storage-service/.env
+    environment:
+      APP_ENV: development
+      PORT: "8010"
+      DATABASE_URL: "${FILE_STORAGE_DATABASE_URL:-postgres://postgres:password123@file-storage-db:5432/file_storage_db?sslmode=disable}"
+      RABBITMQ_URL: "amqp://admin:password123@rabbitmq:5672/"
+      APPOINTMENT_SERVICE_URL: "http://appointment-service:8004"
+      JWT_SECRET: "local-dev-secret-change-this-in-production-32chars"
+      JWT_REFRESH_SECRET: "local-dev-refresh-secret-change-in-production-32chars"
+      MAX_IMAGE_SIZE_BYTES: "10485760"
+      MAX_DOCUMENT_SIZE_BYTES: "26214400"
+    depends_on:
+      file-storage-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      appointment-service:
+        condition: service_started
     networks:
       - healthcare-net
 
@@ -251,6 +327,27 @@ services:
     networks:
       - healthcare-net
 
+  telemedicine-db:
+    image: postgres:17-alpine
+    container_name: telemedicine-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: telemedicine_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5438:5432"
+    volumes:
+      - telemedicine-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d telemedicine_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - healthcare-net
+
   appointment-service:
     build:
       context: .
@@ -262,27 +359,64 @@ services:
       PORT: "8004"
       DATABASE_URL: "postgres://user:password@appointment-db:5432/appointment_db?sslmode=disable"
       RABBITMQ_URL: "amqp://admin:password123@rabbitmq:5672/"
+      JWT_SECRET: "local-dev-secret-change-this-in-production-32chars"
       DOCTOR_SERVICE_URL: "http://doctor-service:8003"
+      PATIENT_SERVICE_URL: "http://patient-service:8002"
+      INTERNAL_API_KEY: "dev-inter-service-appointments-patients"
     depends_on:
       appointment-db:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      patient-service:
+        condition: service_started
+    networks:
+      - healthcare-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: unless-stopped
+    networks:
+      - healthcare-net
+  telemedicine-service:
+    build:
+      context: .
+      dockerfile: ./services/telemedicine-service/Dockerfile
+    container_name: telemedicine-service
+    restart: unless-stopped
+    ports:
+      - "8009:8009"
+    env_file:
+      - ./services/telemedicine-service/.env
+    environment:
+      APP_ENV: development
+      PORT: "8009"
+      DATABASE_URL: "postgres://postgres:password123@telemedicine-db:5432/telemedicine_db?sslmode=disable"
+      JWT_SECRET: "local-dev-secret-change-this-in-production-32chars"
+      APPOINTMENT_SERVICE_URL: "http://appointment-service:8004"
+      JITSI_BASE_URL: "https://meet.jit.si"
+      RABBITMQ_URL: "amqp://admin:password123@rabbitmq:5672/"
+    depends_on:
+      telemedicine-db:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      appointment-service:
+        condition: service_started
     networks:
       - healthcare-net
 
   nginx:
-    image: nginx:1.25-alpine
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: healthcare-platform-nginx:local
     restart: unless-stopped
     ports:
       - "80:80"
-    volumes:
-      - type: bind
-        source: ./nginx/nginx.conf
-        target: /etc/nginx/nginx.conf
-        read_only: true
-        bind:
-          create_host_path: false
     depends_on:
       - auth-service
       - patient-service
@@ -290,6 +424,8 @@ services:
       - doctor-service
       - ai-symptom-service
       - appointment-service
+      - telemedicine-service
+      - frontend
     networks:
       - healthcare-net
 
@@ -298,11 +434,14 @@ services:
 # ────────────────────────────────
 volumes:
   auth-db-data:
+  ai-symptom-db-data:
   doctor-db-data:
   rabbitmq-data:
   patient-db-data:
   payment-db-data:
   appointment-db-data:
+  file-storage-db-data:
+  telemedicine-db-data:
 
 # ────────────────────────────────
 # Internal network

@@ -35,14 +35,14 @@ func (r *PatientRepository) Create(p *model.Patient) error {
 
 func (r *PatientRepository) FindByUserID(userID string) (*model.Patient, error) {
 	query := `
-		SELECT id, user_id, email, first_name, last_name, date_of_birth, gender, phone_number, address, emergency_contact, blood_group, created_at, updated_at
+		SELECT id, user_id, email, first_name, last_name, date_of_birth, gender, phone_number, address, emergency_contact, blood_group, nationality, nic, created_at, updated_at
 		FROM patients
 		WHERE user_id = $1
 	`
 	row := r.db.QueryRow(query, userID)
 	var p model.Patient
 	err := row.Scan(
-		&p.ID, &p.UserID, &p.Email, &p.FirstName, &p.LastName, &p.DateOfBirth, &p.Gender, &p.PhoneNumber, &p.Address, &p.EmergencyContact, &p.BloodGroup, &p.CreatedAt, &p.UpdatedAt,
+		&p.ID, &p.UserID, &p.Email, &p.FirstName, &p.LastName, &p.DateOfBirth, &p.Gender, &p.PhoneNumber, &p.Address, &p.EmergencyContact, &p.BloodGroup, &p.Nationality, &p.NIC, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -58,10 +58,10 @@ func (r *PatientRepository) Update(userID string, p *model.UpdatePatientRequest)
 
 	query := `
 		UPDATE patients
-		SET date_of_birth = $1, gender = $2, phone_number = $3, address = $4, emergency_contact = $5, blood_group = $6, updated_at = NOW()
-		WHERE user_id = $7
+		SET date_of_birth = $1, gender = $2, phone_number = $3, address = $4, emergency_contact = $5, blood_group = $6, nationality = $7, nic = $8, updated_at = NOW()
+		WHERE user_id = $9
 	`
-	_, err := r.db.Exec(query, dateOfBirth, p.Gender, p.PhoneNumber, p.Address, p.EmergencyContact, p.BloodGroup, userID)
+	_, err := r.db.Exec(query, dateOfBirth, p.Gender, p.PhoneNumber, p.Address, p.EmergencyContact, p.BloodGroup, p.Nationality, p.NIC, userID)
 	if err != nil {
 		return fmt.Errorf("repository.Update: %w", err)
 	}
@@ -79,29 +79,46 @@ func (r *PatientRepository) UpdatePartial(userID string, p *model.PatchPatientRe
 		    address = COALESCE($4, address),
 		    emergency_contact = COALESCE($5, emergency_contact),
 		    blood_group = COALESCE($6, blood_group),
+		    nationality = COALESCE($7, nationality),
+		    nic = COALESCE($8, nic),
 		    updated_at = NOW()
-		WHERE user_id = $7
+		WHERE user_id = $9
 	`
-	_, err := r.db.Exec(query, dateOfBirth, p.Gender, p.PhoneNumber, p.Address, p.EmergencyContact, p.BloodGroup, userID)
+	_, err := r.db.Exec(query, dateOfBirth, p.Gender, p.PhoneNumber, p.Address, p.EmergencyContact, p.BloodGroup, p.Nationality, p.NIC, userID)
 	if err != nil {
 		return fmt.Errorf("repository.UpdatePartial: %w", err)
 	}
 	return nil
 }
 
-func (r *PatientRepository) DeleteByUserID(userID string) (bool, error) {
-	query := `DELETE FROM patients WHERE user_id = $1`
-	res, err := r.db.Exec(query, userID)
+func (r *PatientRepository) DeleteByUserID(userID string) (string, error) {
+	// First fetch the patient_id before deleting
+	var patientID string
+	query := `SELECT id FROM patients WHERE user_id = $1`
+	err := r.db.QueryRow(query, userID).Scan(&patientID)
+	if err == sql.ErrNoRows {
+		return "", nil // Patient not found
+	}
 	if err != nil {
-		return false, fmt.Errorf("repository.DeleteByUserID: %w", err)
+		return "", fmt.Errorf("repository.DeleteByUserID fetch: %w", err)
+	}
+
+	// Now delete the patient
+	deleteQuery := `DELETE FROM patients WHERE user_id = $1`
+	res, err := r.db.Exec(deleteQuery, userID)
+	if err != nil {
+		return "", fmt.Errorf("repository.DeleteByUserID delete: %w", err)
 	}
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return false, fmt.Errorf("repository.DeleteByUserID rows affected: %w", err)
+		return "", fmt.Errorf("repository.DeleteByUserID rows affected: %w", err)
 	}
 
-	return rowsAffected > 0, nil
+	if rowsAffected > 0 {
+		return patientID, nil
+	}
+	return "", nil
 }
 
 func flexibleDateToTime(value *model.FlexibleTime) *time.Time {
