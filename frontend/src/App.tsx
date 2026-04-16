@@ -13,6 +13,7 @@ import Records from './pages/Records';
 import Reactivate from './pages/Reactivate';
 import BmiCalculator from './pages/BmiCalculator';
 import SymptomChecker from './pages/SymptomChecker';
+import MedicalRecords from './pages/MedicalRecords';
 import AppShellLayout from './layouts/AppShellLayout';
 
 import { Toaster } from 'react-hot-toast';
