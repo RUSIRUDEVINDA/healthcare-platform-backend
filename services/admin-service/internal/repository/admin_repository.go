@@ -102,6 +102,73 @@ func (r *AdminRepository) DeactivateUser(userID string) error {
 	return nil
 }
 
+func (r *AdminRepository) SetUserActive(userID string, isActive bool) error {
+	result, err := r.db.Exec(`UPDATE admin_users SET is_active = $1, updated_at = NOW() WHERE id = $2`, isActive, userID)
+	if err != nil {
+		return fmt.Errorf("repository.SetUserActive: %w", err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("repository.SetUserActive rows: %w", err)
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (r *AdminRepository) SetAuthUserActive(authDatabaseURL, userID string, isActive bool) error {
+	if authDatabaseURL == "" {
+		return nil
+	}
+
+	authDB, err := sql.Open("postgres", authDatabaseURL)
+	if err != nil {
+		return fmt.Errorf("repository.SetAuthUserActive open auth db: %w", err)
+	}
+	defer authDB.Close()
+
+	result, err := authDB.Exec(`UPDATE users SET is_active = $1, updated_at = NOW() WHERE id = $2`, isActive, userID)
+	if err != nil {
+		return fmt.Errorf("repository.SetAuthUserActive update: %w", err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("repository.SetAuthUserActive rows: %w", err)
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+func (r *AdminRepository) SetAuthUserVerified(authDatabaseURL, userID string, isVerified bool) error {
+	if authDatabaseURL == "" {
+		return nil
+	}
+
+	authDB, err := sql.Open("postgres", authDatabaseURL)
+	if err != nil {
+		return fmt.Errorf("repository.SetAuthUserVerified open auth db: %w", err)
+	}
+	defer authDB.Close()
+
+	result, err := authDB.Exec(`UPDATE users SET is_verified = $1, updated_at = NOW() WHERE id = $2`, isVerified, userID)
+	if err != nil {
+		return fmt.Errorf("repository.SetAuthUserVerified update: %w", err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("repository.SetAuthUserVerified rows: %w", err)
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
 func (r *AdminRepository) ListAppointments() ([]model.Appointment, error) {
 	rows, err := r.db.Query(`
 		SELECT id, patient_id, doctor_id, status, scheduled_at, reason, created_at, updated_at

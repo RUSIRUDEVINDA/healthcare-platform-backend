@@ -44,6 +44,7 @@ func (h *AdminHandler) RegisterRoutes(router *gin.Engine) {
 		group.GET("/appointments", h.ListAppointments)
 		group.GET("/transactions", h.ListTransactions)
 		group.DELETE("/users/:id", h.DeactivateUser)
+		group.PUT("/users/:id/reactivate", h.ReactivateUser)
 	}
 }
 
@@ -117,6 +118,21 @@ func (h *AdminHandler) DeactivateUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, model.MessageResponse("user deactivated successfully"))
+}
+
+func (h *AdminHandler) ReactivateUser(c *gin.Context) {
+	userID := c.Param("id")
+	if err := h.svc.ReactivateUser(userID); err != nil {
+		if errors.Is(err, service.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, model.ErrorResponse(err.Error()))
+			return
+		}
+		h.loggable.Error("Failed to reactivate user", "user_id", userID, "error", err)
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse("failed to reactivate user"))
+		return
+	}
+
+	c.JSON(http.StatusOK, model.MessageResponse("user reactivated successfully"))
 }
 
 func (h *AdminHandler) HealthCheck(c *gin.Context) {

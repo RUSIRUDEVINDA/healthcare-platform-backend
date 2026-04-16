@@ -63,6 +63,7 @@ func main() {
 	}
 
 	router := gin.New()
+	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(middleware.CORSMiddleware())
 	adminHandler.RegisterRoutes(router)

@@ -19,18 +19,19 @@ const (
 	ExchangeDoctorEvents      = "doctor_events"
 	ExchangeFileEvents        = "file_events"
 
-	RoutingKeyUserRegistered       = "user.registered"
-	RoutingKeyUserLoggedIn         = "user.logged_in"
-	RoutingKeyUserDeleted          = "user.deleted"
-	RoutingKeyAppointmentBooked    = "appointment.booked"
-	RoutingKeyAppointmentCancelled = "appointment.cancelled"
-	RoutingKeyPaymentCompleted     = "payment.completed"
-	RoutingKeyPaymentFailed        = "payment.failed"
-	RoutingKeyDoctorCreated        = "doctor.created"
-	RoutingKeyDoctorProfileUpdated = "doctor.profile.updated"
-	RoutingKeyPatientDeleted       = "patient.deleted"
-	RoutingKeyFileUploaded         = "file.uploaded"
-	RoutingKeyFileDeleted          = "file.deleted"
+	RoutingKeyUserRegistered        = "user.registered"
+	RoutingKeyUserLoggedIn          = "user.logged_in"
+	RoutingKeyUserDeleted           = "user.deleted"
+	RoutingKeyAppointmentBooked     = "appointment.booked"
+	RoutingKeyAppointmentCancelled  = "appointment.cancelled"
+	RoutingKeyConsultationCompleted = "consultation.completed"
+	RoutingKeyPaymentCompleted      = "payment.completed"
+	RoutingKeyPaymentFailed         = "payment.failed"
+	RoutingKeyDoctorCreated         = "doctor.created"
+	RoutingKeyDoctorProfileUpdated  = "doctor.profile.updated"
+	RoutingKeyPatientDeleted        = "patient.deleted"
+	RoutingKeyFileUploaded          = "file.uploaded"
+	RoutingKeyFileDeleted           = "file.deleted"
 )
 
 // Event payload structs
@@ -57,23 +58,53 @@ type AppointmentBookedEvent struct {
 	AppointmentID     string  `json:"appointment_id"`
 	PatientID         string  `json:"patient_id"`
 	DoctorID          string  `json:"doctor_id"`
+	DoctorName        string  `json:"doctor_name,omitempty"`
 	DoctorOwnerUserID string  `json:"doctor_owner_user_id,omitempty"`
 	ConsultationMode  string  `json:"consultation_mode,omitempty"`
 	RoomName          string  `json:"room_name,omitempty"`
 	JoinURL           string  `json:"join_url,omitempty"`
 	PatientEmail      string  `json:"patient_email"`
+	PatientPhone      string  `json:"patient_phone,omitempty"`
 	DoctorEmail       string  `json:"doctor_email"`
 	ScheduledAt       string  `json:"scheduled_at"`
+	Time              string  `json:"time,omitempty"`
+	TimeSlot          string  `json:"time_slot,omitempty"`
 	ConsultFee        float64 `json:"consult_fee"`
 	Timestamp         string  `json:"timestamp"`
 }
 
 // AppointmentCancelledEvent is published by appointment-service
 type AppointmentCancelledEvent struct {
-	AppointmentID string `json:"appointment_id"`
-	PatientID     string `json:"patient_id"`
-	Reason        string `json:"reason,omitempty"`
-	Timestamp     string `json:"timestamp"`
+	AppointmentID    string  `json:"appointment_id"`
+	PatientID        string  `json:"patient_id"`
+	DoctorID         string  `json:"doctor_id,omitempty"`
+	DoctorName       string  `json:"doctor_name,omitempty"`
+	PatientEmail     string  `json:"patient_email,omitempty"`
+	PatientPhone     string  `json:"patient_phone,omitempty"`
+	DoctorEmail      string  `json:"doctor_email,omitempty"`
+	ScheduledAt      string  `json:"scheduled_at,omitempty"`
+	TimeSlot         string  `json:"time_slot,omitempty"`
+	ConsultationMode string  `json:"consultation_mode,omitempty"`
+	ConsultFee       float64 `json:"consult_fee,omitempty"`
+	Reason           string  `json:"reason,omitempty"`
+	Timestamp        string  `json:"timestamp"`
+}
+
+// ConsultationCompletedEvent is published when a consultation ends.
+type ConsultationCompletedEvent struct {
+	ConsultationID   string `json:"consultation_id"`
+	AppointmentID    string `json:"appointment_id"`
+	PatientID        string `json:"patient_id"`
+	DoctorID         string `json:"doctor_id"`
+	DoctorName       string `json:"doctor_name,omitempty"`
+	PatientEmail     string `json:"patient_email"`
+	PatientPhone     string `json:"patient_phone,omitempty"`
+	DoctorEmail      string `json:"doctor_email"`
+	ScheduledAt      string `json:"scheduled_at,omitempty"`
+	TimeSlot         string `json:"time_slot,omitempty"`
+	ConsultationMode string `json:"consultation_mode,omitempty"`
+	Summary          string `json:"summary,omitempty"`
+	Timestamp        string `json:"timestamp"`
 }
 
 // PaymentCompletedEvent is published by payment-service
@@ -81,10 +112,31 @@ type AppointmentCancelledEvent struct {
 //   - appointment-service: marks appointment as paid
 //   - notification-service: sends payment receipt
 type PaymentCompletedEvent struct {
-	PaymentID     string `json:"payment_id"`
-	AppointmentID string `json:"appointment_id"`
-	ProviderID    string `json:"provider_id"`
-	Timestamp     string `json:"timestamp"`
+	PaymentID     string  `json:"payment_id"`
+	AppointmentID string  `json:"appointment_id"`
+	ProviderID    string  `json:"provider_id"`
+	PatientID     string  `json:"patient_id,omitempty"`
+	PatientEmail  string  `json:"patient_email,omitempty"`
+	PatientPhone  string  `json:"patient_phone,omitempty"`
+	Amount        float64 `json:"amount,omitempty"`
+	Currency      string  `json:"currency,omitempty"`
+	Status        string  `json:"status,omitempty"`
+	Timestamp     string  `json:"timestamp"`
+}
+
+// PaymentFailedEvent is published by payment-service when payment fails.
+type PaymentFailedEvent struct {
+	PaymentID     string  `json:"payment_id"`
+	AppointmentID string  `json:"appointment_id"`
+	ProviderID    string  `json:"provider_id,omitempty"`
+	PatientID     string  `json:"patient_id,omitempty"`
+	PatientEmail  string  `json:"patient_email,omitempty"`
+	PatientPhone  string  `json:"patient_phone,omitempty"`
+	Amount        float64 `json:"amount,omitempty"`
+	Currency      string  `json:"currency,omitempty"`
+	Reason        string  `json:"reason,omitempty"`
+	Status        string  `json:"status,omitempty"`
+	Timestamp     string  `json:"timestamp"`
 }
 
 // DoctorCreatedEvent is published by doctor-service when a doctor record is created.
@@ -243,9 +295,19 @@ func (c *Client) PublishAppointmentCancelled(event AppointmentCancelledEvent) er
 	return c.publish(ExchangeAppointmentEvents, RoutingKeyAppointmentCancelled, event)
 }
 
+func (c *Client) PublishConsultationCompleted(event ConsultationCompletedEvent) error {
+	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	return c.publish(ExchangeAppointmentEvents, RoutingKeyConsultationCompleted, event)
+}
+
 func (c *Client) PublishPaymentCompleted(event PaymentCompletedEvent) error {
 	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
 	return c.publish(ExchangePaymentEvents, RoutingKeyPaymentCompleted, event)
+}
+
+func (c *Client) PublishPaymentFailed(event PaymentFailedEvent) error {
+	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	return c.publish(ExchangePaymentEvents, RoutingKeyPaymentFailed, event)
 }
 
 // PublishDoctorCreated publishes to the doctor_events topic exchange (routing: doctor.created).

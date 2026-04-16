@@ -132,6 +132,17 @@ func (s *AdminService) ListTransactions() ([]model.Transaction, error) {
 }
 
 func (s *AdminService) VerifyDoctor(doctorID, verifiedBy, notes string) (*model.DoctorVerification, error) {
+	if doctorID == "" {
+		return nil, ErrUserNotFound
+	}
+
+	if err := s.repo.SetAuthUserVerified(s.authDatabaseURL, doctorID, true); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+
 	verification, err := s.repo.VerifyDoctor(doctorID, verifiedBy, notes)
 	if err != nil {
 		return nil, err
@@ -140,11 +151,32 @@ func (s *AdminService) VerifyDoctor(doctorID, verifiedBy, notes string) (*model.
 }
 
 func (s *AdminService) DeactivateUser(userID string) error {
+	return s.setUserActive(userID, false)
+}
+
+func (s *AdminService) ReactivateUser(userID string) error {
+	return s.setUserActive(userID, true)
+}
+
+func (s *AdminService) setUserActive(userID string, isActive bool) error {
 	if userID == "" {
 		return ErrUserNotFound
 	}
-	if err := s.repo.DeactivateUser(userID); err != nil {
+
+	if err := s.repo.SetAuthUserActive(s.authDatabaseURL, userID, isActive); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			return ErrUserNotFound
+		}
+		return err
+	}
+
+	if err := s.repo.SetUserActive(userID, isActive); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			if s.authDatabaseURL != "" {
+				if _, syncErr := s.repo.SyncUsersFromAuthDB(s.authDatabaseURL); syncErr == nil {
+					return nil
+				}
+			}
 			return ErrUserNotFound
 		}
 		return err

@@ -8,10 +8,19 @@ use (
 	./services/appointment-service
 	./services/api-gateway
 	./services/auth-service
+<<<<<<< Updated upstream
 	./services/doctor-service
 	./services/file-storage-service
 	./services/patient-service
 	./services/payment-service
 	./services/telemedicine-service
+<<<<<<< HEAD
 	./services/support-service
+=======
+=======
+	./services/admin-service
+	./services/patient-service
+	./services/notification-service
+>>>>>>> Stashed changes
+>>>>>>> 6bb0b37 (fix(admin): update admin service and rabbitmq integration)
 )
