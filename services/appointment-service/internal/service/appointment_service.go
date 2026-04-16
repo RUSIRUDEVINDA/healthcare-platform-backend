@@ -38,7 +38,12 @@ func NewAppointmentService(repo *repository.AppointmentRepository, mq *rabbitmq.
 	}
 }
 
-func (s *AppointmentService) BookAppointment(patientID, role, callerToken string, req *model.BookAppointmentRequest) (*model.Appointment, error) {
+func (s *AppointmentService) DeletePatientAppointments(patientID string) error {
+	s.log.Info("Deleting all appointments for patient", "patient_id", patientID)
+	return s.repo.DeleteByPatientID(patientID)
+}
+
+func (s *AppointmentService) BookAppointment(patientID, role, callerToken, firstName, lastName string, req *model.BookAppointmentRequest) (*model.Appointment, error) {
 	if role != "patient" {
 		return nil, fmt.Errorf("only patients can book appointments")
 	}
@@ -59,6 +64,8 @@ func (s *AppointmentService) BookAppointment(patientID, role, callerToken string
 	now := time.Now().UTC()
 	appt := &model.Appointment{
 		PatientID:        patientID,
+		PatientFirstName: firstName,
+		PatientLastName:  lastName,
 		Notes:            req.Notes,
 		ConsultationMode: consultationMode,
 		PaymentStatus:    model.PaymentPending,
@@ -486,12 +493,4 @@ func generateRoomName() (string, error) {
 	encoded := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b)
 	encoded = strings.ToLower(encoded)
 	return "telemed-" + encoded, nil
-}
-
-func (s *AppointmentService) DeletePatientAppointments(patientID string) error {
-	if err := s.repo.DeleteByPatientID(patientID); err != nil {
-		return fmt.Errorf("service.DeletePatientAppointments: %w", err)
-	}
-	s.log.Info("Patient appointments deleted", "patient_id", patientID)
-	return nil
 }

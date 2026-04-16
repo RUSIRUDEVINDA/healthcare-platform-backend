@@ -17,9 +17,13 @@ import {
   User,
   X,
   Stethoscope,
+  Scale,
+  ChevronDown,
+  ClipboardList,
+  CreditCard,
 } from 'lucide-react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { fileApi, type FileRecord } from '../api/files';
 
 type FilterKey = 'all' | 'prescriptions' | 'reports';
@@ -74,6 +78,7 @@ function isPreviewable(file: FileRecord) {
 }
 
 export default function Records() {
+  const location = useLocation();
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -241,30 +246,61 @@ export default function Records() {
 
   return (
     <div className="min-h-screen bg-[#f2fbfa] flex font-sans text-slate-900">
-      <aside className="w-60 bg-white border-r border-slate-200 hidden lg:flex flex-col sticky top-0 h-screen">
+      <aside className="w-60 bg-white/90 backdrop-blur border-r border-teal-100 hidden lg:flex flex-col sticky top-0 h-screen">
         <div className="px-6 pt-6 pb-5">
           <Link to="/dashboard" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-brand rounded-full flex items-center justify-center">
+            <div className="h-9 w-9 rounded-full bg-brand flex items-center justify-center shadow-sm shadow-brand/20">
               <Activity className="h-4 w-4 text-white" />
             </div>
-            <span className="text-lg font-medium text-slate-900 tracking-tight">MediPulse SriLanka</span>
+            <span className="text-lg font-medium tracking-tight text-slate-900">MediPulse SriLanka</span>
           </Link>
         </div>
 
         <nav className="flex-1 px-4 space-y-1">
-          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.32em] px-3 mb-3">Menu</p>
-          <Link to="/dashboard" className="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-teal-50 rounded-full text-sm">
+          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.32em] px-3 mb-3">Menu</p>
+          <Link
+            to="/dashboard"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/dashboard'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
+          >
             <Activity className="h-[18px] w-[18px]" /> Dashboard
           </Link>
-          <Link to="/profile" className="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-teal-50 rounded-full text-sm">
+          <Link
+            to="/profile"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/profile'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
+          >
             <User className="h-[18px] w-[18px]" /> Profile
           </Link>
-          <Link to="/appointments" className="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-teal-50 rounded-full text-sm">
-            <Calendar className="h-[18px] w-[18px]" /> Appointments
+          <Link
+            to="/appointments"
+            className={`flex items-center justify-between px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/appointments'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Calendar className="h-[18px] w-[18px]" /> Appointments
+            </div>
+            <ChevronDown className="h-4 w-4 opacity-50" />
           </Link>
           {isPatient && (
-            <Link to="/payments" className="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-teal-50 rounded-full text-sm">
-              <Shield className="h-[18px] w-[18px]" /> Payments
+            <Link
+              to="/payments"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+                location.pathname === '/payments'
+                  ? 'bg-brand/10 text-brand font-semibold'
+                  : 'text-slate-500 hover:bg-teal-50'
+              }`}
+            >
+              <CreditCard className="h-[18px] w-[18px]" /> Payments
             </Link>
           )}
           {isPatient && (
@@ -274,13 +310,32 @@ export default function Records() {
           )}
           <Link to="/records" className="flex items-center gap-3 px-3 py-2.5 bg-brand/10 text-brand rounded-full text-sm">
             <FileText className="h-[18px] w-[18px]" /> Records
+          <Link
+            to="/records"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/records'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
+          >
+            <ClipboardList className="h-[18px] w-[18px]" /> Records
+          </Link>
+          <Link
+            to="/bmi-calculator"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/bmi-calculator'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
+          >
+            <Scale className="h-[18px] w-[18px]" /> BMI Calculator
           </Link>
         </nav>
 
-        <div className="p-4 border-t border-slate-200 mx-4 mb-4">
+        <div className="p-4 border-t border-teal-100 mx-4 mb-4">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-red-500 hover:bg-red-50 rounded-full text-sm"
+            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-red-500 hover:bg-red-50 rounded-full transition-colors text-sm font-medium"
           >
             <LogOut className="h-[18px] w-[18px]" /> Sign Out
           </button>
