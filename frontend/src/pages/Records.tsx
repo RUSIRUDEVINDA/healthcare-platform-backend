@@ -372,11 +372,10 @@ export default function Records() {
           <div className="w-full max-w-none space-y-5">
             <section className="rounded-[1.5rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
               <div
-                className={`flex gap-5 p-5 sm:p-6 ${
-                  isDoctor
+                className={`flex gap-5 p-5 sm:p-6 ${isDoctor
                     ? 'flex-col'
                     : 'flex-col lg:flex-row lg:items-stretch lg:justify-start lg:gap-8 xl:gap-10'
-                }`}
+                  }`}
               >
                 <div className={`w-full min-w-0 space-y-3 ${!isDoctor ? 'lg:flex-1' : ''}`}>
                   <div className="inline-flex items-center gap-2 rounded-full bg-brand/10 px-3 py-1 text-[11px] text-brand border border-brand/10">
@@ -404,9 +403,8 @@ export default function Records() {
                 </div>
 
                 <div
-                  className={`w-full min-w-0 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 ${
-                    !isDoctor ? 'lg:flex-1' : ''
-                  } ${dragActive && (isPatient || doctorUploadReady) ? 'border-brand bg-white' : ''}`}
+                  className={`w-full min-w-0 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 ${!isDoctor ? 'lg:flex-1' : ''
+                    } ${dragActive && (isPatient || doctorUploadReady) ? 'border-brand bg-white' : ''}`}
                   onDragOver={(event) => {
                     if (isDoctor && !doctorUploadReady) return;
                     event.preventDefault();
@@ -479,11 +477,10 @@ export default function Records() {
                   )}
 
                   <label
-                    className={`mt-4 block rounded-[1.25rem] border border-dashed border-slate-200 bg-white px-4 py-5 text-center ${
-                      uploading || (isDoctor && !doctorUploadReady)
+                    className={`mt-4 block rounded-[1.25rem] border border-dashed border-slate-200 bg-white px-4 py-5 text-center ${uploading || (isDoctor && !doctorUploadReady)
                         ? 'cursor-not-allowed opacity-50'
                         : 'cursor-pointer'
-                    }`}
+                      }`}
                   >
                     <input
                       type="file"
@@ -542,9 +539,8 @@ export default function Records() {
                         key={filter}
                         type="button"
                         onClick={() => setActiveFilter(filter)}
-                        className={`rounded-full px-3 py-1.5 text-xs transition-colors ${
-                          activeFilter === filter ? 'bg-white text-brand shadow-sm' : 'text-slate-500 hover:text-slate-800'
-                        }`}
+                        className={`rounded-full px-3 py-1.5 text-xs transition-colors ${activeFilter === filter ? 'bg-white text-brand shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                          }`}
                       >
                         {filterLabels[filter]}
                       </button>
