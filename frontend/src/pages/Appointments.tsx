@@ -5,23 +5,16 @@ import {
     Clock,
     Video,
     MapPin,
-    LogOut,
-    Activity,
-    ClipboardList,
     Plus,
     User,
     ChevronRight,
-    ChevronDown,
     Building2,
     Briefcase,
-    CreditCard,
     Pencil,
-    Stethoscope,
     Trash2,
-    Scale,
     AlertCircle,
 } from 'lucide-react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { Slot, Appointment, BookAppointmentRequest } from '../api/appointments';
 import { appointmentApi } from '../api/appointments';
 import { doctorApi as doctorsListApi, type Doctor } from '../api/doctors';
@@ -51,7 +44,6 @@ function initialAppointmentsTab(): TabKey {
 }
 
 export default function Appointments() {
-    const location = useLocation();
     const navigate = useNavigate();
     const isDoctor = readUserRole() === 'doctor';
     const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -62,7 +54,6 @@ export default function Appointments() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState<TabKey>(initialAppointmentsTab);
-    const [isApptMenuOpen, setIsApptMenuOpen] = useState(true);
     const [isRedirecting, setIsRedirecting] = useState(false);
     const [mySlots, setMySlots] = useState<Slot[]>([]);
     const [doctorProfile, setDoctorProfile] = useState<DoctorProfile | null>(null);
@@ -145,11 +136,6 @@ export default function Appointments() {
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const handleLogout = () => {
-        localStorage.removeItem('access_token');
-        window.location.href = '/auth/login';
     };
 
     const handleBook = async (data: BookAppointmentRequest) => {
@@ -352,156 +338,16 @@ export default function Appointments() {
             .slice(0, 2)
             .toUpperCase() || '?';
 
+    const tabBtn = (on: boolean) =>
+        `rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+            on ? 'bg-brand/10 text-brand' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+        }`;
+
     return (
-        <div className="min-h-screen bg-[#f6f8fa] flex font-sans">
-            {/* ─── Sidebar ─── */}
-            <aside className="w-60 bg-white/90 backdrop-blur border-r border-teal-100 hidden lg:flex flex-col sticky top-0 h-screen">
-                <div className="px-6 pt-6 pb-5">
-                    <Link to="/dashboard" className="flex items-center gap-2.5">
-                        <div className="h-9 w-9 rounded-full bg-brand flex items-center justify-center shadow-sm shadow-brand/20">
-                            <Activity className="h-4 w-4 text-white" />
-                        </div>
-                        <span className="text-lg font-medium tracking-tight text-slate-900">MediPulse SriLanka</span>
-                    </Link>
-                </div>
-
-                <nav className="flex-1 px-4 space-y-1">
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.32em] px-3 mb-3">Menu</p>
-                    <Link
-                        to="/dashboard"
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
-                            location.pathname === '/dashboard'
-                                ? 'bg-brand/10 text-brand font-semibold'
-                                : 'text-slate-500 hover:bg-teal-50'
-                        }`}
-                    >
-                        <Activity className="h-[18px] w-[18px]" /> Dashboard
-                    </Link>
-                    
-                    <Link
-                        to="/profile"
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
-                            location.pathname === '/profile'
-                                ? 'bg-brand/10 text-brand font-semibold'
-                                : 'text-slate-500 hover:bg-teal-50'
-                        }`}
-                    >
-                        <User className="h-[18px] w-[18px]" /> Profile
-                    </Link>
-
-                    {/* Appointments Dropdown */}
-                    <div className="space-y-1">
-                        <button
-                            onClick={() => setIsApptMenuOpen(!isApptMenuOpen)}
-                            className={`flex items-center justify-between w-full px-3 py-2.5 rounded-full text-sm transition-all ${
-                                location.pathname === '/appointments' 
-                                ? 'bg-brand/10 text-brand font-semibold border border-brand/10' 
-                                : 'text-slate-500 hover:bg-teal-50'
-                            }`}
-                        >
-                            <div className="flex items-center gap-3">
-                                <Calendar className="h-[18px] w-[18px]" /> Appointments
-                            </div>
-                            <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isApptMenuOpen ? 'rotate-180' : ''}`} />
-                        </button>
-                        
-                        {isApptMenuOpen && (
-                            <div className="ml-9 flex flex-col gap-1 mt-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                                {!isDoctor && (
-                                <button
-                                    onClick={() => setActiveTab('doctors')}
-                                    className={`text-left px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                        activeTab === 'doctors' 
-                                        ? 'text-brand font-bold bg-brand/5' 
-                                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    Book an Appointment
-                                </button>
-                                )}
-                                <button
-                                    onClick={() => setActiveTab('appointments')}
-                                    className={`text-left px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                        activeTab === 'appointments' 
-                                        ? 'text-brand font-bold bg-brand/5' 
-                                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    {isDoctor ? 'Consultations' : 'See My Appointments'}
-                                </button>
-                                {isDoctor && (
-                                    <button
-                                        onClick={() => setActiveTab('slots')}
-                                        className={`text-left px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                            activeTab === 'slots'
-                                                ? 'text-brand font-bold bg-brand/5'
-                                                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                                        }`}
-                                    >
-                                        Availability
-                                    </button>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    {!isDoctor && (
-                        <Link
-                            to="/payments"
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
-                                location.pathname === '/payments'
-                                    ? 'bg-brand/10 text-brand font-semibold'
-                                    : 'text-slate-500 hover:bg-teal-50'
-                            }`}
-                        >
-                            <CreditCard className="h-[18px] w-[18px]" /> Payments
-                        </Link>
-                    )}
-                    {!isDoctor && (
-                    <Link
-                        to="/symptom-checker"
-                        className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-                    >
-                        <Stethoscope className="h-[18px] w-[18px]" /> Symptom checker
-                    </Link>
-                    )}
-                    <Link
-                        to="/records"
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
-                            location.pathname === '/records'
-                                ? 'bg-brand/10 text-brand font-semibold'
-                                : 'text-slate-500 hover:bg-teal-50'
-                        }`}
-                    >
-                        <ClipboardList className="h-[18px] w-[18px]" /> Records
-                    </Link>
-                    <Link
-                        to="/bmi-calculator"
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
-                            location.pathname === '/bmi-calculator'
-                                ? 'bg-brand/10 text-brand font-semibold'
-                                : 'text-slate-500 hover:bg-teal-50'
-                        }`}
-                    >
-                        <Scale className="h-[18px] w-[18px]" /> BMI Calculator
-                    </Link>
-                </nav>
-
-                <div className="p-4 border-t border-teal-100 mx-4 mb-4">
-                    <button
-                        onClick={handleLogout}
-                        className="flex items-center gap-2.5 w-full px-3 py-2.5 text-red-500 hover:bg-red-50 rounded-full transition-colors text-sm font-medium"
-                    >
-                        <LogOut className="h-[18px] w-[18px]" /> Sign Out
-                    </button>
-                </div>
-            </aside>
-
-            {/* ─── Main Content ─── */}
-            <div className="flex-1 flex flex-col min-h-screen">
-                {/* Top bar */}
-                <header className="h-14 bg-white border-b border-gray-100 flex items-center justify-between px-8 sticky top-0 z-10">
-                    <div className="flex items-center gap-8">
+        <div className="min-h-screen bg-[#f6f8fa] font-sans">
+            <div className="flex min-h-screen flex-col">
+                <header className="min-h-14 flex flex-col gap-3 border-b border-gray-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-8 sticky top-0 z-10">
+                    <div className="flex min-w-0 flex-col gap-2">
                         <h2 className="text-[15px] font-bold text-gray-900">
                             {activeTab === 'doctors'
                                 ? 'Book Appointment'
@@ -511,8 +357,45 @@ export default function Appointments() {
                                     ? 'Consultations'
                                     : 'My Appointments'}
                         </h2>
+                        <div
+                            className="flex flex-wrap gap-1.5"
+                            role="tablist"
+                            aria-label="Switch appointments view"
+                        >
+                            {!isDoctor && (
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={activeTab === 'doctors'}
+                                    className={tabBtn(activeTab === 'doctors')}
+                                    onClick={() => setActiveTab('doctors')}
+                                >
+                                    Book appointment
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={activeTab === 'appointments'}
+                                className={tabBtn(activeTab === 'appointments')}
+                                onClick={() => setActiveTab('appointments')}
+                            >
+                                {isDoctor ? 'Consultations' : 'My appointments'}
+                            </button>
+                            {isDoctor && (
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={activeTab === 'slots'}
+                                    className={tabBtn(activeTab === 'slots')}
+                                    onClick={() => setActiveTab('slots')}
+                                >
+                                    Availability
+                                </button>
+                            )}
+                        </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex shrink-0 flex-wrap items-center gap-3 sm:gap-4">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <input
