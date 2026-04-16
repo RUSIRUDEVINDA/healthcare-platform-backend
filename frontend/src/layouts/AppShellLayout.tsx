@@ -5,6 +5,7 @@ import {
     ClipboardList,
     CreditCard,
     LogOut,
+    Stethoscope,
     User,
 } from 'lucide-react';
 
@@ -65,6 +66,12 @@ export default function AppShellLayout() {
                         <NavLink to="/payments" className={linkClass}>
                             <CreditCard className="h-[18px] w-[18px] shrink-0" />
                             Payments
+                        </NavLink>
+                    )}
+                    {!isDoctor && (
+                        <NavLink to="/symptom-checker" className={linkClass}>
+                            <Stethoscope className="h-[18px] w-[18px] shrink-0" />
+                            Symptom checker
                         </NavLink>
                     )}
                     <NavLink to="/records" className={linkClass}>
