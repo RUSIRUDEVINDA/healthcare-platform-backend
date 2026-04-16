@@ -11,4 +11,6 @@
 
 /scripts
 file-storage-service.postman_collection.json
-
+.env
+.env.local
+/frontend/.npm-cache

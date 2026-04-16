@@ -152,6 +152,20 @@ func (s *AuthService) RefreshToken(refreshTokenStr string) (*model.TokenResponse
 	return s.buildTokenResponse(user)
 }
 
+func (s *AuthService) Deactivate(userID string) error {
+	if err := s.userRepo.SetActive(userID, false); err != nil {
+		return fmt.Errorf("service.Deactivate: %w", err)
+	}
+
+	// Immediate logout: clear all refresh tokens for this user
+	if err := s.userRepo.DeleteAllUserRefreshTokens(userID); err != nil {
+		s.log.Warn("Failed to clear tokens during deactivation", "user_id", userID, "error", err)
+	}
+
+	s.log.Info("Account deactivated", "user_id", userID)
+	return nil
+}
+
 func (s *AuthService) Logout(refreshTokenStr string) error {
 	tokenHash := jwt.HashToken(refreshTokenStr)
 	if err := s.userRepo.DeleteRefreshToken(tokenHash); err != nil {

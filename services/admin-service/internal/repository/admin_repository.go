@@ -184,3 +184,44 @@ func (r *AdminRepository) UpsertTransaction(transaction *model.Transaction) erro
 	}
 	return nil
 }
+
+func (r *AdminRepository) SyncUsersFromAuthDB(authDatabaseURL string) (int, error) {
+	if authDatabaseURL == "" {
+		return 0, nil
+	}
+
+	authDB, err := sql.Open("postgres", authDatabaseURL)
+	if err != nil {
+		return 0, fmt.Errorf("repository.SyncUsersFromAuthDB open auth db: %w", err)
+	}
+	defer authDB.Close()
+
+	rows, err := authDB.Query(`
+		SELECT id, email, role, first_name, last_name, is_verified, is_active, created_at, updated_at
+		FROM users
+	`)
+	if err != nil {
+		return 0, fmt.Errorf("repository.SyncUsersFromAuthDB query users: %w", err)
+	}
+	defer rows.Close()
+
+	synced := 0
+	for rows.Next() {
+		var user model.User
+		var role string
+		if err := rows.Scan(&user.ID, &user.Email, &role, &user.FirstName, &user.LastName, &user.IsVerified, &user.IsActive, &user.CreatedAt, &user.UpdatedAt); err != nil {
+			return synced, fmt.Errorf("repository.SyncUsersFromAuthDB scan: %w", err)
+		}
+		user.Role = model.Role(role)
+		if err := r.UpsertUser(&user); err != nil {
+			return synced, fmt.Errorf("repository.SyncUsersFromAuthDB upsert user: %w", err)
+		}
+		synced++
+	}
+
+	if err := rows.Err(); err != nil {
+		return synced, fmt.Errorf("repository.SyncUsersFromAuthDB rows: %w", err)
+	}
+
+	return synced, nil
+}

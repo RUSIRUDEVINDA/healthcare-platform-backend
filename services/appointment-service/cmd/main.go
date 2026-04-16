@@ -51,7 +51,15 @@ func main() {
 
 	// Setup Business Logic
 	appointmentRepo := repository.NewAppointmentRepository(db)
-	appointmentSvc := service.NewAppointmentService(appointmentRepo, mqClient, log, cfg.DoctorServiceURL, cfg.JitsiBaseURL)
+	appointmentSvc := service.NewAppointmentService(
+		appointmentRepo,
+		mqClient,
+		log,
+		cfg.DoctorServiceURL,
+		cfg.PatientServiceURL,
+		cfg.InternalAPIKey,
+		cfg.JitsiBaseURL,
+	)
 	appointmentHandler := handler.NewAppointmentHandler(appointmentSvc, log)
 	appointmentConsumer := messaging.NewAppointmentConsumer(mqClient, appointmentSvc, log)
 
@@ -158,6 +166,7 @@ func runMigrations(db *sql.DB, log *logger.Logger) error {
 		id         UUID PRIMARY KEY,
 		doctor_id  TEXT NOT NULL,
 		owner_user_id TEXT NOT NULL DEFAULT '',
+		hospital   TEXT NOT NULL DEFAULT '',
 		start_time TIMESTAMPTZ NOT NULL,
 		end_time   TIMESTAMPTZ NOT NULL,
 		is_booked  BOOLEAN DEFAULT FALSE,
@@ -174,8 +183,11 @@ func runMigrations(db *sql.DB, log *logger.Logger) error {
 	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'pending';
 	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS payment_due_at TIMESTAMPTZ;
 	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
+	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS patient_first_name TEXT NOT NULL DEFAULT '';
+	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS patient_last_name TEXT NOT NULL DEFAULT '';
 	ALTER TABLE slots ALTER COLUMN doctor_id TYPE TEXT USING doctor_id::text;
 	ALTER TABLE slots ADD COLUMN IF NOT EXISTS owner_user_id TEXT NOT NULL DEFAULT '';
+	ALTER TABLE slots ADD COLUMN IF NOT EXISTS hospital TEXT NOT NULL DEFAULT '';
 
 	CREATE INDEX IF NOT EXISTS idx_appointments_patient ON appointments(patient_id);
 	CREATE INDEX IF NOT EXISTS idx_appointments_doctor  ON appointments(doctor_id);
@@ -183,6 +195,7 @@ func runMigrations(db *sql.DB, log *logger.Logger) error {
 	CREATE INDEX IF NOT EXISTS idx_appointments_slot ON appointments(slot_id);
 	CREATE INDEX IF NOT EXISTS idx_slots_doctor         ON slots(doctor_id);
 	CREATE INDEX IF NOT EXISTS idx_slots_owner          ON slots(owner_user_id);
+	CREATE INDEX IF NOT EXISTS idx_slots_hospital       ON slots(hospital);
 	CREATE INDEX IF NOT EXISTS idx_slots_start_time     ON slots(start_time);
 	CREATE INDEX IF NOT EXISTS idx_appointments_payment_due ON appointments(payment_due_at);
 	CREATE INDEX IF NOT EXISTS idx_appointments_payment_status ON appointments(payment_status);

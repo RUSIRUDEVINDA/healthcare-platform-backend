@@ -14,6 +14,7 @@ import (
 
 	"healthcare-platform/pkg/jwt"
 	"healthcare-platform/pkg/logger"
+	"healthcare-platform/pkg/middleware"
 	"healthcare-platform/pkg/rabbitmq"
 	"healthcare-platform/services/admin-service/internal/config"
 	"healthcare-platform/services/admin-service/internal/handler"
@@ -50,6 +51,7 @@ func main() {
 
 	repo := repository.NewAdminRepository(db)
 	adminSvc := service.NewAdminService(repo, log)
+	adminSvc := service.NewAdminService(repo, log, cfg.AuthDatabaseURL)
 	consumer := messaging.NewConsumer(mqClient, adminSvc, log)
 	if err := consumer.Start(); err != nil {
 		log.Fatal("Failed to start admin consumers", "error", err)
@@ -63,6 +65,7 @@ func main() {
 
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.Use(middleware.CORSMiddleware())
 	adminHandler.RegisterRoutes(router)
 
 	srv := &http.Server{

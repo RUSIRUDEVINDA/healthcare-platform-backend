@@ -43,7 +43,7 @@ export default function PaymentStatus({ type }: PaymentStatusProps) {
                 <div className="space-y-3">
                     {type === 'success' ? (
                         <Link
-                            to="/appointments"
+                            to="/appointments?tab=appointments"
                             className="flex items-center justify-center gap-2 w-full py-4 bg-brand text-white rounded-2xl font-bold hover:bg-brand-dark transition-all shadow-lg shadow-brand/20 active:scale-[0.98]"
                         >
                             <Calendar className="h-5 w-5" /> View Appointments

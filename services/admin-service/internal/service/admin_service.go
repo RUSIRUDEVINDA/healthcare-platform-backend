@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"healthcare-platform/pkg/logger"
 	"healthcare-platform/pkg/rabbitmq"
 	"healthcare-platform/services/admin-service/internal/model"
@@ -15,12 +17,13 @@ import (
 var ErrUserNotFound = errors.New("user not found")
 
 type AdminService struct {
-	repo *repository.AdminRepository
-	log  *logger.Logger
+	repo            *repository.AdminRepository
+	log             *logger.Logger
+	authDatabaseURL string
 }
 
-func NewAdminService(repo *repository.AdminRepository, log *logger.Logger) *AdminService {
-	return &AdminService{repo: repo, log: log}
+func NewAdminService(repo *repository.AdminRepository, log *logger.Logger, authDatabaseURL string) *AdminService {
+	return &AdminService{repo: repo, log: log, authDatabaseURL: authDatabaseURL}
 }
 
 func (s *AdminService) HandleUserRegistered(event rabbitmq.UserRegisteredEvent) error {

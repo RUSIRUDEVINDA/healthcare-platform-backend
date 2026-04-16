@@ -1,14 +1,17 @@
 go 1.25.0
 
 use (
+	*.env
 	./pkg
+	./services/admin-service
 	./services/ai-symptom-service
-	//./services/api-gateway
+	./services/appointment-service
+	./services/api-gateway
 	./services/auth-service
+	./services/doctor-service
+	./services/file-storage-service
 	./services/patient-service
 	./services/payment-service
-	./services/file-storage-service
-	./services/appointment-service
-	./services/doctor-service
 	./services/telemedicine-service
+	./services/support-service
 )

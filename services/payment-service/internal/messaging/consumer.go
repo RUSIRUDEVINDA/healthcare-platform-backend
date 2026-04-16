@@ -44,6 +44,17 @@ func (c *PaymentConsumer) Start() error {
 		return fmt.Errorf("messaging.Start: cancelled: %w", err)
 	}
 
+	// New: Handle Patient Deleted
+	errP := c.mqClient.ConsumeQueue(
+		queueName,
+		rabbitmq.ExchangeUserEvents,
+		c.handlePatientDeleted,
+		rabbitmq.RoutingKeyPatientDeleted,
+	)
+	if errP != nil {
+		return fmt.Errorf("messaging.Start: patient.deleted: %w", errP)
+	}
+
 	c.log.Info("Payment service consumer started")
 	return nil
 }
@@ -85,4 +96,15 @@ func (c *PaymentConsumer) handleAppointmentCancelled(body []byte) error {
 	}
 
 	return nil
+}
+
+func (c *PaymentConsumer) handlePatientDeleted(body []byte) error {
+	var event rabbitmq.PatientDeletedEvent
+	if err := json.Unmarshal(body, &event); err != nil {
+		return fmt.Errorf("consumer.handlePatientDeleted unmarshal: %w", err)
+	}
+
+	c.log.Info("Processing patient.deleted event", "patient_id", event.PatientID)
+
+	return c.svc.DeletePatientPayments(event.PatientID)
 }

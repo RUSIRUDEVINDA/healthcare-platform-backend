@@ -11,6 +11,26 @@ services:
   # Infrastructure Services
   # ────────────────────────────────
 
+  support-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: support_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5443:5432"
+    volumes:
+      - support-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d support_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - healthcare-net
+
   auth-db:
     image: postgres:17-alpine
     restart: unless-stopped
@@ -81,8 +101,6 @@ services:
       context: .
       dockerfile: ./services/auth-service/Dockerfile
     restart: unless-stopped
-    ports:
-      - "8001:8001"   # Exposed for direct testing with curl/Postman
     env_file:
       - ./services/auth-service/.env
     environment:
@@ -120,18 +138,37 @@ services:
     networks:
       - healthcare-net
 
+  admin-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: admin_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5440:5432"
+    volumes:
+      - admin-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d admin_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - healthcare-net
+
   patient-service:
     build:
       context: .
       dockerfile: ./services/patient-service/Dockerfile
-    ports:
-      - "8002:8002"
     environment:
       APP_ENV: development
       PORT: "8002"
       DATABASE_URL: "postgres://postgres:password123@patient-db:5432/patient_db?sslmode=disable"
       RABBITMQ_URL: "amqp://admin:password123@rabbitmq:5672/"
       JWT_SECRET: "local-dev-secret-change-this-in-production-32chars"
+      INTERNAL_API_KEY: "dev-inter-service-appointments-patients"
     depends_on:
       patient-db:
         condition: service_healthy
@@ -145,8 +182,6 @@ services:
       dockerfile: ./services/doctor-service/Dockerfile
     container_name: doctor-service
     restart: unless-stopped
-    ports:
-      - "8003:8003"
     environment:
       APP_ENV: development
       PORT: "8003"
@@ -190,8 +225,6 @@ services:
       dockerfile: ./services/ai-symptom-service/Dockerfile
     container_name: ai-symptom-service
     restart: unless-stopped
-    ports:
-      - "8008:8008"
     environment:
       APP_ENV: development
       PORT: "8008"
@@ -233,8 +266,6 @@ services:
       context: .
       dockerfile: ./services/payment-service/Dockerfile
     container_name: payment-service
-    ports:
-      - "8005:8005"
     env_file:
       - ./services/payment-service/.env
     environment:
@@ -244,6 +275,40 @@ services:
       RABBITMQ_URL: "amqp://admin:password123@rabbitmq:5672/"
     depends_on:
       payment-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - healthcare-net
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: ./services/notification-service/Dockerfile
+    container_name: notification-service
+    restart: unless-stopped
+    ports:
+      - "8006:8006"
+    env_file:
+      - ./services/notification-service/.env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - healthcare-net
+
+  admin-service:
+    build:
+      context: .
+      dockerfile: ./services/admin-service/Dockerfile
+    container_name: admin-service
+    restart: unless-stopped
+    ports:
+      - "8007:8007"
+    env_file:
+      - ./services/admin-service/.env
+    depends_on:
+      admin-db:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
@@ -277,8 +342,6 @@ services:
       dockerfile: ./services/file-storage-service/Dockerfile
     container_name: file-storage-service
     restart: unless-stopped
-    ports:
-      - "8010:8010"
     env_file:
       - ./services/file-storage-service/.env
     environment:
@@ -296,6 +359,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      appointment-service:
+        condition: service_started
     networks:
       - healthcare-net
 
@@ -349,8 +414,6 @@ services:
     build:
       context: .
       dockerfile: ./services/appointment-service/Dockerfile
-    ports:
-      - "8004:8004"
     environment:
       APP_ENV: development
       PORT: "8004"
@@ -358,11 +421,15 @@ services:
       RABBITMQ_URL: "amqp://admin:password123@rabbitmq:5672/"
       JWT_SECRET: "local-dev-secret-change-this-in-production-32chars"
       DOCTOR_SERVICE_URL: "http://doctor-service:8003"
+      PATIENT_SERVICE_URL: "http://patient-service:8002"
+      INTERNAL_API_KEY: "dev-inter-service-appointments-patients"
     depends_on:
       appointment-db:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      patient-service:
+        condition: service_started
     networks:
       - healthcare-net
 
@@ -380,8 +447,6 @@ services:
       dockerfile: ./services/telemedicine-service/Dockerfile
     container_name: telemedicine-service
     restart: unless-stopped
-    ports:
-      - "8009:8009"
     env_file:
       - ./services/telemedicine-service/.env
     environment:
@@ -402,27 +467,54 @@ services:
     networks:
       - healthcare-net
 
+  support-service:
+    build:
+      context: .
+      dockerfile: ./services/support-service/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8011:8011"
+    environment:
+      APP_ENV: development
+      PORT: "8011"
+      DATABASE_URL: "postgres://postgres:password123@support-db:5432/support_db?sslmode=disable"
+    depends_on:
+      support-db:
+        condition: service_healthy
+    networks:
+      - healthcare-net
+
   nginx:
-    image: nginx:1.25-alpine
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: healthcare-platform-nginx:local
     restart: unless-stopped
     ports:
       - "80:80"
-    volumes:
-      - type: bind
-        source: ./nginx/nginx.conf
-        target: /etc/nginx/nginx.conf
-        read_only: true
-        bind:
-          create_host_path: false
     depends_on:
+      - api-gateway
       - auth-service
       - patient-service
       - payment-service
+      - notification-service
+      - admin-service
       - doctor-service
       - ai-symptom-service
       - appointment-service
       - telemedicine-service
+      - support-service
       - frontend
+    networks:
+      - healthcare-net
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ./services/api-gateway/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./services/api-gateway/.env
     networks:
       - healthcare-net
 
@@ -431,6 +523,7 @@ services:
 # ────────────────────────────────
 volumes:
   auth-db-data:
+  admin-db-data:
   ai-symptom-db-data:
   doctor-db-data:
   rabbitmq-data:
@@ -439,6 +532,7 @@ volumes:
   appointment-db-data:
   file-storage-db-data:
   telemedicine-db-data:
+  support-db-data:
 
 # ────────────────────────────────
 # Internal network

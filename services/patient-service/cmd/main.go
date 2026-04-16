@@ -48,7 +48,7 @@ func main() {
 
 	// Setup Business Logic
 	patientRepo := repository.NewPatientRepository(db)
-	patientSvc := service.NewPatientService(patientRepo, log)
+	patientSvc := service.NewPatientService(patientRepo, mqClient, log)
 	patientHandler := handler.NewPatientHandler(patientSvc, log)
 
 	// Setup Messaging Consumer
@@ -69,7 +69,7 @@ func main() {
 	router.Use(gin.Recovery())
 	// router.Use(middleware.Logger(log)) // If we had one for this service
 
-	patientHandler.RegisterRoutes(router, jwtHelper)
+	patientHandler.RegisterRoutes(router, jwtHelper, cfg.InternalAPIKey)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,

@@ -7,7 +7,7 @@ replace healthcare-platform/pkg => ../../pkg
 require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/joho/godotenv v1.5.1
-	github.com/lib/pq v1.10.9
+	github.com/lib/pq v1.12.0
 	healthcare-platform/pkg v0.0.0-00010101000000-000000000000
 )
 

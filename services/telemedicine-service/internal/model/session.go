@@ -52,8 +52,8 @@ type Session struct {
 }
 
 type CreateSessionRequest struct {
-	Purpose string `json:"purpose"`
-	Notes   string `json:"notes"`
+	Purpose string `json:"purpose" binding:"omitempty,max=500"`
+	Notes   string `json:"notes"   binding:"omitempty,max=2000"`
 }
 
 type SessionJoinResponse struct {

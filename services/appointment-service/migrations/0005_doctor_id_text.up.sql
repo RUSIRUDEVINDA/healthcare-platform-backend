@@ -8,4 +8,3 @@ ALTER TABLE appointments
 ALTER TABLE slots
     ALTER COLUMN doctor_id TYPE TEXT
     USING doctor_id::text;
-
