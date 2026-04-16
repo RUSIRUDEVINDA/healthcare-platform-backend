@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
     Search,
     Calendar,
@@ -68,6 +68,10 @@ export default function Appointments() {
     // Slot deletion dialog state
     const [deleteSlotDialogOpen, setDeleteSlotDialogOpen] = useState(false);
     const [slotToDelete, setSlotToDelete] = useState<Slot | null>(null);
+    const [consultationsPage, setConsultationsPage] = useState(1);
+    const [consultationsPageSize, setConsultationsPageSize] = useState(10);
+    const [availabilityPage, setAvailabilityPage] = useState(1);
+    const [availabilityPageSize, setAvailabilityPageSize] = useState(10);
 
     useEffect(() => {
         fetchData();
@@ -319,6 +323,39 @@ export default function Appointments() {
         return hosp.includes(q) || startLabel.includes(q) || (slot.is_booked ? 'booked' : 'available').includes(q);
     });
 
+    const consultationsTotalPages = Math.max(1, Math.ceil(filteredAppointments.length / consultationsPageSize));
+    const availabilityTotalPages = Math.max(1, Math.ceil(filteredMySlots.length / availabilityPageSize));
+
+    const paginatedConsultations = useMemo(() => {
+        const start = (consultationsPage - 1) * consultationsPageSize;
+        return filteredAppointments.slice(start, start + consultationsPageSize);
+    }, [consultationsPage, consultationsPageSize, filteredAppointments]);
+
+    const paginatedAvailability = useMemo(() => {
+        const start = (availabilityPage - 1) * availabilityPageSize;
+        return filteredMySlots.slice(start, start + availabilityPageSize);
+    }, [availabilityPage, availabilityPageSize, filteredMySlots]);
+
+    useEffect(() => {
+        setConsultationsPage(1);
+    }, [searchQuery, consultationsPageSize, activeTab]);
+
+    useEffect(() => {
+        setAvailabilityPage(1);
+    }, [searchQuery, availabilityPageSize, activeTab]);
+
+    useEffect(() => {
+        if (consultationsPage > consultationsTotalPages) {
+            setConsultationsPage(consultationsTotalPages);
+        }
+    }, [consultationsPage, consultationsTotalPages]);
+
+    useEffect(() => {
+        if (availabilityPage > availabilityTotalPages) {
+            setAvailabilityPage(availabilityTotalPages);
+        }
+    }, [availabilityPage, availabilityTotalPages]);
+
     const statusColor: Record<string, string> = {
         confirmed: 'bg-green-50 text-green-600',
         pending: 'bg-amber-50 text-amber-600',
@@ -559,6 +596,31 @@ export default function Appointments() {
                                 </div>
                             ) : (
                                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                                    <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <p className="text-sm text-gray-500">
+                                            Showing{' '}
+                                            <span className="font-medium text-gray-700">
+                                                {Math.min((availabilityPage - 1) * availabilityPageSize + 1, filteredMySlots.length)}
+                                            </span>
+                                            {' '}-{' '}
+                                            <span className="font-medium text-gray-700">
+                                                {Math.min(availabilityPage * availabilityPageSize, filteredMySlots.length)}
+                                            </span>
+                                            {' '}of <span className="font-medium text-gray-700">{filteredMySlots.length}</span>
+                                        </p>
+                                        <label className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-600">
+                                            <span>Show</span>
+                                            <select
+                                                value={availabilityPageSize}
+                                                onChange={(event) => setAvailabilityPageSize(Number(event.target.value))}
+                                                className="bg-transparent text-xs font-medium text-gray-700 outline-none"
+                                            >
+                                                <option value={10}>10</option>
+                                                <option value={20}>20</option>
+                                                <option value={30}>30</option>
+                                            </select>
+                                        </label>
+                                    </div>
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm">
                                             <thead>
@@ -571,7 +633,7 @@ export default function Appointments() {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100">
-                                                {filteredMySlots.map((slot) => {
+                                                {paginatedAvailability.map((slot) => {
                                                     const booked = slot.is_booked;
                                                     return (
                                                         <tr key={slot.id} className="hover:bg-gray-50/60">
@@ -643,6 +705,30 @@ export default function Appointments() {
                                             </tbody>
                                         </table>
                                     </div>
+                                    <div className="flex flex-col gap-3 border-t border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <span className="text-sm text-gray-500">
+                                            Page <span className="font-medium text-gray-700">{availabilityPage}</span> of{' '}
+                                            <span className="font-medium text-gray-700">{availabilityTotalPages}</span>
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setAvailabilityPage((page) => Math.max(1, page - 1))}
+                                                disabled={availabilityPage === 1}
+                                                className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:border-brand/30 hover:text-brand disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                Previous
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setAvailabilityPage((page) => Math.min(availabilityTotalPages, page + 1))}
+                                                disabled={availabilityPage === availabilityTotalPages}
+                                                className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:border-brand/30 hover:text-brand disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -680,7 +766,33 @@ export default function Appointments() {
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-3">
-                                    {filteredAppointments.map((appt) => (
+                                    <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <p className="text-sm text-gray-500">
+                                            Showing{' '}
+                                            <span className="font-medium text-gray-700">
+                                                {Math.min((consultationsPage - 1) * consultationsPageSize + 1, filteredAppointments.length)}
+                                            </span>
+                                            {' '}-{' '}
+                                            <span className="font-medium text-gray-700">
+                                                {Math.min(consultationsPage * consultationsPageSize, filteredAppointments.length)}
+                                            </span>
+                                            {' '}of <span className="font-medium text-gray-700">{filteredAppointments.length}</span>
+                                        </p>
+                                        <label className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-600">
+                                            <span>Show</span>
+                                            <select
+                                                value={consultationsPageSize}
+                                                onChange={(event) => setConsultationsPageSize(Number(event.target.value))}
+                                                className="bg-transparent text-xs font-medium text-gray-700 outline-none"
+                                            >
+                                                <option value={10}>10</option>
+                                                <option value={20}>20</option>
+                                                <option value={30}>30</option>
+                                            </select>
+                                        </label>
+                                    </div>
+
+                                    {paginatedConsultations.map((appt) => (
                                         <div key={appt.id} className="bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-md transition-all group flex items-center gap-6">
                                             <div className="w-14 h-14 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-brand font-bold shrink-0 shadow-sm group-hover:border-brand/20 transition-colors">
                                                 {isDoctor
@@ -788,6 +900,31 @@ export default function Appointments() {
                                             </div>
                                         </div>
                                     ))}
+
+                                    <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <span className="text-sm text-gray-500">
+                                            Page <span className="font-medium text-gray-700">{consultationsPage}</span> of{' '}
+                                            <span className="font-medium text-gray-700">{consultationsTotalPages}</span>
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setConsultationsPage((page) => Math.max(1, page - 1))}
+                                                disabled={consultationsPage === 1}
+                                                className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:border-brand/30 hover:text-brand disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                Previous
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setConsultationsPage((page) => Math.min(consultationsTotalPages, page + 1))}
+                                                disabled={consultationsPage === consultationsTotalPages}
+                                                className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:border-brand/30 hover:text-brand disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </div>
