@@ -25,7 +25,7 @@ export default function Telemedicine() {
                         <Video className="h-4 w-4 text-white" />
                     </div>
                     <div className="min-w-0">
-                        <h1 className="text-sm font-bold text-gray-900 truncate">{title}</h1>
+                        <h1 className="text-lg font-semibold tracking-tight text-slate-900 truncate">{title}</h1>
                         <p className="text-xs text-gray-500 truncate">Meeting with {peerName}</p>
                     </div>
                 </div>

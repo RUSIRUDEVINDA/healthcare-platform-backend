@@ -395,7 +395,7 @@ export default function Appointments() {
             <div className="flex min-h-screen flex-col">
                 <header className="min-h-14 flex flex-col gap-3 border-b border-gray-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-8 sticky top-0 z-10">
                     <div className="flex min-w-0 flex-col gap-2">
-                        <h2 className="text-[15px] font-bold text-gray-900">
+                        <h2 className="text-lg font-semibold tracking-tight text-slate-900">
                             {activeTab === 'doctors'
                                 ? 'Book Appointment'
                                 : activeTab === 'slots'
