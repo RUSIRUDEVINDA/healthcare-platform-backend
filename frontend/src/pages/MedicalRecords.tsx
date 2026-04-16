@@ -227,7 +227,7 @@ export default function MedicalRecords() {
                                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">
                                     Clinical documentation
                                 </p>
-                                <h1 className="text-xl font-semibold text-gray-900 tracking-tight">Medical records</h1>
+                                <h1 className="text-lg font-semibold tracking-tight text-slate-900">Medical records</h1>
                                 <p className="text-sm text-gray-500 mt-1 max-w-2xl leading-relaxed">
                                     {isDoctor
                                         ? 'Upload prescriptions and medical reports for patients with whom you have an active clinical relationship (shared appointments). Files are available to the patient in their portal.'
