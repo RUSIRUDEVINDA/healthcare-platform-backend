@@ -347,7 +347,7 @@ export default function Records() {
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10">
           <div>
             <p className="text-[10px] uppercase tracking-[0.32em] text-slate-400">Medical Records</p>
-            <h1 className="text-lg font-medium text-slate-900">Your chart</h1>
+            <h1 className="text-lg font-semibold tracking-tight text-slate-900">Your chart</h1>
           </div>
           <div className="flex min-w-0 items-center gap-3">
             {isDoctor ? (
