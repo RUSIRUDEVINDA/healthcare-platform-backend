@@ -320,7 +320,7 @@ export default function Dashboard() {
             <p className="text-[10px] uppercase tracking-[0.32em] text-slate-400 font-semibold">
               {role === 'doctor' ? 'Clinical overview' : 'Overview'}
             </p>
-            <h1 className="text-lg font-bold text-slate-900">
+            <h1 className="text-lg font-semibold tracking-tight text-slate-900">
               {role === 'doctor' ? 'Doctor dashboard' : 'Dashboard'}
             </h1>
           </div>
