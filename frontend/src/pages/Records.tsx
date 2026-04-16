@@ -15,7 +15,7 @@ import {
   Upload,
   User,
   X,
-} from 'lucide-react';
+} from "lucide-react";
 import axios from 'axios';
 import { appointmentApi, type Appointment } from '../api/appointments';
 import { doctorApi } from '../api/doctor';
