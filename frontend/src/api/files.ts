@@ -8,7 +8,7 @@ export interface FileRecord {
   owner_id: string;
   uploader_id: string;
   kind: 'image' | 'document' | string;
-  document_category?: DocumentCategory | string;
+  document_category?: string;
   storage_provider: 'cloudinary' | 'r2' | string;
   original_name: string;
   stored_name: string;
@@ -22,7 +22,7 @@ export interface FileRecord {
   is_public: boolean;
   created_at: string;
   updated_at: string;
-  deleted_at?: string | null;
+  deleted_at?: string;
 }
 
 export interface FileListResponse {
@@ -94,6 +94,14 @@ export const fileApi = {
 
 const FALLBACK_PATIENT_NAME = 'Unknown patient';
 
+function pickString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function joinName(first: string, last: string): string {
+  return [first, last].filter(Boolean).join(' ').trim();
+}
+
 function normalizeDocumentCategory(value?: string | null): DocumentCategory {
   const raw = String(value ?? '').trim().toLowerCase();
   if (raw === 'prescription') return 'prescription';
@@ -113,8 +121,22 @@ export function isClinicalFile(file: FileRecord, patientId?: string): boolean {
 export function patientLabelFromAppointment(appointment: Appointment): string {
   const first = appointment.patient_first_name?.trim() ?? '';
   const last = appointment.patient_last_name?.trim() ?? '';
-  const fullName = [first, last].filter(Boolean).join(' ').trim();
+  const fullName = joinName(first, last);
   if (fullName) return fullName;
+
+  // Accept alternate backend shapes to avoid showing generic "Patient".
+  const raw = appointment as unknown as Record<string, unknown>;
+  const altFullName =
+    pickString(raw.patient_name) ||
+    pickString(raw.patient_full_name) ||
+    pickString(raw.full_name) ||
+    pickString(raw.name);
+  if (altFullName) return altFullName;
+
+  const altFirst = pickString(raw.first_name);
+  const altLast = pickString(raw.last_name);
+  const composedAltName = joinName(altFirst, altLast);
+  if (composedAltName) return composedAltName;
 
   const patientId = appointment.patient_id?.trim() ?? '';
   if (!patientId) return FALLBACK_PATIENT_NAME;

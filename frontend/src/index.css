@@ -14,21 +14,6 @@
     @apply antialiased text-gray-900 bg-surface-muted font-sans;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6,
-  strong,
-  b,
-  .font-medium,
-  .font-semibold,
-  .font-bold,
-  .font-extrabold,
-  .font-black {
-    font-weight: 400 !important;
-  }
 
   button,
   [type='button'],

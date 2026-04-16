@@ -20,6 +20,7 @@ import axios from 'axios';
 import { appointmentApi, type Appointment } from '../api/appointments';
 import { doctorApi } from '../api/doctor';
 import { fileApi, patientLabelFromAppointment, type DocumentCategory, type FileRecord } from '../api/files';
+import { patientApi } from '../api/patient';
 
 type FilterKey = 'all' | 'prescriptions' | 'reports';
 type RecordBucket = Exclude<FilterKey, 'all'>;
@@ -100,7 +101,7 @@ export default function Records() {
   const [uploadSuccessFileName, setUploadSuccessFileName] = useState<string | null>(null);
   const [filePendingDelete, setFilePendingDelete] = useState<FileRecord | null>(null);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
-  const [doctorName, setDoctorName] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   const isDoctor = role === 'doctor';
 
@@ -153,14 +154,22 @@ export default function Records() {
         const userString = localStorage.getItem('user');
         const user = userString ? JSON.parse(userString) : null;
         if (user?.role !== 'doctor') {
-          setDoctorName(null);
+          try {
+            const profile = await patientApi.getProfile();
+            if (!cancelled) {
+              const fullName = `${profile?.first_name || 'Patient'} ${profile?.last_name || ''}`.trim();
+              setDisplayName(fullName || 'Patient');
+            }
+          } catch {
+            if (!cancelled) setDisplayName('Patient');
+          }
           return;
         }
         try {
           const profile = await doctorApi.getProfile();
-          if (!cancelled) setDoctorName(profile?.name?.trim() || null);
+          if (!cancelled) setDisplayName(profile?.name?.trim() || 'Doctor');
         } catch {
-          if (!cancelled) setDoctorName(null);
+          if (!cancelled) setDisplayName('Doctor');
         }
         const data = await appointmentApi.listAppointments();
         const list = Array.isArray(data) ? data : [];
@@ -350,18 +359,9 @@ export default function Records() {
             <h1 className="text-lg font-medium text-slate-900">Your chart</h1>
           </div>
           <div className="flex min-w-0 items-center gap-3">
-            {isDoctor ? (
-              <div className="min-w-0 max-w-[min(100%,14rem)] sm:max-w-xs text-right">
-                <p className="truncate text-sm font-semibold text-slate-900" title={doctorName ?? undefined}>
-                  {doctorName || '—'}
-                </p>
-              </div>
-            ) : (
-              <div className="hidden md:flex items-center gap-2 rounded-full bg-brand/10 px-3 py-1.5 text-brand text-xs">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                Secure upload
-              </div>
-            )}
+            <p className="hidden sm:block text-sm font-medium text-slate-600">
+              {displayName || (isDoctor ? 'Doctor' : 'Patient')}
+            </p>
             <div className="w-10 h-10 shrink-0 bg-brand-light rounded-full flex items-center justify-center text-brand border border-brand/20">
               <User className="h-5 w-5" />
             </div>
@@ -372,11 +372,10 @@ export default function Records() {
           <div className="w-full max-w-none space-y-5">
             <section className="rounded-[1.5rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
               <div
-                className={`flex gap-5 p-5 sm:p-6 ${
-                  isDoctor
+                className={`flex gap-5 p-5 sm:p-6 ${isDoctor
                     ? 'flex-col'
                     : 'flex-col lg:flex-row lg:items-stretch lg:justify-start lg:gap-8 xl:gap-10'
-                }`}
+                  }`}
               >
                 <div className={`w-full min-w-0 space-y-3 ${!isDoctor ? 'lg:flex-1' : ''}`}>
                   <div className="inline-flex items-center gap-2 rounded-full bg-brand/10 px-3 py-1 text-[11px] text-brand border border-brand/10">
@@ -404,9 +403,8 @@ export default function Records() {
                 </div>
 
                 <div
-                  className={`w-full min-w-0 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 ${
-                    !isDoctor ? 'lg:flex-1' : ''
-                  } ${dragActive && (isPatient || doctorUploadReady) ? 'border-brand bg-white' : ''}`}
+                  className={`w-full min-w-0 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 ${!isDoctor ? 'lg:flex-1' : ''
+                    } ${dragActive && (isPatient || doctorUploadReady) ? 'border-brand bg-white' : ''}`}
                   onDragOver={(event) => {
                     if (isDoctor && !doctorUploadReady) return;
                     event.preventDefault();
@@ -479,11 +477,10 @@ export default function Records() {
                   )}
 
                   <label
-                    className={`mt-4 block rounded-[1.25rem] border border-dashed border-slate-200 bg-white px-4 py-5 text-center ${
-                      uploading || (isDoctor && !doctorUploadReady)
+                    className={`mt-4 block rounded-[1.25rem] border border-dashed border-slate-200 bg-white px-4 py-5 text-center ${uploading || (isDoctor && !doctorUploadReady)
                         ? 'cursor-not-allowed opacity-50'
                         : 'cursor-pointer'
-                    }`}
+                      }`}
                   >
                     <input
                       type="file"
@@ -542,9 +539,8 @@ export default function Records() {
                         key={filter}
                         type="button"
                         onClick={() => setActiveFilter(filter)}
-                        className={`rounded-full px-3 py-1.5 text-xs transition-colors ${
-                          activeFilter === filter ? 'bg-white text-brand shadow-sm' : 'text-slate-500 hover:text-slate-800'
-                        }`}
+                        className={`rounded-full px-3 py-1.5 text-xs transition-colors ${activeFilter === filter ? 'bg-white text-brand shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                          }`}
                       >
                         {filterLabels[filter]}
                       </button>

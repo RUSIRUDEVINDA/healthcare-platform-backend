@@ -35,6 +35,7 @@ export default function DoctorSlotFormModal({
 }: DoctorSlotFormModalProps) {
     const [startLocal, setStartLocal] = useState('');
     const [endLocal, setEndLocal] = useState('');
+    const [hospital, setHospital] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +45,9 @@ export default function DoctorSlotFormModal({
         if (mode === 'edit' && slot) {
             setStartLocal(toDatetimeLocalValue(slot.start_time));
             setEndLocal(toDatetimeLocalValue(slot.end_time));
+            setHospital(slot.hospital || profileHospital);
         } else {
+            setHospital(profileHospital);
             const start = new Date();
             start.setSeconds(0, 0);
             const step = 15;
@@ -57,7 +60,7 @@ export default function DoctorSlotFormModal({
             setStartLocal(toDatetimeLocalValue(start.toISOString()));
             setEndLocal(toDatetimeLocalValue(end.toISOString()));
         }
-    }, [isOpen, mode, slot]);
+    }, [isOpen, mode, slot, profileHospital]);
 
     if (!isOpen) return null;
 
@@ -86,9 +89,9 @@ export default function DoctorSlotFormModal({
             setError('End time must be after start time.');
             return;
         }
-        const hosp = profileHospital.trim();
+        const hosp = hospital.trim();
         if (!hosp) {
-            setError('Add your hospital on your profile before managing slots.');
+            setError('Please specify the hospital for this slot.');
             return;
         }
         setSubmitting(true);
@@ -128,14 +131,20 @@ export default function DoctorSlotFormModal({
                 </div>
                 <form onSubmit={handleSubmit} className="p-5 space-y-4">
                     <div>
-                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                        <label htmlFor="slot-hospital" className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
                             Hospital
                         </label>
-                        <p className="text-sm text-gray-800 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5">
-                            {profileHospital.trim() || '— Set in Profile'}
-                        </p>
+                        <input
+                            id="slot-hospital"
+                            type="text"
+                            required
+                            placeholder="e.g. Asiri Central, Colombo"
+                            value={hospital}
+                            onChange={(e) => setHospital(e.target.value)}
+                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand/40"
+                        />
                         <p className="text-xs text-gray-400 mt-1">
-                            Slots are offered at the hospital on your doctor profile.
+                            Specify the hospital location for this specific availability slot.
                         </p>
                     </div>
                     <div>
@@ -190,7 +199,7 @@ export default function DoctorSlotFormModal({
                         </button>
                         <button
                             type="submit"
-                            disabled={submitting || !profileHospital.trim()}
+                            disabled={submitting || !hospital.trim()}
                             className="flex-1 px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {submitting ? 'Saving…' : mode === 'create' ? 'Create slot' : 'Save changes'}

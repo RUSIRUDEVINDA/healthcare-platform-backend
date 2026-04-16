@@ -6,11 +6,12 @@ use (
 	./services/admin-service
 	./services/ai-symptom-service
 	./services/appointment-service
-	//./services/api-gateway
+	./services/api-gateway
 	./services/auth-service
 	./services/doctor-service
 	./services/file-storage-service
 	./services/patient-service
 	./services/payment-service
 	./services/telemedicine-service
+	./services/support-service
 )
