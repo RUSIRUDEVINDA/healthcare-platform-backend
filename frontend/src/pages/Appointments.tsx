@@ -19,6 +19,7 @@ import {
     Stethoscope,
     Trash2,
     Scale,
+    AlertCircle,
 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import type { Slot, Appointment, BookAppointmentRequest } from '../api/appointments';
@@ -68,6 +69,13 @@ export default function Appointments() {
     const [slotModalOpen, setSlotModalOpen] = useState(false);
     const [slotModalMode, setSlotModalMode] = useState<'create' | 'edit'>('create');
     const [slotEditing, setSlotEditing] = useState<Slot | null>(null);
+    const [slotConfirm, setSlotConfirm] = useState<
+        | { kind: 'remove'; slot: Slot }
+        | { kind: 'cancel'; slot: Slot; appointmentId: string }
+        | null
+    >(null);
+    const [slotActionLoading, setSlotActionLoading] = useState(false);
+    const [slotNotice, setSlotNotice] = useState<string | null>(null);
 
     useEffect(() => {
         fetchData();
@@ -230,34 +238,61 @@ export default function Appointments() {
         await fetchData();
     };
 
-    const handleDeleteSlot = async (slot: Slot) => {
+    const requestRemoveSlot = (slot: Slot) => {
         if (slot.is_booked) return;
-        if (!window.confirm('Remove this availability slot? Patients can no longer book it.')) return;
-        try {
-            await appointmentApi.deleteSlot(slot.id);
-            await fetchData();
-        } catch (e) {
-            console.error(e);
-            window.alert('Could not delete slot. It may already be booked.');
-        }
+        setSlotNotice(null);
+        setSlotConfirm({ kind: 'remove', slot });
     };
 
-    const handleCancelBookedSlot = async (slot: Slot) => {
+    const requestCancelBookedSlot = (slot: Slot) => {
+        setSlotNotice(null);
         const appt = appointments.find(
             (a) => a.slot_id === slot.id && a.status !== 'cancelled' && a.status !== 'completed'
         );
         if (!appt) {
-            window.alert('No appointment found for this slot.');
+            setSlotNotice('No appointment found for this slot.');
             return;
         }
-        if (!window.confirm('Cancel this appointment and release the time slot?')) return;
+        setSlotConfirm({ kind: 'cancel', slot, appointmentId: appt.id });
+    };
+
+    const cancelSlotConfirm = () => {
+        if (slotActionLoading) return;
+        setSlotConfirm(null);
+    };
+
+    const confirmSlotAction = async () => {
+        if (!slotConfirm) return;
+        setSlotActionLoading(true);
+        setSlotNotice(null);
         try {
-            await appointmentApi.cancelAppointment(appt.id);
+            if (slotConfirm.kind === 'remove') {
+                await appointmentApi.deleteSlot(slotConfirm.slot.id);
+            } else {
+                await appointmentApi.cancelAppointment(slotConfirm.appointmentId);
+            }
+            setSlotConfirm(null);
             await fetchData();
         } catch (e) {
             console.error(e);
-            window.alert('Could not cancel appointment.');
+            setSlotNotice(
+                slotConfirm.kind === 'remove'
+                    ? 'Could not delete slot. It may already be booked.'
+                    : 'Could not cancel appointment.'
+            );
+        } finally {
+            setSlotActionLoading(false);
         }
+    };
+
+    const formatSlotRange = (slot: Slot) => {
+        const start = new Date(slot.start_time);
+        const end = new Date(slot.end_time);
+        if (Number.isNaN(start.getTime())) return '';
+        const opts: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' };
+        const a = start.toLocaleString(undefined, opts);
+        const b = Number.isNaN(end.getTime()) ? '' : end.toLocaleString(undefined, { timeStyle: 'short' });
+        return b ? `${a} – ${b}` : a;
     };
 
     const hasAppointmentEnded = (appt: Appointment) => {
@@ -611,6 +646,22 @@ export default function Appointments() {
                                 </p>
                             </div>
 
+                            {slotNotice && (
+                                <div
+                                    className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 flex items-start justify-between gap-3"
+                                    role="alert"
+                                >
+                                    <span className="min-w-0">{slotNotice}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSlotNotice(null)}
+                                        className="shrink-0 text-xs font-semibold uppercase tracking-wide text-red-700 hover:text-red-900"
+                                    >
+                                        Dismiss
+                                    </button>
+                                </div>
+                            )}
+
                             {!profileHospitalStr && (
                                 <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
                                     Add your <strong>hospital</strong> on{' '}
@@ -703,7 +754,7 @@ export default function Appointments() {
                                                                             </button>
                                                                             <button
                                                                                 type="button"
-                                                                                onClick={() => handleDeleteSlot(slot)}
+                                                                                onClick={() => requestRemoveSlot(slot)}
                                                                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-100 text-xs font-semibold text-red-600 hover:bg-red-50"
                                                                             >
                                                                                 <Trash2 className="h-3.5 w-3.5" />
@@ -713,9 +764,7 @@ export default function Appointments() {
                                                                     ) : (
                                                                         <button
                                                                             type="button"
-                                                                            onClick={() =>
-                                                                                handleCancelBookedSlot(slot)
-                                                                            }
+                                                                            onClick={() => requestCancelBookedSlot(slot)}
                                                                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 text-xs font-semibold text-amber-800 hover:bg-amber-50"
                                                                         >
                                                                             Cancel booking
@@ -921,6 +970,77 @@ export default function Appointments() {
                     profileHospital={profileHospitalStr}
                     onSubmit={handleSaveSlot}
                 />
+            )}
+
+            {slotConfirm && (
+                <div
+                    className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
+                    role="alertdialog"
+                    aria-modal="true"
+                    aria-labelledby="slot-confirm-title"
+                    aria-describedby="slot-confirm-desc"
+                    onClick={cancelSlotConfirm}
+                >
+                    <div
+                        className="w-full max-w-md rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-2xl sm:p-8"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                            <div
+                                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ring-8 ${
+                                    slotConfirm.kind === 'remove'
+                                        ? 'bg-amber-50 text-amber-700 ring-amber-50/50'
+                                        : 'bg-red-50 text-red-600 ring-red-50/40'
+                                }`}
+                            >
+                                <AlertCircle className="h-6 w-6" strokeWidth={2} aria-hidden />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <h2 id="slot-confirm-title" className="text-lg font-semibold tracking-tight text-gray-900">
+                                    {slotConfirm.kind === 'remove'
+                                        ? 'Remove this availability slot?'
+                                        : 'Cancel this booking?'}
+                                </h2>
+                                <p id="slot-confirm-desc" className="mt-2 text-sm leading-relaxed text-gray-600">
+                                    {formatSlotRange(slotConfirm.slot) && (
+                                        <span className="block font-medium text-gray-800 mb-1">
+                                            {formatSlotRange(slotConfirm.slot)}
+                                        </span>
+                                    )}
+                                    {slotConfirm.kind === 'remove'
+                                        ? 'Patients will no longer be able to book this time. This cannot be undone.'
+                                        : 'The appointment will be cancelled and the time slot will be released for others to book.'}
+                                </p>
+                                <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+                                    <button
+                                        type="button"
+                                        disabled={slotActionLoading}
+                                        className="w-full sm:w-auto rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                                        onClick={cancelSlotConfirm}
+                                    >
+                                        {slotConfirm.kind === 'remove' ? 'Keep slot' : 'Go back'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={slotActionLoading}
+                                        className={`w-full sm:w-auto rounded-full px-5 py-2.5 text-sm font-semibold text-white transition-colors focus:outline-none focus:ring-2 disabled:opacity-60 ${
+                                            slotConfirm.kind === 'remove'
+                                                ? 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500/30'
+                                                : 'bg-red-600 hover:bg-red-700 focus:ring-red-500/30'
+                                        }`}
+                                        onClick={() => void confirmSlotAction()}
+                                    >
+                                        {slotActionLoading
+                                            ? 'Working…'
+                                            : slotConfirm.kind === 'remove'
+                                              ? 'Remove slot'
+                                              : 'Cancel appointment'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Redirecting Overlay */}
