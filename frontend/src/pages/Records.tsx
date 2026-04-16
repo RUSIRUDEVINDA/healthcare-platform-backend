@@ -373,8 +373,8 @@ export default function Records() {
             <section className="rounded-[1.5rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
               <div
                 className={`flex gap-5 p-5 sm:p-6 ${isDoctor
-                    ? 'flex-col'
-                    : 'flex-col lg:flex-row lg:items-stretch lg:justify-start lg:gap-8 xl:gap-10'
+                  ? 'flex-col'
+                  : 'flex-col lg:flex-row lg:items-stretch lg:justify-start lg:gap-8 xl:gap-10'
                   }`}
               >
                 <div className={`w-full min-w-0 space-y-3 ${!isDoctor ? 'lg:flex-1' : ''}`}>
@@ -478,8 +478,8 @@ export default function Records() {
 
                   <label
                     className={`mt-4 block rounded-[1.25rem] border border-dashed border-slate-200 bg-white px-4 py-5 text-center ${uploading || (isDoctor && !doctorUploadReady)
-                        ? 'cursor-not-allowed opacity-50'
-                        : 'cursor-pointer'
+                      ? 'cursor-not-allowed opacity-50'
+                      : 'cursor-pointer'
                       }`}
                   >
                     <input

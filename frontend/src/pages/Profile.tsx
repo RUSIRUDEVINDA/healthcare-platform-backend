@@ -23,13 +23,12 @@ import {
 } from "lucide-react";
 import { patientApi, type PatientProfile } from '../api/patient';
 import { doctorApi, type DoctorProfile } from '../api/doctor';
-import { useNavigate } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import Dialog from '../components/ui/Dialog';
 import toast from 'react-hot-toast';
+import { redirectToLogin } from '../utils/navigation';
 
 export default function Profile() {
-  const navigate = useNavigate();
   const [profile, setProfile] = useState<PatientProfile | DoctorProfile | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -186,7 +185,7 @@ export default function Profile() {
       // Clear auth data and redirect
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');
-      navigate('/auth/login');
+      redirectToLogin();
     } catch (err: unknown) {
       console.error('Error deactivating profile:', err);
       let message = 'Failed to deactivate account';

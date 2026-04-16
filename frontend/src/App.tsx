@@ -42,20 +42,9 @@ function App() {
           <Route path="/bmi-calculator" element={<BmiCalculator />} />
           <Route path="/symptom-checker" element={<SymptomChecker />} />
           <Route path="/telemedicine" element={<Telemedicine />} />
+          <Route path="/admin" element={<AdminConsole />} />
+          <Route path="/notifications" element={<NotificationMonitor />} />
         </Route>
-        
-      <Route element={<AppShellLayout />}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/appointments" element={<Appointments />} />
-        <Route path="/payments" element={<Payments />} />
-        <Route path="/records" element={<MedicalRecords />} />
-        <Route path="/telemedicine" element={<Telemedicine />} />
-        <Route path="/bmi-calculator" element={<BmiCalculator />} />
-        <Route path="/symptom-checker" element={<SymptomChecker />} />
-        <Route path="/admin" element={<AdminConsole />} />
-        <Route path="/notifications" element={<NotificationMonitor />} />
-      </Route>
 
         {/* Payment redirection targets */}
         <Route path="/payment/success" element={<PaymentStatus type="success" />} />
