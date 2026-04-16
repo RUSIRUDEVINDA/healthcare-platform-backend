@@ -135,14 +135,15 @@ export default function BookingModal({ isOpen, onClose, doctor, slots, consultat
                             <label className="block text-sm font-medium text-gray-700 mb-3">Available Slots</label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {slots.map((slot) => {
-                                    const isBooked = slot.is_booked || slot.status === 'booked';
+                                    const isPast = new Date(slot.start_time) < new Date();
+                                    const isBooked = slot.is_booked || slot.status === 'booked' || isPast;
                                     return (
                                         <button
                                             key={slot.id}
                                             type="button"
                                             disabled={isBooked}
                                             onClick={() => setSelectedSlot(slot)}
-                                            className={`relative flex min-h-[112px] w-full flex-col items-center justify-center rounded-full border px-4 py-4 text-center transition-all ${selectedSlot?.id === slot.id
+                                            className={`relative flex min-h-[112px] w-full flex-col items-center justify-center rounded-3xl border px-4 py-4 text-center transition-all ${selectedSlot?.id === slot.id
                                                 ? 'border-brand bg-brand/5 ring-1 ring-brand'
                                                 : isBooked
                                                     ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
@@ -151,7 +152,7 @@ export default function BookingModal({ isOpen, onClose, doctor, slots, consultat
                                         >
                                             {isBooked && (
                                                 <span className="absolute right-3 top-3 rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
-                                                    Booked
+                                                    {isPast ? 'Expired' : 'Booked'}
                                                 </span>
                                             )}
 

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { LogOut, User, Activity, Calendar, ClipboardList, CreditCard, CheckCircle, Clock, AlertCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { LogOut, User, Activity, Calendar, ClipboardList, CreditCard, CheckCircle, Clock, AlertCircle, Scale, ChevronDown, Stethoscope } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { paymentApi, type Payment } from '../api/payment';
 import { appointmentApi, type Appointment } from '../api/appointments';
 
 export default function Payments() {
+  const location = useLocation();
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [appointments, setAppointments] = useState<Record<string, Appointment>>({});
@@ -99,56 +100,97 @@ export default function Payments() {
   return (
     <div className="min-h-screen bg-[#f6f8fa] flex font-sans">
       {/* Sidebar */}
-      <aside className="w-60 bg-white border-r border-gray-100 hidden lg:flex flex-col sticky top-0 h-screen">
+      <aside className="w-60 bg-white/90 backdrop-blur border-r border-teal-100 hidden lg:flex flex-col sticky top-0 h-screen">
         <div className="px-6 pt-6 pb-5">
           <Link to="/dashboard" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
+            <div className="h-9 w-9 rounded-full bg-brand flex items-center justify-center shadow-sm shadow-brand/20">
               <Activity className="h-4 w-4 text-white" />
             </div>
-            <span className="text-lg font-medium text-gray-900 tracking-tight">MediPulse SriLanka</span>
+            <span className="text-lg font-medium tracking-tight text-slate-900">MediPulse SriLanka</span>
           </Link>
         </div>
 
         <nav className="flex-1 px-4 space-y-1">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-3">Menu</p>
+          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.32em] px-3 mb-3">Menu</p>
           <Link
             to="/dashboard"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/dashboard'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
           >
             <Activity className="h-[18px] w-[18px]" /> Dashboard
           </Link>
           <Link
             to="/profile"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/profile'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
           >
             <User className="h-[18px] w-[18px]" /> Profile
           </Link>
           <Link
             to="/appointments"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+            className={`flex items-center justify-between px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/appointments'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
           >
-            <Calendar className="h-[18px] w-[18px]" /> Appointments
+            <div className="flex items-center gap-3">
+              <Calendar className="h-[18px] w-[18px]" /> Appointments
+            </div>
+            <ChevronDown className="h-4 w-4 opacity-50" />
           </Link>
           {userRole !== 'doctor' && (
             <Link
               to="/payments"
-              className="flex items-center gap-3 px-3 py-2.5 bg-brand/10 text-brand rounded-xl font-semibold transition-all text-sm shadow-sm"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+                location.pathname === '/payments'
+                  ? 'bg-brand/10 text-brand font-semibold'
+                  : 'text-slate-500 hover:bg-teal-50'
+              }`}
             >
               <CreditCard className="h-[18px] w-[18px]" /> Payments
             </Link>
           )}
+          {userRole !== 'doctor' && (
+            <Link
+              to="/symptom-checker"
+              className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+            >
+              <Stethoscope className="h-[18px] w-[18px]" /> Symptom checker
+            </Link>
+          )}
           <Link
             to="/records"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/records'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
           >
             <ClipboardList className="h-[18px] w-[18px]" /> Records
           </Link>
+          <Link
+            to="/bmi-calculator"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
+              location.pathname === '/bmi-calculator'
+                ? 'bg-brand/10 text-brand font-semibold'
+                : 'text-slate-500 hover:bg-teal-50'
+            }`}
+          >
+            <Scale className="h-[18px] w-[18px]" /> BMI Calculator
+          </Link>
         </nav>
 
-        <div className="p-4 border-t border-gray-100 mx-4 mb-4">
+        <div className="p-4 border-t border-teal-100 mx-4 mb-4">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors text-sm font-medium"
+            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-red-500 hover:bg-red-50 rounded-full transition-colors text-sm font-medium"
           >
             <LogOut className="h-[18px] w-[18px]" /> Sign Out
           </button>
