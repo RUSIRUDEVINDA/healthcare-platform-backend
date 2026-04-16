@@ -1,18 +1,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import axios from 'axios';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import {
-  Activity,
-  Calendar,
-  ClipboardList,
-  CreditCard,
   History,
   Loader2,
-  LogOut,
   Plus,
-  Scale,
   Sparkles,
-  Stethoscope,
   User,
 } from 'lucide-react';
 import { patientApi, type PatientProfile } from '../api/patient';
@@ -93,7 +86,6 @@ function previewText(text: string, max = 72): string {
 }
 
 export default function SymptomChecker() {
-  const navigate = useNavigate();
   const [role, setRole] = useState<string | null>(null);
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [history, setHistory] = useState<SymptomHistoryEntry[]>([]);
@@ -131,12 +123,6 @@ export default function SymptomChecker() {
     }
     refreshHistoryFromStorage();
   }, [refreshHistoryFromStorage]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user');
-    navigate('/auth/login');
-  };
 
   const persistNewEntry = useCallback(
     (symptoms: string, optionalContext: string | undefined, result: SymptomCheckResponse) => {
@@ -228,75 +214,8 @@ export default function SymptomChecker() {
   const isViewingPast = viewingHistorical;
 
   return (
-    <div className="min-h-screen bg-[#f6f8fa] flex font-sans">
-      <aside className="w-60 bg-white border-r border-gray-100 hidden lg:flex flex-col sticky top-0 h-screen">
-        <div className="px-6 pt-6 pb-5">
-          <Link to="/dashboard" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
-              <Activity className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-lg font-bold text-gray-900 tracking-tight">MediPulse SriLanka</span>
-          </Link>
-        </div>
-
-        <nav className="flex-1 px-4 space-y-1">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-3">Menu</p>
-          <Link
-            to="/dashboard"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-          >
-            <Activity className="h-[18px] w-[18px]" /> Dashboard
-          </Link>
-          <Link
-            to="/profile"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-          >
-            <User className="h-[18px] w-[18px]" /> Profile
-          </Link>
-          <Link
-            to="/appointments"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-          >
-            <Calendar className="h-[18px] w-[18px]" /> Appointments
-          </Link>
-          <Link
-            to="/payments"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-          >
-            <CreditCard className="h-[18px] w-[18px]" /> Payments
-          </Link>
-          <Link
-            to="/bmi-calculator"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-          >
-            <Scale className="h-[18px] w-[18px]" /> BMI Calculator
-          </Link>
-          <Link
-            to="/symptom-checker"
-            className="flex items-center gap-3 px-3 py-2.5 bg-brand/10 text-brand rounded-xl font-semibold transition-all text-sm shadow-sm"
-          >
-            <Stethoscope className="h-[18px] w-[18px]" /> Symptom checker
-          </Link>
-          <Link
-            to="/records"
-            className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
-          >
-            <ClipboardList className="h-[18px] w-[18px]" /> Records
-          </Link>
-        </nav>
-
-        <div className="p-4 border-t border-gray-100 mx-4 mb-4">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors text-sm font-medium"
-          >
-            <LogOut className="h-[18px] w-[18px]" /> Sign Out
-          </button>
-        </div>
-      </aside>
-
-      <div className="flex-1 flex flex-col min-h-screen min-w-0">
+    <div className="min-h-screen bg-[#f6f8fa] font-sans">
+      <div className="flex min-h-screen min-w-0 flex-col">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 sm:px-8 bg-white/80 backdrop-blur-md sticky top-0 z-10">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Health tools</p>
