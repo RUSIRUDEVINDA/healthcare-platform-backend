@@ -13,6 +13,8 @@ import BmiCalculator from './pages/BmiCalculator';
 import SymptomChecker from './pages/SymptomChecker';
 import MedicalRecords from './pages/MedicalRecords';
 import AppShellLayout from './layouts/AppShellLayout';
+import AdminConsole from './pages/AdminConsole';
+import NotificationMonitor from './pages/NotificationMonitor';
 
 function App() {
   return (
@@ -34,6 +36,12 @@ function App() {
         <Route path="/bmi-calculator" element={<BmiCalculator />} />
         <Route path="/symptom-checker" element={<SymptomChecker />} />
       </Route>
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/profile" element={<Profile />} />
+      <Route path="/appointments" element={<Appointments />} />
+      <Route path="/payments" element={<Payments />} />
+      <Route path="/admin" element={<AdminConsole />} />
+      <Route path="/notifications" element={<NotificationMonitor />} />
       
       {/* Payment redirection targets */}
       <Route path="/payment/success" element={<PaymentStatus type="success" />} />

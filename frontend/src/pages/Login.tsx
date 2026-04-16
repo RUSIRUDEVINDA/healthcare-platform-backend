@@ -27,8 +27,11 @@ export default function Login() {
         if (user) {
           localStorage.setItem('user', JSON.stringify(user));
         }
-        // Assuming we route to dashboard after login (to be implemented)
-        window.location.href = '/dashboard';
+        if (user?.role === 'admin') {
+          window.location.href = '/admin';
+        } else {
+          window.location.href = '/dashboard';
+        }
       } else {
         setError('Login failed: Invalid response from server');
       }
