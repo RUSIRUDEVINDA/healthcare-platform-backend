@@ -401,8 +401,6 @@ export default function Records() {
               <Stethoscope className="h-[18px] w-[18px]" /> Symptom checker
             </Link>
           )}
-          <Link to="/records" className="flex items-center gap-3 px-3 py-2.5 bg-brand/10 text-brand rounded-full text-sm">
-            <FileText className="h-[18px] w-[18px]" /> Records
           <Link
             to="/records"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${
