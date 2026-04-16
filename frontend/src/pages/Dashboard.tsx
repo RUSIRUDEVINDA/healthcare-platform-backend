@@ -382,6 +382,14 @@ export default function Dashboard() {
               <CreditCard className="h-[18px] w-[18px]" /> Payments
             </Link>
           )}
+          {role !== 'doctor' && (
+            <Link
+              to="/symptom-checker"
+              className="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-teal-50 rounded-full transition-colors text-sm"
+            >
+              <Stethoscope className="h-[18px] w-[18px]" /> Symptom checker
+            </Link>
+          )}
           <Link
             to="/records"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${

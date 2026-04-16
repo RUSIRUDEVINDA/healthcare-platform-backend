@@ -243,6 +243,14 @@ export default function Profile() {
               <CreditCard className="h-[18px] w-[18px]" /> Payments
             </Link>
           )}
+          {role !== 'doctor' && (
+            <Link
+              to="/symptom-checker"
+              className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+            >
+              <Stethoscope className="h-[18px] w-[18px]" /> Symptom checker
+            </Link>
+          )}
           <Link
             to="/records"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${

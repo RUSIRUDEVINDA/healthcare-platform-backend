@@ -16,6 +16,7 @@ import {
   Upload,
   User,
   X,
+  Stethoscope,
   Scale,
   ChevronDown,
   ClipboardList,
@@ -302,6 +303,13 @@ export default function Records() {
               <CreditCard className="h-[18px] w-[18px]" /> Payments
             </Link>
           )}
+          {isPatient && (
+            <Link to="/symptom-checker" className="flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:bg-teal-50 rounded-full text-sm">
+              <Stethoscope className="h-[18px] w-[18px]" /> Symptom checker
+            </Link>
+          )}
+          <Link to="/records" className="flex items-center gap-3 px-3 py-2.5 bg-brand/10 text-brand rounded-full text-sm">
+            <FileText className="h-[18px] w-[18px]" /> Records
           <Link
             to="/records"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-colors ${

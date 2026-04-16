@@ -11,6 +11,7 @@ import PaymentStatus from './pages/PaymentStatus';
 import Telemedicine from './pages/Telemedicine';
 import Records from './pages/Records';
 import BmiCalculator from './pages/BmiCalculator';
+import SymptomChecker from './pages/SymptomChecker';
 import MedicalRecords from './pages/MedicalRecords';
 import AppShellLayout from './layouts/AppShellLayout';
 
@@ -31,6 +32,7 @@ function App() {
       <Route path="/telemedicine" element={<Telemedicine />} />
 
       <Route path="/bmi-calculator" element={<BmiCalculator />} />
+      <Route path="/symptom-checker" element={<SymptomChecker />} />
       <Route element={<AppShellLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/profile" element={<Profile />} />

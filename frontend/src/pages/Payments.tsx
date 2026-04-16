@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut, User, Activity, Calendar, ClipboardList, CreditCard, CheckCircle, Clock, AlertCircle, Scale, ChevronDown } from 'lucide-react';
+import { LogOut, User, Activity, Calendar, ClipboardList, CreditCard, CheckCircle, Clock, AlertCircle, Scale, ChevronDown, Stethoscope } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { paymentApi, type Payment } from '../api/payment';
@@ -155,6 +155,14 @@ export default function Payments() {
               }`}
             >
               <CreditCard className="h-[18px] w-[18px]" /> Payments
+            </Link>
+          )}
+          {userRole !== 'doctor' && (
+            <Link
+              to="/symptom-checker"
+              className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+            >
+              <Stethoscope className="h-[18px] w-[18px]" /> Symptom checker
             </Link>
           )}
           <Link

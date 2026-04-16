@@ -16,6 +16,7 @@ import {
     Briefcase,
     CreditCard,
     Pencil,
+    Stethoscope,
     Trash2,
     Scale,
 } from 'lucide-react';
@@ -420,6 +421,14 @@ export default function Appointments() {
                         >
                             <CreditCard className="h-[18px] w-[18px]" /> Payments
                         </Link>
+                    )}
+                    {!isDoctor && (
+                    <Link
+                        to="/symptom-checker"
+                        className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+                    >
+                        <Stethoscope className="h-[18px] w-[18px]" /> Symptom checker
+                    </Link>
                     )}
                     <Link
                         to="/records"
