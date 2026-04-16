@@ -15,12 +15,12 @@ import {
   Upload,
   User,
   X,
-} from 'lucide-react';
+} from "lucide-react";
 import axios from 'axios';
-import { Link } from 'react-router-dom';
 import { appointmentApi, type Appointment } from '../api/appointments';
 import { doctorApi } from '../api/doctor';
 import { fileApi, patientLabelFromAppointment, type DocumentCategory, type FileRecord } from '../api/files';
+import { patientApi } from '../api/patient';
 
 type FilterKey = 'all' | 'prescriptions' | 'reports';
 type RecordBucket = Exclude<FilterKey, 'all'>;
@@ -101,9 +101,7 @@ export default function Records() {
   const [uploadSuccessFileName, setUploadSuccessFileName] = useState<string | null>(null);
   const [filePendingDelete, setFilePendingDelete] = useState<FileRecord | null>(null);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
-  const [doctorName, setDoctorName] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   const isDoctor = role === 'doctor';
 
@@ -156,14 +154,22 @@ export default function Records() {
         const userString = localStorage.getItem('user');
         const user = userString ? JSON.parse(userString) : null;
         if (user?.role !== 'doctor') {
-          setDoctorName(null);
+          try {
+            const profile = await patientApi.getProfile();
+            if (!cancelled) {
+              const fullName = `${profile?.first_name || 'Patient'} ${profile?.last_name || ''}`.trim();
+              setDisplayName(fullName || 'Patient');
+            }
+          } catch {
+            if (!cancelled) setDisplayName('Patient');
+          }
           return;
         }
         try {
           const profile = await doctorApi.getProfile();
-          if (!cancelled) setDoctorName(profile?.name?.trim() || null);
+          if (!cancelled) setDisplayName(profile?.name?.trim() || 'Doctor');
         } catch {
-          if (!cancelled) setDoctorName(null);
+          if (!cancelled) setDisplayName('Doctor');
         }
         const data = await appointmentApi.listAppointments();
         const list = Array.isArray(data) ? data : [];
@@ -202,10 +208,6 @@ export default function Records() {
     return () => window.clearTimeout(t);
   }, [uploadSuccessOpen]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, activeFilter, selectedPatientId, pageSize]);
-
   const filteredFiles = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return files.filter((file) => {
@@ -218,19 +220,6 @@ export default function Records() {
       return (activeFilter === 'all' || activeFilter === bucket) && matchesQuery;
     });
   }, [activeFilter, files, searchQuery]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredFiles.length / pageSize));
-
-  const paginatedFiles = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    return filteredFiles.slice(startIndex, startIndex + pageSize);
-  }, [currentPage, filteredFiles, pageSize]);
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
 
   const prescriptions = files.filter((file) => classifyRecord(file) === 'prescriptions');
 
@@ -366,29 +355,16 @@ export default function Records() {
       <div className="flex min-h-screen flex-col">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.32em] text-slate-400">Health Records</p>
-            <h1 className="text-lg font-semibold text-slate-900">Medical Records</h1>
+            <p className="text-[10px] uppercase tracking-[0.32em] text-slate-400">Medical Records</p>
+            <h1 className="text-lg font-medium text-slate-900">Your chart</h1>
           </div>
           <div className="flex min-w-0 items-center gap-3">
-            {isDoctor ? (
-              <div className="min-w-0 max-w-[min(100%,14rem)] sm:max-w-xs text-right">
-                <p className="truncate text-sm font-semibold text-slate-900" title={doctorName ?? undefined}>
-                  {doctorName || '—'}
-                </p>
-              </div>
-            ) : (
-              <div className="hidden md:flex items-center gap-2 rounded-full bg-brand/10 px-3 py-1.5 text-brand text-xs">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                Secure upload
-              </div>
-            )}
-            <Link
-              to="/profile"
-              aria-label="Go to profile"
-              className="w-10 h-10 shrink-0 bg-brand-light rounded-full flex items-center justify-center text-brand border border-brand/20 hover:border-brand/40 transition-colors"
-            >
+            <p className="hidden sm:block text-sm font-medium text-slate-600">
+              {displayName || (isDoctor ? 'Doctor' : 'Patient')}
+            </p>
+            <div className="w-10 h-10 shrink-0 bg-brand-light rounded-full flex items-center justify-center text-brand border border-brand/20">
               <User className="h-5 w-5" />
-            </Link>
+            </div>
           </div>
         </header>
 
@@ -404,13 +380,11 @@ export default function Records() {
                 <div className={`w-full min-w-0 space-y-3 ${!isDoctor ? 'lg:flex-1' : ''}`}>
                   <div className="inline-flex items-center gap-2 rounded-full bg-brand/10 px-3 py-1 text-[11px] text-brand border border-brand/10">
                     <Shield className="h-3.5 w-3.5" />
-                    Encrypted storage
+                    Secure chart
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold tracking-tight text-slate-900">Clinical documents</h2>
-                    <p className="mt-1 text-sm text-slate-600 leading-6">
-                      Access prescriptions, diagnostic reports, and supporting files in one professional chart view.
-                    </p>
+                    <h2 className="text-xl font-medium tracking-tight text-slate-900">Medical records</h2>
+                    <p className="mt-1 text-sm text-slate-600 leading-6">Prescriptions and reports in one compact view.</p>
                   </div>
                   <div className="flex flex-wrap gap-2 text-sm text-slate-600">
                     <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-2 border border-slate-100">
@@ -441,11 +415,11 @@ export default function Records() {
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium text-slate-900">Upload document</p>
+                      <p className="text-sm text-slate-900">Upload a record</p>
                       <p className="text-xs text-slate-500 mt-1">
                         {isDoctor
-                          ? 'Select a patient and document category before uploading.'
-                          : 'Accepted: prescriptions, reports, referral notes, and related documents.'}
+                          ? 'Choose patient and record type, then add a file.'
+                          : 'Prescriptions, reports, notes.'}
                       </p>
                     </div>
                     <div className="h-11 w-11 rounded-full bg-brand/10 flex items-center justify-center text-brand">
@@ -518,12 +492,12 @@ export default function Records() {
                     <Upload className="mx-auto h-7 w-7 text-brand" />
                     <p className="mt-3 text-sm text-slate-900">
                       {uploading
-                        ? 'Uploading document...'
+                        ? 'Uploading...'
                         : isDoctor && !doctorUploadReady
-                          ? 'Select patient and category to enable upload'
-                          : 'Click to upload or drag and drop'}
+                          ? 'Select patient and type to enable upload'
+                          : 'Click to upload or drop a file'}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">Original filename and metadata are preserved.</p>
+                    <p className="mt-1 text-xs text-slate-500">Keeps the original file name.</p>
                   </label>
 
                   {selectedFile && (
@@ -546,8 +520,8 @@ export default function Records() {
             <section className="rounded-[1.5rem] bg-white border border-slate-200 shadow-sm overflow-hidden">
               <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <h3 className="text-base font-semibold text-slate-900">All records</h3>
-                  <p className="text-sm text-slate-500 mt-1">Search and filter by document type, file name, or metadata.</p>
+                  <h3 className="text-base text-slate-900">All records</h3>
+                  <p className="text-sm text-slate-500 mt-1">Search prescriptions and reports.</p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <div className="relative">
@@ -572,18 +546,6 @@ export default function Records() {
                       </button>
                     ))}
                   </div>
-                  <label className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
-                    <span>Show</span>
-                    <select
-                      value={pageSize}
-                      onChange={(event) => setPageSize(Number(event.target.value))}
-                      className="bg-transparent text-xs font-medium text-slate-700 outline-none"
-                    >
-                      <option value={10}>10</option>
-                      <option value={20}>20</option>
-                      <option value={30}>30</option>
-                    </select>
-                  </label>
                 </div>
               </div>
 
@@ -599,15 +561,15 @@ export default function Records() {
                   <h4 className="mt-4 text-lg text-slate-900">No records found</h4>
                   <p className="mt-2 text-sm text-slate-500 max-w-lg mx-auto">
                     {isDoctor && !selectedPatientId
-                      ? 'Select a patient to review their chart and upload documentation.'
+                      ? 'Select a patient above to view their chart and upload documents.'
                       : files.length === 0
-                        ? 'Documents will appear here after the first upload.'
-                        : 'Try a different keyword or filter to refine your results.'}
+                        ? 'Once a doctor uploads a prescription or report, it will show up here.'
+                        : 'Try a different search term or filter to narrow the list.'}
                   </p>
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {paginatedFiles.map((file) => {
+                  {filteredFiles.map((file) => {
                     const uploadedByYou = file.owner_id === file.uploader_id;
 
                     return (
@@ -683,41 +645,6 @@ export default function Records() {
                       </div>
                     );
                   })}
-                </div>
-              )}
-
-              {!loading && filteredFiles.length > 0 && (
-                <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                  <p className="text-sm text-slate-500">
-                    Showing{' '}
-                    <span className="font-medium text-slate-700">{Math.min((currentPage - 1) * pageSize + 1, filteredFiles.length)}</span>
-                    {' '}-{' '}
-                    <span className="font-medium text-slate-700">{Math.min(currentPage * pageSize, filteredFiles.length)}</span>
-                    {' '}of <span className="font-medium text-slate-700">{filteredFiles.length}</span>
-                  </p>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                      disabled={currentPage === 1}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:border-brand/30 hover:text-brand disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Previous
-                    </button>
-                    <span className="text-sm text-slate-500">
-                      Page <span className="font-medium text-slate-700">{currentPage}</span> of{' '}
-                      <span className="font-medium text-slate-700">{totalPages}</span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                      disabled={currentPage === totalPages}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:border-brand/30 hover:text-brand disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Next
-                    </button>
-                  </div>
                 </div>
               )}
             </section>

@@ -5,3 +5,4 @@
 
 # Legacy mock provider (do not commit)
 internal/provider/mock_payment_provider.go
+*.env

@@ -138,6 +138,26 @@ services:
     networks:
       - healthcare-net
 
+  admin-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: admin_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5440:5432"
+    volumes:
+      - admin-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d admin_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - healthcare-net
+
   patient-service:
     build:
       context: .
@@ -255,6 +275,40 @@ services:
       RABBITMQ_URL: "amqp://admin:password123@rabbitmq:5672/"
     depends_on:
       payment-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - healthcare-net
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: ./services/notification-service/Dockerfile
+    container_name: notification-service
+    restart: unless-stopped
+    ports:
+      - "8006:8006"
+    env_file:
+      - ./services/notification-service/.env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - healthcare-net
+
+  admin-service:
+    build:
+      context: .
+      dockerfile: ./services/admin-service/Dockerfile
+    container_name: admin-service
+    restart: unless-stopped
+    ports:
+      - "8007:8007"
+    env_file:
+      - ./services/admin-service/.env
+    depends_on:
+      admin-db:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
@@ -443,6 +497,8 @@ services:
       - auth-service
       - patient-service
       - payment-service
+      - notification-service
+      - admin-service
       - doctor-service
       - ai-symptom-service
       - appointment-service
@@ -467,6 +523,7 @@ services:
 # ────────────────────────────────
 volumes:
   auth-db-data:
+  admin-db-data:
   ai-symptom-db-data:
   doctor-db-data:
   rabbitmq-data:

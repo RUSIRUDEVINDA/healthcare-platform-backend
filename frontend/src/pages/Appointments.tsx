@@ -1,18 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-    Search,
-    Calendar,
-    Clock,
-    Video,
-    MapPin,
-    Plus,
-    User,
-    ChevronRight,
-    Building2,
-    Briefcase,
-    Pencil,
-    Trash2,
-} from 'lucide-react';
+  Search,
+  Calendar,
+  Clock,
+  Video,
+  MapPin,
+  Plus,
+  User,
+  ChevronRight,
+  Building2,
+  Briefcase,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { Link, useNavigate } from 'react-router-dom';
 import type { Slot, Appointment, BookAppointmentRequest } from '../api/appointments';
 import { appointmentApi } from '../api/appointments';
