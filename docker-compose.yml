@@ -101,8 +101,6 @@ services:
       context: .
       dockerfile: ./services/auth-service/Dockerfile
     restart: unless-stopped
-    ports:
-      - "8001:8001"   # Exposed for direct testing with curl/Postman
     env_file:
       - ./services/auth-service/.env
     environment:
@@ -144,8 +142,6 @@ services:
     build:
       context: .
       dockerfile: ./services/patient-service/Dockerfile
-    ports:
-      - "8002:8002"
     environment:
       APP_ENV: development
       PORT: "8002"
@@ -166,8 +162,6 @@ services:
       dockerfile: ./services/doctor-service/Dockerfile
     container_name: doctor-service
     restart: unless-stopped
-    ports:
-      - "8003:8003"
     environment:
       APP_ENV: development
       PORT: "8003"
@@ -211,8 +205,6 @@ services:
       dockerfile: ./services/ai-symptom-service/Dockerfile
     container_name: ai-symptom-service
     restart: unless-stopped
-    ports:
-      - "8008:8008"
     environment:
       APP_ENV: development
       PORT: "8008"
@@ -254,8 +246,6 @@ services:
       context: .
       dockerfile: ./services/payment-service/Dockerfile
     container_name: payment-service
-    ports:
-      - "8005:8005"
     env_file:
       - ./services/payment-service/.env
     environment:
@@ -298,8 +288,6 @@ services:
       dockerfile: ./services/file-storage-service/Dockerfile
     container_name: file-storage-service
     restart: unless-stopped
-    ports:
-      - "8010:8010"
     env_file:
       - ./services/file-storage-service/.env
     environment:
@@ -372,8 +360,6 @@ services:
     build:
       context: .
       dockerfile: ./services/appointment-service/Dockerfile
-    ports:
-      - "8004:8004"
     environment:
       APP_ENV: development
       PORT: "8004"
@@ -407,8 +393,6 @@ services:
       dockerfile: ./services/telemedicine-service/Dockerfile
     container_name: telemedicine-service
     restart: unless-stopped
-    ports:
-      - "8009:8009"
     env_file:
       - ./services/telemedicine-service/.env
     environment:
@@ -455,6 +439,7 @@ services:
     ports:
       - "80:80"
     depends_on:
+      - api-gateway
       - auth-service
       - patient-service
       - payment-service
@@ -464,6 +449,16 @@ services:
       - telemedicine-service
       - support-service
       - frontend
+    networks:
+      - healthcare-net
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ./services/api-gateway/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./services/api-gateway/.env
     networks:
       - healthcare-net
 
