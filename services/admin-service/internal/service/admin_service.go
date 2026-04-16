@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-
 	"healthcare-platform/pkg/logger"
 	"healthcare-platform/pkg/rabbitmq"
 	"healthcare-platform/services/admin-service/internal/model"
@@ -73,23 +71,11 @@ func (s *AdminService) HandleAppointmentBooked(event rabbitmq.AppointmentBookedE
 }
 
 func (s *AdminService) HandlePaymentCompleted(event rabbitmq.PaymentCompletedEvent) error {
-	transaction := &model.Transaction{
-		ID:        event.TransactionID,
-		UserID:    event.UserID,
-		Amount:    event.Amount,
-		Currency:  event.Currency,
-		Status:    event.Status,
-		Provider:  event.Provider,
-		Reference: event.Reference,
-		CreatedAt: time.Now().UTC(),
-		UpdatedAt: time.Now().UTC(),
-	}
-
-	if err := s.repo.UpsertTransaction(transaction); err != nil {
-		return fmt.Errorf("service.HandlePaymentCompleted: %w", err)
-	}
-
-	s.log.Info("Admin transaction mirror updated", "transaction_id", event.TransactionID)
+	s.log.Info("Admin payment completed event received",
+		"payment_id", event.PaymentID,
+		"appointment_id", event.AppointmentID,
+		"provider_id", event.ProviderID,
+	)
 	return nil
 }
 

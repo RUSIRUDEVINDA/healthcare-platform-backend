@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Activity, BellRing, CheckCircle2, Clock3, LogOut, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { notificationApi, type ServiceHealth } from '../api/notification';
+import { redirectToLogin } from '../utils/navigation';
 
 type HealthState = {
   health?: ServiceHealth;
@@ -46,7 +47,7 @@ export default function NotificationMonitor() {
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user');
-    window.location.href = '/auth/login';
+    redirectToLogin();
   };
 
   const healthy = state.health?.status === 'healthy';

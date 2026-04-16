@@ -50,7 +50,6 @@ func main() {
 	jwtHelper := jwt.New(cfg.JWTSecret, "", 0, 0)
 
 	repo := repository.NewAdminRepository(db)
-	adminSvc := service.NewAdminService(repo, log)
 	adminSvc := service.NewAdminService(repo, log, cfg.AuthDatabaseURL)
 	consumer := messaging.NewConsumer(mqClient, adminSvc, log)
 	if err := consumer.Start(); err != nil {
