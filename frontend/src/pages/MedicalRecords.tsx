@@ -122,7 +122,7 @@ export default function MedicalRecords() {
                 const raw = localStorage.getItem('user');
                 const u = raw ? JSON.parse(raw) : null;
                 r = u?.role ?? null;
-                uid = u?.id ?? null;
+                uid = u?.id ?? u?.user_id ?? null;
             } catch {
                 r = null;
                 uid = null;

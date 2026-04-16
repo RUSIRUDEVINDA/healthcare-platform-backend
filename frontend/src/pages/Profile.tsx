@@ -20,7 +20,7 @@ import {
   BadgeCheck,
   CircleDollarSign,
   IdCard,
-} from 'lucide-react';
+} from "lucide-react";
 import { patientApi, type PatientProfile } from '../api/patient';
 import { doctorApi, type DoctorProfile } from '../api/doctor';
 import { useNavigate } from 'react-router-dom';

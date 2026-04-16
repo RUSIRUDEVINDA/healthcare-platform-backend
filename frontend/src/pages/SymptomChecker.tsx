@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import axios from 'axios';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import {
   History,
   Loader2,
@@ -218,14 +218,24 @@ export default function SymptomChecker() {
       <div className="flex min-h-screen min-w-0 flex-col">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 sm:px-8 bg-white/80 backdrop-blur-md sticky top-0 z-10">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Health tools</p>
-            <h2 className="text-lg font-semibold tracking-tight text-slate-900">Symptom checker</h2>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              Health tools
+            </p>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Symptom checker
+            </h2>
           </div>
           <div className="flex items-center gap-4">
-            <p className="hidden sm:block text-sm font-medium text-gray-600">{displayName}</p>
-            <div className="h-10 w-10 rounded-full bg-brand-light border border-brand/20 flex items-center justify-center text-brand">
+            <p className="hidden sm:block text-sm font-medium text-gray-600">
+              {displayName}
+            </p>
+            <Link
+              to="/profile"
+              aria-label="Go to profile"
+              className="h-10 w-10 rounded-full bg-brand-light border border-brand/20 flex items-center justify-center text-brand hover:border-brand/40 transition-colors"
+            >
               <User className="h-5 w-5" />
-            </div>
+            </Link>
           </div>
         </header>
 
@@ -233,23 +243,29 @@ export default function SymptomChecker() {
           {/* History — desktop column */}
           <section
             className={`lg:w-80 shrink-0 flex flex-col rounded-[2rem] border border-gray-100 bg-white shadow-sm overflow-hidden ${
-              historyOpenMobile ? 'flex' : 'hidden lg:flex'
+              historyOpenMobile ? "flex" : "hidden lg:flex"
             }`}
             aria-labelledby="symptom-history-heading"
           >
             <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <History className="h-4 w-4 text-brand shrink-0" aria-hidden />
-                <h3 id="symptom-history-heading" className="text-sm font-semibold text-gray-900 truncate">
+                <h3
+                  id="symptom-history-heading"
+                  className="text-sm font-semibold text-gray-900 truncate"
+                >
                   Previous checks
                 </h3>
               </div>
-              <span className="text-xs font-medium text-gray-400 tabular-nums shrink-0">{history.length}</span>
+              <span className="text-xs font-medium text-gray-400 tabular-nums shrink-0">
+                {history.length}
+              </span>
             </div>
             <div className="flex-1 overflow-y-auto max-h-[50vh] lg:max-h-none lg:h-[min(32rem,calc(100vh-12rem))]">
               {history.length === 0 ? (
                 <p className="px-4 py-6 text-sm text-gray-500 leading-relaxed">
-                  After you run a check, it is saved here on this device so you can review it anytime.
+                  After you run a check, it is saved here on this device so you
+                  can review it anytime.
                 </p>
               ) : (
                 <ul className="p-2 space-y-1">
@@ -262,13 +278,15 @@ export default function SymptomChecker() {
                           onClick={() => openHistoryEntry(entry)}
                           className={`w-full text-left rounded-xl px-3 py-2.5 text-sm transition-colors border ${
                             active
-                              ? 'bg-brand/10 border-brand/20 text-gray-900'
-                              : 'border-transparent text-gray-700 hover:bg-gray-50'
+                              ? "bg-brand/10 border-brand/20 text-gray-900"
+                              : "border-transparent text-gray-700 hover:bg-gray-50"
                           }`}
                         >
-                          <span className="block text-xs text-gray-500 mb-0.5">{formatHistoryWhen(entry.createdAt)}</span>
+                          <span className="block text-xs text-gray-500 mb-0.5">
+                            {formatHistoryWhen(entry.createdAt)}
+                          </span>
                           <span className="block font-medium text-gray-900 line-clamp-2">
-                            {entry.result?.suggested_specialty || 'Guidance'}
+                            {entry.result?.suggested_specialty || "Guidance"}
                           </span>
                           <span className="block text-xs text-gray-500 mt-1 line-clamp-2">
                             {previewText(entry.symptoms)}
@@ -289,15 +307,20 @@ export default function SymptomChecker() {
               className="lg:hidden flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-800 shadow-sm"
             >
               <History className="h-4 w-4" />
-              {historyOpenMobile ? 'Hide history' : `Previous checks (${history.length})`}
+              {historyOpenMobile
+                ? "Hide history"
+                : `Previous checks (${history.length})`}
             </button>
 
             <div className="rounded-[2rem] border border-gray-100 bg-white shadow-sm overflow-hidden flex-1 min-w-0">
               <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6 border-b border-gray-100">
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">AI symptom checker</h3>
+                  <h3 className="text-lg font-medium text-gray-900">
+                    AI symptom checker
+                  </h3>
                   <p className="mt-1 text-sm text-gray-500">
-                    Describe what you feel and get a gentle specialty suggestion. This is not a diagnosis.
+                    Describe what you feel and get a gentle specialty
+                    suggestion. This is not a diagnosis.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -314,14 +337,19 @@ export default function SymptomChecker() {
                     <Plus className="h-3.5 w-3.5" />
                     New check
                   </button>
-                  <div className="rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand shrink-0">Guidance</div>
+                  <div className="rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand shrink-0">
+                    Guidance
+                  </div>
                 </div>
               </div>
 
               <div className="p-5 sm:p-6 space-y-5">
                 <form onSubmit={handleSymptomCheck} className="space-y-4">
                   <div>
-                    <label htmlFor="symptom-desc" className="mb-2 block text-sm font-semibold text-gray-700">
+                    <label
+                      htmlFor="symptom-desc"
+                      className="mb-2 block text-sm font-semibold text-gray-700"
+                    >
                       Symptoms
                     </label>
                     <textarea
@@ -342,7 +370,10 @@ export default function SymptomChecker() {
                   </div>
 
                   <div>
-                    <label htmlFor="symptom-context" className="mb-2 block text-sm font-semibold text-gray-700">
+                    <label
+                      htmlFor="symptom-context"
+                      className="mb-2 block text-sm font-semibold text-gray-700"
+                    >
                       Optional context
                     </label>
                     <input
@@ -366,22 +397,31 @@ export default function SymptomChecker() {
                     disabled={symptomLoading}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand px-5 py-3 text-sm font-medium text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {symptomLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    {symptomLoading ? 'Checking symptoms...' : 'Check symptoms'}
+                    {symptomLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                    {symptomLoading ? "Checking symptoms..." : "Check symptoms"}
                   </button>
                 </form>
 
                 {symptomError && (
-                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{symptomError}</div>
+                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {symptomError}
+                  </div>
                 )}
 
                 {symptomResult ? (
                   <div className="space-y-3 rounded-[1.75rem] border border-brand/10 bg-[#f8fffe] p-5">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-gray-400">Suggested specialty</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-gray-400">
+                          Suggested specialty
+                        </p>
                         <h4 className="mt-1 text-2xl font-medium text-gray-900">
-                          {symptomResult.suggested_specialty || 'General practice'}
+                          {symptomResult.suggested_specialty ||
+                            "General practice"}
                         </h4>
                       </div>
                       <div className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-brand border border-brand/10">
@@ -390,8 +430,12 @@ export default function SymptomChecker() {
                     </div>
 
                     <div className="rounded-2xl border border-gray-100 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">Preliminary notes</p>
-                      <p className="mt-2 text-sm leading-6 text-gray-700">{symptomResult.preliminary_notes}</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">
+                        Preliminary notes
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-gray-700">
+                        {symptomResult.preliminary_notes}
+                      </p>
                     </div>
 
                     <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
@@ -400,7 +444,8 @@ export default function SymptomChecker() {
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-5 py-6 text-sm text-gray-500">
-                    Your symptom guidance will appear here after you run a check, or tap a previous check on the left.
+                    Your symptom guidance will appear here after you run a
+                    check, or tap a previous check on the left.
                   </div>
                 )}
               </div>

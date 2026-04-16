@@ -93,9 +93,13 @@ export default function Payments() {
             <p className="text-sm font-medium text-gray-600 hidden sm:block">
               {profile ? `${profile.first_name} ${profile.last_name}` : ''}
             </p>
-            <div className="w-10 h-10 bg-brand-light rounded-full flex items-center justify-center text-brand border-2 border-brand/20">
+            <Link
+              to="/profile"
+              aria-label="Go to profile"
+              className="w-10 h-10 bg-brand-light rounded-full flex items-center justify-center text-brand border-2 border-brand/20 hover:border-brand/40 transition-colors"
+            >
               <User className="h-6 w-6" />
-            </div>
+            </Link>
           </div>
         </header>
 

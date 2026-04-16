@@ -51,7 +51,15 @@ func main() {
 
 	// Setup Business Logic
 	appointmentRepo := repository.NewAppointmentRepository(db)
-	appointmentSvc := service.NewAppointmentService(appointmentRepo, mqClient, log, cfg.DoctorServiceURL, cfg.JitsiBaseURL)
+	appointmentSvc := service.NewAppointmentService(
+		appointmentRepo,
+		mqClient,
+		log,
+		cfg.DoctorServiceURL,
+		cfg.PatientServiceURL,
+		cfg.InternalAPIKey,
+		cfg.JitsiBaseURL,
+	)
 	appointmentHandler := handler.NewAppointmentHandler(appointmentSvc, log)
 	appointmentConsumer := messaging.NewAppointmentConsumer(mqClient, appointmentSvc, log)
 
