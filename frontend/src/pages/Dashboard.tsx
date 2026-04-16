@@ -105,6 +105,11 @@ export default function Dashboard() {
     const authUserId = user?.id ?? user?.user_id ?? null;
     setRole(userRole);
 
+    if (userRole === 'admin') {
+      window.location.href = '/admin';
+      return;
+    }
+
     const fetchData = async () => {
       try {
         setLoading(true);
