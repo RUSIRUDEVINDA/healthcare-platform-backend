@@ -219,7 +219,7 @@ export default function SymptomChecker() {
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 sm:px-8 bg-white/80 backdrop-blur-md sticky top-0 z-10">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Health tools</p>
-            <h2 className="text-lg font-semibold text-gray-900">Symptom checker</h2>
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">Symptom checker</h2>
           </div>
           <div className="flex items-center gap-4">
             <p className="hidden sm:block text-sm font-medium text-gray-600">{displayName}</p>
