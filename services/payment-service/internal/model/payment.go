@@ -27,10 +27,10 @@ type Payment struct {
 }
 
 type CreatePaymentRequest struct {
-	AppointmentID string  `json:"appointment_id" binding:"required,uuid"`
-	PatientID     string  `json:"patient_id" binding:"required,uuid"`
-	Amount        float64 `json:"amount" binding:"required,gt=0"`
-	Currency      string  `json:"currency" binding:"required"`
+	AppointmentID string  `json:"appointment_id" binding:"required,uuid4"`
+	PatientID     string  `json:"patient_id"     binding:"required,uuid4"`
+	Amount        float64 `json:"amount"         binding:"required,gt=0"`
+	Currency      string  `json:"currency"       binding:"required,len=3"` // ISO 4217
 }
 
 type PaymentResponse struct {
@@ -40,20 +40,20 @@ type PaymentResponse struct {
 }
 
 type CheckoutRequest struct {
-	PaymentID     string          `json:"payment_id" binding:"omitempty,uuid"`
-	AppointmentID string          `json:"appointment_id" binding:"omitempty,uuid"`
-	Items         string          `json:"items"`
-	Customer      PayHereCustomer `json:"customer"`
+	PaymentID     string          `json:"payment_id"     binding:"omitempty,uuid4"`
+	AppointmentID string          `json:"appointment_id" binding:"omitempty,uuid4"`
+	Items         string          `json:"items"          binding:"omitempty,max=255"`
+	Customer      PayHereCustomer `json:"customer"       binding:"required"`
 }
 
 type PayHereCustomer struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Email     string `json:"email"`
-	Phone     string `json:"phone"`
-	Address   string `json:"address"`
-	City      string `json:"city"`
-	Country   string `json:"country"`
+	FirstName string `json:"first_name" binding:"required,min=2,max=100"`
+	LastName  string `json:"last_name"  binding:"required,min=2,max=100"`
+	Email     string `json:"email"      binding:"required,email,max=255"`
+	Phone     string `json:"phone"      binding:"required,min=9,max=20"`
+	Address   string `json:"address"    binding:"required,min=5,max=255"`
+	City      string `json:"city"       binding:"required,min=2,max=100"`
+	Country   string `json:"country"    binding:"required,min=2,max=100"`
 }
 
 type CheckoutResponse struct {

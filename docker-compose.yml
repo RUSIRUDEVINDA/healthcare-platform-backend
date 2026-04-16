@@ -410,17 +410,13 @@ services:
       - healthcare-net
 
   nginx:
-    image: nginx:1.25-alpine
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: healthcare-platform-nginx:local
     restart: unless-stopped
     ports:
       - "80:80"
-    volumes:
-      - type: bind
-        source: ./nginx/nginx.conf
-        target: /etc/nginx/nginx.conf
-        read_only: true
-        bind:
-          create_host_path: false
     depends_on:
       - auth-service
       - patient-service
