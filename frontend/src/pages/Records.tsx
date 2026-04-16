@@ -25,6 +25,7 @@ import {
 import axios from 'axios';
 import { Link, useLocation } from 'react-router-dom';
 import { appointmentApi, type Appointment } from '../api/appointments';
+import { doctorApi } from '../api/doctor';
 import { fileApi, patientLabelFromAppointment, type DocumentCategory, type FileRecord } from '../api/files';
 
 type FilterKey = 'all' | 'prescriptions' | 'reports';
@@ -91,7 +92,14 @@ export default function Records() {
   const [previewFile, setPreviewFile] = useState<FileRecord | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [role, setRole] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(() => {
+    try {
+      const raw = localStorage.getItem('user');
+      return raw ? (JSON.parse(raw)?.role as string | undefined) ?? null : null;
+    } catch {
+      return null;
+    }
+  });
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState('');
@@ -100,6 +108,7 @@ export default function Records() {
   const [uploadSuccessFileName, setUploadSuccessFileName] = useState<string | null>(null);
   const [filePendingDelete, setFilePendingDelete] = useState<FileRecord | null>(null);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
+  const [doctorName, setDoctorName] = useState<string | null>(null);
 
   const isDoctor = role === 'doctor';
 
@@ -151,7 +160,16 @@ export default function Records() {
       try {
         const userString = localStorage.getItem('user');
         const user = userString ? JSON.parse(userString) : null;
-        if (user?.role !== 'doctor') return;
+        if (user?.role !== 'doctor') {
+          setDoctorName(null);
+          return;
+        }
+        try {
+          const profile = await doctorApi.getProfile();
+          if (!cancelled) setDoctorName(profile?.name?.trim() || null);
+        } catch {
+          if (!cancelled) setDoctorName(null);
+        }
         const data = await appointmentApi.listAppointments();
         const list = Array.isArray(data) ? data : [];
         if (!cancelled) {
@@ -439,22 +457,36 @@ export default function Records() {
             <p className="text-[10px] uppercase tracking-[0.32em] text-slate-400">Medical Records</p>
             <h1 className="text-lg font-medium text-slate-900">Your chart</h1>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 rounded-full bg-brand/10 px-3 py-1.5 text-brand text-xs">
-              <CheckCircle2 className="h-4 w-4" />
-              Secure upload
-            </div>
-            <div className="w-10 h-10 bg-brand-light rounded-full flex items-center justify-center text-brand border border-brand/20">
+          <div className="flex min-w-0 items-center gap-3">
+            {isDoctor ? (
+              <div className="min-w-0 max-w-[min(100%,14rem)] sm:max-w-xs text-right">
+                <p className="truncate text-sm font-semibold text-slate-900" title={doctorName ?? undefined}>
+                  {doctorName || '—'}
+                </p>
+              </div>
+            ) : (
+              <div className="hidden md:flex items-center gap-2 rounded-full bg-brand/10 px-3 py-1.5 text-brand text-xs">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                Secure upload
+              </div>
+            )}
+            <div className="w-10 h-10 shrink-0 bg-brand-light rounded-full flex items-center justify-center text-brand border border-brand/20">
               <User className="h-5 w-5" />
             </div>
           </div>
         </header>
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          <div className="max-w-5xl mx-auto space-y-5">
+          <div className="w-full max-w-none space-y-5">
             <section className="rounded-[1.5rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
-              <div className="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-3 max-w-2xl">
+              <div
+                className={`flex gap-5 p-5 sm:p-6 ${
+                  isDoctor
+                    ? 'flex-col'
+                    : 'flex-col lg:flex-row lg:items-stretch lg:justify-start lg:gap-8 xl:gap-10'
+                }`}
+              >
+                <div className={`w-full min-w-0 space-y-3 ${!isDoctor ? 'lg:flex-1' : ''}`}>
                   <div className="inline-flex items-center gap-2 rounded-full bg-brand/10 px-3 py-1 text-[11px] text-brand border border-brand/10">
                     <Shield className="h-3.5 w-3.5" />
                     Secure chart
@@ -480,7 +512,9 @@ export default function Records() {
                 </div>
 
                 <div
-                  className={`w-full lg:w-[340px] rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 ${dragActive && (isPatient || doctorUploadReady) ? 'border-brand bg-white' : ''}`}
+                  className={`w-full min-w-0 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 ${
+                    !isDoctor ? 'lg:flex-1' : ''
+                  } ${dragActive && (isPatient || doctorUploadReady) ? 'border-brand bg-white' : ''}`}
                   onDragOver={(event) => {
                     if (isDoctor && !doctorUploadReady) return;
                     event.preventDefault();
@@ -666,7 +700,7 @@ export default function Records() {
                                 {uploadedByYou ? (
                                   <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-1 text-[11px] text-brand-dark">
                                     <User className="h-3 w-3" />
-                                    Uploaded by you
+                                    Patient record
                                   </span>
                                 ) : (
                                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] text-amber-700">
