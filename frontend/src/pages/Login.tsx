@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link} from 'react-router-dom';
-import { Mail, Lock, LogIn } from 'lucide-react';
+import { Mail, Lock, LogIn, AlertCircle, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import apiClient from '../api/client';
 
@@ -45,18 +45,43 @@ export default function Login() {
 
   return (
     <div className="w-full">
-      <div className="text-center mb-10">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2 font-sans tracking-tight">Welcome back</h2>
-        <p className="text-gray-500 font-medium tracking-wide">Please enter your details to sign in.</p>
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-semibold text-slate-900 mb-1 tracking-tight">Welcome back</h2>
+        <p className="text-slate-500 text-sm">Please enter your details to sign in.</p>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 text-red-700 border border-red-100 rounded-xl text-sm font-medium">
-          {error}
+        <div className={`mb-6 p-5 rounded-2xl border transition-all animate-in fade-in slide-in-from-top-2 ${
+          error.includes('deactivated') 
+            ? 'bg-amber-50 border-amber-100' 
+            : 'bg-red-50 border-red-100 text-red-700'
+        }`}>
+          {error.includes('deactivated') ? (
+            <div className="flex gap-4">
+              <div className="shrink-0 w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600">
+                <AlertCircle className="h-6 w-6" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-amber-900 font-bold text-base leading-tight">Account Suspended</span>
+                <span className="text-amber-700 text-sm mt-1 font-medium leading-relaxed">
+                  Your profile has been deactivated. If you believe this is an error or wish to return, please submit a request.
+                </span>
+                <Link 
+                  to="/auth/reactivate" 
+                  className="mt-3 inline-flex items-center text-amber-900 font-bold text-sm bg-white px-4 py-2 rounded-lg border border-amber-200 shadow-sm hover:bg-amber-100 transition-all w-fit"
+                >
+                  Request account reactivation
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <span className="font-medium">{error}</span>
+          )}
         </div>
       )}
 
-      <form onSubmit={handleLogin} className="space-y-6">
+      <form onSubmit={handleLogin} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="email">Email address</label>
           <div className="relative">
@@ -114,7 +139,7 @@ export default function Login() {
         </button>
       </form>
 
-      <div className="mt-8 text-center text-sm">
+      <div className="mt-5 text-center text-sm">
         <span className="text-gray-500 font-medium">Don't have an account? </span>
         <Link to="/auth/register" className="font-semibold text-brand hover:text-brand-dark transition-colors">
           Create an account
