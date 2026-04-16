@@ -99,8 +99,9 @@ type Slot struct {
 // ---- Request / Response DTOs ----
 
 type BookAppointmentRequest struct {
-	SlotID           string           `json:"slot_id,omitempty"       binding:"omitempty,uuid4"`
-	DoctorID         string           `json:"doctor_id,omitempty"     binding:"omitempty,uuid4"`
+	SlotID string `json:"slot_id,omitempty"       binding:"omitempty,uuid4"`
+	// Doctor IDs are stored as stringified numeric profile IDs, not UUIDs.
+	DoctorID         string           `json:"doctor_id,omitempty"`
 	ScheduledAt      *time.Time       `json:"scheduled_at,omitempty"`
 	DurationMinutes  *int             `json:"duration_minutes,omitempty" binding:"omitempty,min=5,max=120"`
 	Notes            string           `json:"notes"                   binding:"omitempty,max=1000"`
@@ -119,7 +120,8 @@ type AppointmentStatusUpdateRequest struct {
 }
 
 type CreateSlotRequest struct {
-	DoctorID  string    `json:"doctor_id"  binding:"required,uuid4"`
+	// Doctor profile IDs come from doctor-service as numeric strings.
+	DoctorID  string    `json:"doctor_id"  binding:"required"`
 	Hospital  string    `json:"hospital"   binding:"required,min=2,max=255"`
 	StartTime time.Time `json:"start_time" binding:"required"`
 	EndTime   time.Time `json:"end_time"   binding:"required,gtfield=StartTime"`

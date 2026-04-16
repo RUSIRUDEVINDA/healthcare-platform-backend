@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User, Scale, HeartPulse, RefreshCcw, Info } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { doctorApi, type DoctorProfile } from '../api/doctor';
 
@@ -71,9 +72,13 @@ export default function BmiCalculator() {
             <p className="text-sm font-medium text-gray-600 hidden sm:block">
               {role === 'doctor' ? (profile as DoctorProfile)?.name : profile ? `${(profile as PatientProfile)?.first_name} ${(profile as PatientProfile)?.last_name}` : ''}
             </p>
-            <div className="w-10 h-10 bg-brand-light rounded-full flex items-center justify-center text-brand border-2 border-brand/20">
+            <Link
+              to="/profile"
+              aria-label="Go to profile"
+              className="w-10 h-10 bg-brand-light rounded-full flex items-center justify-center text-brand border-2 border-brand/20 hover:border-brand/40 transition-colors"
+            >
               <User className="h-6 w-6" />
-            </div>
+            </Link>
           </div>
         </header>
 
