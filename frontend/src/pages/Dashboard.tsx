@@ -326,9 +326,13 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-4">
             <p className="hidden sm:block text-sm font-medium text-slate-600">{displayName}</p>
-            <div className="h-10 w-10 rounded-full bg-brand-light border border-brand/20 flex items-center justify-center text-brand">
+            <Link
+              to="/profile"
+              aria-label="Go to profile"
+              className="h-10 w-10 rounded-full bg-brand-light border border-brand/20 flex items-center justify-center text-brand hover:border-brand/40 transition-colors"
+            >
               <User className="h-5 w-5" />
-            </div>
+            </Link>
           </div>
         </header>
 

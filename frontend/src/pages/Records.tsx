@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 import { appointmentApi, type Appointment } from '../api/appointments';
 import { doctorApi } from '../api/doctor';
 import { fileApi, patientLabelFromAppointment, type DocumentCategory, type FileRecord } from '../api/files';
@@ -101,6 +102,8 @@ export default function Records() {
   const [filePendingDelete, setFilePendingDelete] = useState<FileRecord | null>(null);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
   const [doctorName, setDoctorName] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const isDoctor = role === 'doctor';
 
@@ -199,6 +202,10 @@ export default function Records() {
     return () => window.clearTimeout(t);
   }, [uploadSuccessOpen]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeFilter, selectedPatientId, pageSize]);
+
   const filteredFiles = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return files.filter((file) => {
@@ -211,6 +218,19 @@ export default function Records() {
       return (activeFilter === 'all' || activeFilter === bucket) && matchesQuery;
     });
   }, [activeFilter, files, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredFiles.length / pageSize));
+
+  const paginatedFiles = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredFiles.slice(startIndex, startIndex + pageSize);
+  }, [currentPage, filteredFiles, pageSize]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const prescriptions = files.filter((file) => classifyRecord(file) === 'prescriptions');
 
@@ -362,9 +382,13 @@ export default function Records() {
                 Secure upload
               </div>
             )}
-            <div className="w-10 h-10 shrink-0 bg-brand-light rounded-full flex items-center justify-center text-brand border border-brand/20">
+            <Link
+              to="/profile"
+              aria-label="Go to profile"
+              className="w-10 h-10 shrink-0 bg-brand-light rounded-full flex items-center justify-center text-brand border border-brand/20 hover:border-brand/40 transition-colors"
+            >
               <User className="h-5 w-5" />
-            </div>
+            </Link>
           </div>
         </header>
 
@@ -546,6 +570,18 @@ export default function Records() {
                       </button>
                     ))}
                   </div>
+                  <label className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
+                    <span>Show</span>
+                    <select
+                      value={pageSize}
+                      onChange={(event) => setPageSize(Number(event.target.value))}
+                      className="bg-transparent text-xs font-medium text-slate-700 outline-none"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={30}>30</option>
+                    </select>
+                  </label>
                 </div>
               </div>
 
@@ -569,7 +605,7 @@ export default function Records() {
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {filteredFiles.map((file) => {
+                  {paginatedFiles.map((file) => {
                     const uploadedByYou = file.owner_id === file.uploader_id;
 
                     return (
@@ -645,6 +681,41 @@ export default function Records() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+
+              {!loading && filteredFiles.length > 0 && (
+                <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                  <p className="text-sm text-slate-500">
+                    Showing{' '}
+                    <span className="font-medium text-slate-700">{Math.min((currentPage - 1) * pageSize + 1, filteredFiles.length)}</span>
+                    {' '}-{' '}
+                    <span className="font-medium text-slate-700">{Math.min(currentPage * pageSize, filteredFiles.length)}</span>
+                    {' '}of <span className="font-medium text-slate-700">{filteredFiles.length}</span>
+                  </p>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                      disabled={currentPage === 1}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:border-brand/30 hover:text-brand disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-sm text-slate-500">
+                      Page <span className="font-medium text-slate-700">{currentPage}</span> of{' '}
+                      <span className="font-medium text-slate-700">{totalPages}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                      disabled={currentPage === totalPages}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 hover:border-brand/30 hover:text-brand disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
               )}
             </section>
