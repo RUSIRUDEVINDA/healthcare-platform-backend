@@ -7,6 +7,7 @@ import {
   type AdminTransaction,
   type AdminUser,
 } from '../api/admin.ts';
+import { redirectToLogin } from '../utils/navigation';
 
 type TabKey = 'users' | 'appointments' | 'transactions';
 
@@ -70,7 +71,7 @@ export default function AdminConsole() {
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user');
-    window.location.href = '/auth/login';
+    redirectToLogin();
   };
 
   const handleVerifyDoctor = async (doctorId: string) => {

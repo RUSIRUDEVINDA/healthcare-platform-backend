@@ -12,6 +12,7 @@ import {
     Scale,
     X,
 } from 'lucide-react';
+import { redirectToLogin } from '../utils/navigation';
 
 function readRole(): string | null {
     try {
@@ -41,7 +42,7 @@ export default function AppShellLayout() {
     const handleLogout = () => {
         localStorage.removeItem('access_token');
         localStorage.removeItem('user');
-        window.location.href = '/auth/login';
+        redirectToLogin();
     };
 
     const navClass = ({ isActive }: { isActive: boolean }) =>
