@@ -20,6 +20,7 @@ import axios from 'axios';
 import { appointmentApi, type Appointment } from '../api/appointments';
 import { doctorApi } from '../api/doctor';
 import { fileApi, patientLabelFromAppointment, type DocumentCategory, type FileRecord } from '../api/files';
+import { patientApi } from '../api/patient';
 
 type FilterKey = 'all' | 'prescriptions' | 'reports';
 type RecordBucket = Exclude<FilterKey, 'all'>;
@@ -100,7 +101,7 @@ export default function Records() {
   const [uploadSuccessFileName, setUploadSuccessFileName] = useState<string | null>(null);
   const [filePendingDelete, setFilePendingDelete] = useState<FileRecord | null>(null);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
-  const [doctorName, setDoctorName] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   const isDoctor = role === 'doctor';
 
@@ -153,14 +154,22 @@ export default function Records() {
         const userString = localStorage.getItem('user');
         const user = userString ? JSON.parse(userString) : null;
         if (user?.role !== 'doctor') {
-          setDoctorName(null);
+          try {
+            const profile = await patientApi.getProfile();
+            if (!cancelled) {
+              const fullName = `${profile?.first_name || 'Patient'} ${profile?.last_name || ''}`.trim();
+              setDisplayName(fullName || 'Patient');
+            }
+          } catch {
+            if (!cancelled) setDisplayName('Patient');
+          }
           return;
         }
         try {
           const profile = await doctorApi.getProfile();
-          if (!cancelled) setDoctorName(profile?.name?.trim() || null);
+          if (!cancelled) setDisplayName(profile?.name?.trim() || 'Doctor');
         } catch {
-          if (!cancelled) setDoctorName(null);
+          if (!cancelled) setDisplayName('Doctor');
         }
         const data = await appointmentApi.listAppointments();
         const list = Array.isArray(data) ? data : [];
@@ -350,18 +359,9 @@ export default function Records() {
             <h1 className="text-lg font-medium text-slate-900">Your chart</h1>
           </div>
           <div className="flex min-w-0 items-center gap-3">
-            {isDoctor ? (
-              <div className="min-w-0 max-w-[min(100%,14rem)] sm:max-w-xs text-right">
-                <p className="truncate text-sm font-semibold text-slate-900" title={doctorName ?? undefined}>
-                  {doctorName || '—'}
-                </p>
-              </div>
-            ) : (
-              <div className="hidden md:flex items-center gap-2 rounded-full bg-brand/10 px-3 py-1.5 text-brand text-xs">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                Secure upload
-              </div>
-            )}
+            <p className="hidden sm:block text-sm font-medium text-slate-600">
+              {displayName || (isDoctor ? 'Doctor' : 'Patient')}
+            </p>
             <div className="w-10 h-10 shrink-0 bg-brand-light rounded-full flex items-center justify-center text-brand border border-brand/20">
               <User className="h-5 w-5" />
             </div>
@@ -805,3 +805,4 @@ export default function Records() {
     </div>
   );
 }
+
