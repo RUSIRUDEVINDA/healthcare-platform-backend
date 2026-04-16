@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut, User, Activity, Calendar, CreditCard, Scale, HeartPulse, RefreshCcw, Info, ClipboardList } from 'lucide-react';
+import { LogOut, User, Activity, Calendar, CreditCard, Scale, HeartPulse, RefreshCcw, Info, ClipboardList, Stethoscope } from 'lucide-react';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { doctorApi, type DoctorProfile } from '../api/doctor';
 import { Link, useNavigate } from 'react-router-dom';
@@ -117,12 +117,20 @@ export default function BmiCalculator() {
           >
             <Scale className="h-[18px] w-[18px]" /> BMI Calculator
           </Link>
-          <a
-            href="#"
+          {role !== 'doctor' && (
+            <Link
+              to="/symptom-checker"
+              className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+            >
+              <Stethoscope className="h-[18px] w-[18px]" /> Symptom checker
+            </Link>
+          )}
+          <Link
+            to="/records"
             className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm"
           >
             <ClipboardList className="h-[18px] w-[18px]" /> Records
-          </a>
+          </Link>
         </nav>
 
         <div className="p-4 border-t border-gray-100 mx-4 mb-4">
