@@ -99,37 +99,37 @@ type Slot struct {
 // ---- Request / Response DTOs ----
 
 type BookAppointmentRequest struct {
-	SlotID           string           `json:"slot_id,omitempty"`
-	DoctorID         string           `json:"doctor_id,omitempty"`
+	SlotID           string           `json:"slot_id,omitempty"       binding:"omitempty,uuid4"`
+	DoctorID         string           `json:"doctor_id,omitempty"     binding:"omitempty,uuid4"`
 	ScheduledAt      *time.Time       `json:"scheduled_at,omitempty"`
-	DurationMinutes  *int             `json:"duration_minutes,omitempty"`
-	Notes            string           `json:"notes"`
-	PaymentMode      PaymentMode      `json:"payment_mode,omitempty"`
-	ConsultationMode ConsultationMode `json:"consultation_mode,omitempty"`
+	DurationMinutes  *int             `json:"duration_minutes,omitempty" binding:"omitempty,min=5,max=120"`
+	Notes            string           `json:"notes"                   binding:"omitempty,max=1000"`
+	PaymentMode      PaymentMode      `json:"payment_mode,omitempty"  binding:"required,oneof=pay_now pay_later"`
+	ConsultationMode ConsultationMode `json:"consultation_mode,omitempty" binding:"required,oneof=physical jitsi"`
 }
 
 type UpdateAppointmentRequest struct {
 	ScheduledAt     *time.Time `json:"scheduled_at"`
-	DurationMinutes *int       `json:"duration_minutes"`
-	Notes           *string    `json:"notes"`
+	DurationMinutes *int       `json:"duration_minutes" binding:"omitempty,min=5,max=120"`
+	Notes           *string    `json:"notes"            binding:"omitempty,max=1000"`
 }
 
 type AppointmentStatusUpdateRequest struct {
-	Status AppointmentStatus `json:"status" binding:"required"`
+	Status AppointmentStatus `json:"status" binding:"required,oneof=pending confirmed cancelled completed"`
 }
 
 type CreateSlotRequest struct {
-	DoctorID  string    `json:"doctor_id" binding:"required"`
-	Hospital  string    `json:"hospital" binding:"required"`
+	DoctorID  string    `json:"doctor_id"  binding:"required,uuid4"`
+	Hospital  string    `json:"hospital"   binding:"required,min=2,max=255"`
 	StartTime time.Time `json:"start_time" binding:"required"`
-	EndTime   time.Time `json:"end_time" binding:"required"`
+	EndTime   time.Time `json:"end_time"   binding:"required,gtfield=StartTime"`
 }
 
 type UpdateSlotRequest struct {
 	StartTime *time.Time `json:"start_time"`
-	EndTime   *time.Time `json:"end_time"`
+	EndTime   *time.Time `json:"end_time"   binding:"omitempty,gtfield=StartTime"`
 	IsBooked  *bool      `json:"is_booked"`
-	Hospital  *string    `json:"hospital"`
+	Hospital  *string    `json:"hospital"   binding:"omitempty,min=2,max=255"`
 }
 
 // ---- RabbitMQ Event ----
