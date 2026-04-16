@@ -66,7 +66,7 @@ export default function BmiCalculator() {
     <div className="min-h-screen bg-[#f6f8fa] font-sans">
       <div className="flex min-h-screen flex-col">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 bg-white/80 backdrop-blur-md sticky top-0 z-10">
-          <h2 className="text-xl font-semibold text-gray-800">Health Tools</h2>
+          <h2 className="text-lg font-semibold tracking-tight text-slate-900">Health tools</h2>
           <div className="flex items-center space-x-4">
             <p className="text-sm font-medium text-gray-600 hidden sm:block">
               {role === 'doctor' ? (profile as DoctorProfile)?.name : profile ? `${(profile as PatientProfile)?.first_name} ${(profile as PatientProfile)?.last_name}` : ''}
