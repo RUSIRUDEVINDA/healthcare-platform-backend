@@ -11,4 +11,5 @@ use (
 	./services/patient-service
 	./services/payment-service
 	./services/telemedicine-service
+	./services/support-service
 )
