@@ -42,13 +42,13 @@ type UpdateDoctorRequest struct {
 	SLMCNo         *string  `json:"slmc_no,omitempty" binding:"omitempty,min=4,max=20"`
 }
 
-// UpdateDoctorPutRootRequest is the body for PUT /doctors (doctor id in JSON).
+
 type UpdateDoctorPutRootRequest struct {
 	ID int64 `json:"id" binding:"required"`
 	UpdateDoctorRequest
 }
 
-// ValidateTokenResponse matches auth-service GET /auth/validate JSON body.
+
 type ValidateTokenResponse struct {
 	Valid     bool   `json:"valid"`
 	UserID    string `json:"user_id,omitempty"`
@@ -58,7 +58,7 @@ type ValidateTokenResponse struct {
 	LastName  string `json:"last_name,omitempty"`
 }
 
-// APIResponse is the standard JSON envelope for doctor-service handlers.
+
 type APIResponse struct {
 	Success bool        `json:"success"`
 	Data    interface{} `json:"data,omitempty"`

@@ -15,7 +15,7 @@ import {
   Upload,
   User,
   X,
-} from 'lucide-react';
+} from "lucide-react";
 import axios from 'axios';
 import { appointmentApi, type Appointment } from '../api/appointments';
 import { doctorApi } from '../api/doctor';
@@ -356,7 +356,7 @@ export default function Records() {
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10">
           <div>
             <p className="text-[10px] uppercase tracking-[0.32em] text-slate-400">Medical Records</p>
-            <h1 className="text-lg font-medium text-slate-900">Your chart</h1>
+            <h1 className="text-lg font-semibold tracking-tight text-slate-900">Your chart</h1>
           </div>
           <div className="flex min-w-0 items-center gap-3">
             <p className="hidden sm:block text-sm font-medium text-slate-600">
@@ -373,8 +373,8 @@ export default function Records() {
             <section className="rounded-[1.5rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
               <div
                 className={`flex gap-5 p-5 sm:p-6 ${isDoctor
-                    ? 'flex-col'
-                    : 'flex-col lg:flex-row lg:items-stretch lg:justify-start lg:gap-8 xl:gap-10'
+                  ? 'flex-col'
+                  : 'flex-col lg:flex-row lg:items-stretch lg:justify-start lg:gap-8 xl:gap-10'
                   }`}
               >
                 <div className={`w-full min-w-0 space-y-3 ${!isDoctor ? 'lg:flex-1' : ''}`}>
@@ -478,8 +478,8 @@ export default function Records() {
 
                   <label
                     className={`mt-4 block rounded-[1.25rem] border border-dashed border-slate-200 bg-white px-4 py-5 text-center ${uploading || (isDoctor && !doctorUploadReady)
-                        ? 'cursor-not-allowed opacity-50'
-                        : 'cursor-pointer'
+                      ? 'cursor-not-allowed opacity-50'
+                      : 'cursor-pointer'
                       }`}
                   >
                     <input

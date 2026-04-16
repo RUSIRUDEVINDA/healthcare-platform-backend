@@ -6,11 +6,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-
 	"golang.org/x/crypto/bcrypt"
-
 	"github.com/lib/pq"
-
 	"healthcare-platform/pkg/logger"
 	"healthcare-platform/pkg/rabbitmq"
 	"healthcare-platform/services/doctor-service/internal/model"
@@ -25,7 +22,7 @@ var (
 	ErrInvalidSLMCFormat  = errors.New("slmc_no must be exactly 5 digits")
 )
 
-// IdentityInUseError is returned on update when NIC or SLMC matches another doctor's record.
+
 type IdentityInUseError struct {
 	Field         string
 	OtherDoctorID int64
@@ -42,7 +39,6 @@ func (e *IdentityInUseError) Error() string {
 var nicDigitsRE = regexp.MustCompile(`^[0-9]{12}$`)
 var slmcDigitsRE = regexp.MustCompile(`^[0-9]{5}$`)
 
-// DoctorService contains business logic for doctor management.
 type DoctorService struct {
 	repo *repository.DoctorRepository
 	mq   *rabbitmq.Client

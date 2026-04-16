@@ -20,7 +20,6 @@ func NewDoctorConsumer(mqClient *rabbitmq.Client, svc *service.DoctorService, lo
 }
 
 func (c *DoctorConsumer) Start() error {
-	// Unique queue for doctor service registration events
 	queueName := "doctor_profile_creator_queue"
 
 	err := c.mqClient.ConsumeQueue(
@@ -44,7 +43,6 @@ func (c *DoctorConsumer) handleUserRegistered(body []byte) error {
 		return fmt.Errorf("consumer.handleUserRegistered unmarshal: %w", err)
 	}
 
-	// Only create doctor profiles for users with the 'doctor' role
 	if event.Role != "doctor" {
 		c.log.Info("Ignoring user.registered event (not a doctor)", "user_id", event.UserID, "role", event.Role)
 		return nil
@@ -52,6 +50,5 @@ func (c *DoctorConsumer) handleUserRegistered(body []byte) error {
 
 	c.log.Info("Processing user.registered event for doctor", "user_id", event.UserID)
 
-	// Create the skeleton profile
 	return c.svc.CreateFromUserEvent(event.UserID, event.Email, event.FirstName, event.LastName)
 }

@@ -58,7 +58,7 @@ func main() {
 	docSvc := service.NewDoctorService(docRepo, mqClient, log)
 	docHandler := handler.NewDoctorHandler(docSvc, log)
 
-	// Start RabbitMQ Consumer for synchronizing doctor registration
+	
 	if mqClient != nil {
 		docConsumer := messaging.NewDoctorConsumer(mqClient, docSvc, log)
 		if err := docConsumer.Start(); err != nil {

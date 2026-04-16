@@ -14,7 +14,7 @@ import (
 	"healthcare-platform/services/doctor-service/internal/service"
 )
 
-// DoctorHandler handles HTTP for doctor resources (handler layer only).
+
 type DoctorHandler struct {
 	svc *service.DoctorService
 	log *logger.Logger
@@ -24,12 +24,11 @@ func NewDoctorHandler(svc *service.DoctorService, log *logger.Logger) *DoctorHan
 	return &DoctorHandler{svc: svc, log: log}
 }
 
-// RegisterRoutes wires public reads and JWT-protected writes (via auth-service validate).
+
 func (h *DoctorHandler) RegisterRoutes(router *gin.Engine, authClient *http.Client, authBaseURL string) {
 	router.GET("/health", h.HealthCheck)
 	router.GET("/ready", h.ReadinessCheck)
 
-	// Public: list / detail (supports ?specialization= filter per team guide)
 	router.GET("/doctors", h.List)
 	router.GET("/doctors/:id", h.GetByID)
 
@@ -38,8 +37,6 @@ func (h *DoctorHandler) RegisterRoutes(router *gin.Engine, authClient *http.Clie
 	{
 		protected.POST("", middleware.RequireRole("doctor", "admin"), h.Create)
 		protected.GET("/me", middleware.RequireRole("doctor", "admin"), h.GetMe)
-
-		// Register path-param routes before PUT "" so /doctors/:id never shadows the root handler.
 		protected.PUT("/:id/profile", middleware.RequireRole("doctor", "admin"), h.UpdateProfile)
 		protected.PUT("/:id", middleware.RequireRole("doctor", "admin"), h.Update)
 		protected.PUT("", middleware.RequireRole("doctor", "admin"), h.UpdatePutRoot)

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { redirectToLogin } from '../utils/navigation';
 
 // When running with Nginx acting as Reverse Proxy locally via docker-compose,
 // /api requests are automatically intercepted. 
@@ -31,7 +32,7 @@ apiClient.interceptors.response.use(
       // Only redirect if not already on the auth page
       if (!window.location.pathname.startsWith('/auth')) {
         localStorage.removeItem('access_token');
-        window.location.href = '/auth/login';
+        redirectToLogin();
       }
     }
     return Promise.reject(error);

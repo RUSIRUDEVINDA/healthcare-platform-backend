@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-
 	"healthcare-platform/pkg/logger"
 	"healthcare-platform/pkg/rabbitmq"
 	"healthcare-platform/services/admin-service/internal/model"
@@ -73,41 +71,15 @@ func (s *AdminService) HandleAppointmentBooked(event rabbitmq.AppointmentBookedE
 }
 
 func (s *AdminService) HandlePaymentCompleted(event rabbitmq.PaymentCompletedEvent) error {
-	if _, err := uuid.Parse(event.PaymentID); err != nil {
-		s.log.Warn("Skipping payment.completed mirror due to invalid payment_id", "payment_id", event.PaymentID, "error", err)
-		return nil
-	}
-
-	transaction := &model.Transaction{
-		ID:        event.PaymentID,
-		UserID:    uuid.Nil.String(),
-		Amount:    0,
-		Currency:  "LKR",
-		Status:    "completed",
-		Provider:  "payment-service",
-		Reference: event.ProviderID,
-		CreatedAt: time.Now().UTC(),
-		UpdatedAt: time.Now().UTC(),
-	}
-
-	if err := s.repo.UpsertTransaction(transaction); err != nil {
-		return fmt.Errorf("service.HandlePaymentCompleted: %w", err)
-	}
-
-	s.log.Info("Admin transaction mirror updated", "transaction_id", event.PaymentID)
+	s.log.Info("Admin payment completed event received",
+		"payment_id", event.PaymentID,
+		"appointment_id", event.AppointmentID,
+		"provider_id", event.ProviderID,
+	)
 	return nil
 }
 
 func (s *AdminService) ListUsers() ([]model.User, error) {
-	if s.authDatabaseURL != "" {
-		synced, err := s.repo.SyncUsersFromAuthDB(s.authDatabaseURL)
-		if err != nil {
-			s.log.Warn("Failed to sync users from auth DB", "error", err)
-		} else if synced > 0 {
-			s.log.Info("Synced users from auth DB", "count", synced)
-		}
-	}
-
 	users, err := s.repo.ListUsers()
 	if err != nil {
 		return nil, err

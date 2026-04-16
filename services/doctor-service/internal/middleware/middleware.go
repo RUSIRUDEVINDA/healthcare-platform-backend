@@ -12,7 +12,6 @@ import (
 	"healthcare-platform/pkg/logger"
 )
 
-// Context keys for values forwarded from auth-service validation.
 const (
 	ContextUserID    = "user_id"
 	ContextEmail     = "email"
@@ -21,7 +20,6 @@ const (
 	ContextLastName  = "last_name"
 )
 
-// CORS allows browser clients to call the API (same pattern as auth-service).
 func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
@@ -39,7 +37,7 @@ func CORS() gin.HandlerFunc {
 	}
 }
 
-// Logger logs each request with latency (same pattern as auth-service).
+
 func Logger(log *logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -57,7 +55,7 @@ func Logger(log *logger.Logger) gin.HandlerFunc {
 	}
 }
 
-// RequireAuthViaAuthService validates the Bearer token by calling auth-service GET /auth/validate.
+
 func RequireAuthViaAuthService(client *http.Client, authBaseURL string) gin.HandlerFunc {
 	base := strings.TrimRight(authBaseURL, "/")
 	return func(c *gin.Context) {
@@ -106,7 +104,7 @@ func RequireAuthViaAuthService(client *http.Client, authBaseURL string) gin.Hand
 	}
 }
 
-// RequireRole restricts access to the given roles (use after RequireAuthViaAuthService).
+
 func RequireRole(allowedRoles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		roleVal, exists := c.Get(ContextRole)

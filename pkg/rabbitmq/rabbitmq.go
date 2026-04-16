@@ -3,8 +3,10 @@ package rabbitmq
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 
 	"healthcare-platform/pkg/logger"
@@ -68,13 +70,65 @@ type AppointmentBookedEvent struct {
 	DoctorEmail       string  `json:"doctor_email"`
 	ScheduledAt       string  `json:"scheduled_at"`
 	Time              string  `json:"time,omitempty"`
+<<<<<<< HEAD
 	TimeSlot          string  `json:"time_slot,omitempty"`
+=======
+>>>>>>> 5c45e8a932c9f1ceec0a48a03346757d2eb0094d
 	ConsultFee        float64 `json:"consult_fee"`
 	Timestamp         string  `json:"timestamp"`
 }
 
+// NormalizeAppointmentBookedEvent trims canonical fields before validation/usage.
+func NormalizeAppointmentBookedEvent(event *AppointmentBookedEvent) {
+	event.AppointmentID = strings.TrimSpace(event.AppointmentID)
+	event.DoctorID = strings.TrimSpace(event.DoctorID)
+	event.PatientID = strings.TrimSpace(event.PatientID)
+	event.ScheduledAt = strings.TrimSpace(event.ScheduledAt)
+	event.Time = strings.TrimSpace(event.Time)
+
+	if event.ScheduledAt == "" && event.Time != "" {
+		event.ScheduledAt = event.Time
+	}
+	if event.Time == "" && event.ScheduledAt != "" {
+		event.Time = event.ScheduledAt
+	}
+}
+
+// ValidateAppointmentBookedEvent ensures all required IDs are valid UUID strings.
+func ValidateAppointmentBookedEvent(event *AppointmentBookedEvent) error {
+	NormalizeAppointmentBookedEvent(event)
+
+	if event.AppointmentID == "" {
+		return fmt.Errorf("appointmentId is required")
+	}
+	if _, err := uuid.Parse(event.AppointmentID); err != nil {
+		return fmt.Errorf("invalid appointmentId: %w", err)
+	}
+
+	if event.DoctorID == "" {
+		return fmt.Errorf("doctorId is required")
+	}
+	if _, err := uuid.Parse(event.DoctorID); err != nil {
+		return fmt.Errorf("invalid doctorId: %w", err)
+	}
+
+	if event.PatientID == "" {
+		return fmt.Errorf("patientId is required")
+	}
+	if _, err := uuid.Parse(event.PatientID); err != nil {
+		return fmt.Errorf("invalid patientId: %w", err)
+	}
+
+	if event.ScheduledAt == "" {
+		return fmt.Errorf("scheduled_at is required")
+	}
+
+	return nil
+}
+
 // AppointmentCancelledEvent is published by appointment-service
 type AppointmentCancelledEvent struct {
+<<<<<<< HEAD
 	AppointmentID    string  `json:"appointment_id"`
 	PatientID        string  `json:"patient_id"`
 	DoctorID         string  `json:"doctor_id,omitempty"`
@@ -105,6 +159,16 @@ type ConsultationCompletedEvent struct {
 	ConsultationMode string `json:"consultation_mode,omitempty"`
 	Summary          string `json:"summary,omitempty"`
 	Timestamp        string `json:"timestamp"`
+=======
+	AppointmentID string `json:"appointment_id"`
+	PatientID     string `json:"patient_id"`
+	DoctorID      string `json:"doctor_id,omitempty"`
+	PatientEmail  string `json:"patient_email,omitempty"`
+	PatientPhone  string `json:"patient_phone,omitempty"`
+	DoctorEmail   string `json:"doctor_email,omitempty"`
+	Reason        string `json:"reason,omitempty"`
+	Timestamp     string `json:"timestamp"`
+>>>>>>> 5c45e8a932c9f1ceec0a48a03346757d2eb0094d
 }
 
 // PaymentCompletedEvent is published by payment-service
@@ -137,6 +201,19 @@ type PaymentFailedEvent struct {
 	Reason        string  `json:"reason,omitempty"`
 	Status        string  `json:"status,omitempty"`
 	Timestamp     string  `json:"timestamp"`
+}
+
+// ConsultationCompletedEvent is published when a consultation ends.
+type ConsultationCompletedEvent struct {
+	ConsultationID string `json:"consultation_id"`
+	AppointmentID  string `json:"appointment_id"`
+	PatientID      string `json:"patient_id"`
+	DoctorID       string `json:"doctor_id"`
+	PatientEmail   string `json:"patient_email"`
+	PatientPhone   string `json:"patient_phone,omitempty"`
+	DoctorEmail    string `json:"doctor_email"`
+	Summary        string `json:"summary"`
+	Timestamp      string `json:"timestamp"`
 }
 
 // DoctorCreatedEvent is published by doctor-service when a doctor record is created.
@@ -283,6 +360,11 @@ func (c *Client) PublishUserRegistered(event UserRegisteredEvent) error {
 func (c *Client) PublishUserLoggedIn(event UserRegisteredEvent) error {
 	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
 	return c.publish(ExchangeUserEvents, RoutingKeyUserLoggedIn, event)
+}
+
+// Subscribe is a semantic alias used by consumers to make intent explicit.
+func (c *Client) Subscribe(queueName, exchange, routingKey string, handler func([]byte) error) error {
+	return c.ConsumeQueue(queueName, exchange, handler, routingKey)
 }
 
 func (c *Client) PublishAppointmentBooked(event AppointmentBookedEvent) error {
