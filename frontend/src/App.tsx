@@ -9,9 +9,9 @@ import Appointments from './pages/Appointments';
 import Payments from './pages/Payments';
 import PaymentStatus from './pages/PaymentStatus';
 import Telemedicine from './pages/Telemedicine';
-import Records from './pages/Records';
 import BmiCalculator from './pages/BmiCalculator';
 import SymptomChecker from './pages/SymptomChecker';
+import MedicalRecords from './pages/MedicalRecords';
 import AppShellLayout from './layouts/AppShellLayout';
 
 function App() {
@@ -29,15 +29,17 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/appointments" element={<Appointments />} />
         <Route path="/payments" element={<Payments />} />
-        <Route path="/records" element={<Records />} />
+        <Route path="/records" element={<MedicalRecords />} />
+        <Route path="/telemedicine" element={<Telemedicine />} />
         <Route path="/bmi-calculator" element={<BmiCalculator />} />
         <Route path="/symptom-checker" element={<SymptomChecker />} />
-        <Route path="/telemedicine" element={<Telemedicine />} />
       </Route>
-
+      
+      {/* Payment redirection targets */}
       <Route path="/payment/success" element={<PaymentStatus type="success" />} />
       <Route path="/payment/cancel" element={<PaymentStatus type="cancel" />} />
 
+      {/* Fallback route */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
