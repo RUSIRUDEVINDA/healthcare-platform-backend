@@ -32,7 +32,7 @@ func (c *Consumer) Start() error {
 	}
 
 	for _, queue := range queues {
-		if err := c.mqClient.ConsumeQueue(queue.name, queue.exchange, queue.routingKey, queue.handler); err != nil {
+		if err := c.mqClient.ConsumeQueue(queue.name, queue.exchange, queue.handler, queue.routingKey); err != nil {
 			return fmt.Errorf("messaging.Start %s: %w", queue.name, err)
 		}
 	}
@@ -54,8 +54,8 @@ func (c *Consumer) handleAppointmentBooked(body []byte) error {
 	if err := json.Unmarshal(body, &event); err != nil {
 		return fmt.Errorf("consumer.handleAppointmentBooked unmarshal: %w", err)
 	}
-	if err := rabbitmq.ValidateAppointmentBookedEvent(&event); err != nil {
-		c.log.Error("Discarding invalid appointment.booked event", "error", err)
+	if event.AppointmentID == "" || event.PatientID == "" || event.DoctorID == "" || event.ScheduledAt == "" {
+		c.log.Error("Discarding invalid appointment.booked event", "reason", "missing required fields")
 		return nil
 	}
 	return c.svc.HandleAppointmentBooked(event)

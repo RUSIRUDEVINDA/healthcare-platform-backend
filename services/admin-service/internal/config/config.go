@@ -8,22 +8,24 @@ import (
 )
 
 type Config struct {
-	AppEnv      string
-	Port        string
-	DatabaseURL string
-	RabbitMQURL string
-	JWTSecret   string
+	AppEnv          string
+	Port            string
+	DatabaseURL     string
+	AuthDatabaseURL string
+	RabbitMQURL     string
+	JWTSecret       string
 }
 
 func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		AppEnv:      getEnv("APP_ENV", "development"),
-		Port:        getEnv("PORT", "8007"),
-		DatabaseURL: getEnv("DATABASE_URL", ""),
-		RabbitMQURL: getEnv("RABBITMQ_URL", ""),
-		JWTSecret:   getEnv("JWT_SECRET", ""),
+		AppEnv:          getEnv("APP_ENV", "development"),
+		Port:            getEnv("PORT", "8007"),
+		DatabaseURL:     getEnv("DATABASE_URL", ""),
+		AuthDatabaseURL: getEnv("AUTH_DATABASE_URL", ""),
+		RabbitMQURL:     getEnv("RABBITMQ_URL", ""),
+		JWTSecret:       getEnv("JWT_SECRET", ""),
 	}
 
 	if err := cfg.validate(); err != nil {
