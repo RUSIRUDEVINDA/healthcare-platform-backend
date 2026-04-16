@@ -73,19 +73,14 @@ func (s *AdminService) HandleAppointmentBooked(event rabbitmq.AppointmentBookedE
 }
 
 func (s *AdminService) HandlePaymentCompleted(event rabbitmq.PaymentCompletedEvent) error {
-	if _, err := uuid.Parse(event.PaymentID); err != nil {
-		s.log.Warn("Skipping payment.completed mirror due to invalid payment_id", "payment_id", event.PaymentID, "error", err)
-		return nil
-	}
-
 	transaction := &model.Transaction{
-		ID:        event.PaymentID,
-		UserID:    uuid.Nil.String(),
-		Amount:    0,
-		Currency:  "LKR",
-		Status:    "completed",
-		Provider:  "payment-service",
-		Reference: event.ProviderID,
+		ID:        event.TransactionID,
+		UserID:    event.UserID,
+		Amount:    event.Amount,
+		Currency:  event.Currency,
+		Status:    event.Status,
+		Provider:  event.Provider,
+		Reference: event.Reference,
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
 	}
@@ -94,20 +89,11 @@ func (s *AdminService) HandlePaymentCompleted(event rabbitmq.PaymentCompletedEve
 		return fmt.Errorf("service.HandlePaymentCompleted: %w", err)
 	}
 
-	s.log.Info("Admin transaction mirror updated", "transaction_id", event.PaymentID)
+	s.log.Info("Admin transaction mirror updated", "transaction_id", event.TransactionID)
 	return nil
 }
 
 func (s *AdminService) ListUsers() ([]model.User, error) {
-	if s.authDatabaseURL != "" {
-		synced, err := s.repo.SyncUsersFromAuthDB(s.authDatabaseURL)
-		if err != nil {
-			s.log.Warn("Failed to sync users from auth DB", "error", err)
-		} else if synced > 0 {
-			s.log.Info("Synced users from auth DB", "count", synced)
-		}
-	}
-
 	users, err := s.repo.ListUsers()
 	if err != nil {
 		return nil, err
