@@ -13,7 +13,7 @@ import Records from './pages/Records';
 import Reactivate from './pages/Reactivate';
 import BmiCalculator from './pages/BmiCalculator';
 import SymptomChecker from './pages/SymptomChecker';
-import MedicalRecords from './pages/MedicalRecords';
+
 import AppShellLayout from './layouts/AppShellLayout';
 
 import { Toaster } from 'react-hot-toast';
@@ -41,7 +41,7 @@ function App() {
           <Route path="/symptom-checker" element={<SymptomChecker />} />
           <Route path="/telemedicine" element={<Telemedicine />} />
         </Route>
-        
+
         {/* Payment redirection targets */}
         <Route path="/payment/success" element={<PaymentStatus type="success" />} />
         <Route path="/payment/cancel" element={<PaymentStatus type="cancel" />} />
