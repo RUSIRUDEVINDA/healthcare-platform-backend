@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type DragEvent } from 'react';
 import {
   Activity,
   AlertCircle,
@@ -24,7 +24,8 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { Link, useLocation } from 'react-router-dom';
-import { fileApi, type FileRecord } from '../api/files';
+import { appointmentApi, type Appointment } from '../api/appointments';
+import { fileApi, patientLabelFromAppointment, type DocumentCategory, type FileRecord } from '../api/files';
 
 type FilterKey = 'all' | 'prescriptions' | 'reports';
 type RecordBucket = Exclude<FilterKey, 'all'>;
@@ -92,8 +93,27 @@ export default function Records() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [role, setRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [selectedPatientId, setSelectedPatientId] = useState('');
+  const [docCategory, setDocCategory] = useState<DocumentCategory | ''>('');
+  const [uploadSuccessOpen, setUploadSuccessOpen] = useState(false);
+  const [uploadSuccessFileName, setUploadSuccessFileName] = useState<string | null>(null);
+  const [filePendingDelete, setFilePendingDelete] = useState<FileRecord | null>(null);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
 
-  const loadFiles = async () => {
+  const isDoctor = role === 'doctor';
+
+  const patientOptions = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const a of appointments) {
+      const id = a.patient_id;
+      if (!id || m.has(id)) continue;
+      m.set(id, patientLabelFromAppointment(a));
+    }
+    return Array.from(m.entries()).map(([id, name]) => ({ id, name }));
+  }, [appointments]);
+
+  const loadFiles = useCallback(async () => {
     setLoading(true);
     setUploadError(null);
     try {
@@ -104,11 +124,18 @@ export default function Records() {
       setRole(userRole);
       setCurrentUserId(authUserId);
 
-      const myFiles = await fileApi.listMyFiles().catch(() => [] as FileRecord[]);
-      const patientFiles = authUserId
-        ? await fileApi.listPatientFiles(authUserId).catch(() => [] as FileRecord[])
-        : [];
-      const merged = Array.from(new Map([...myFiles, ...patientFiles].map((file) => [file.id, file])).values());
+      let merged: FileRecord[] = [];
+      if (userRole === 'doctor') {
+        if (selectedPatientId) {
+          merged = await fileApi.listPatientFiles(selectedPatientId).catch(() => [] as FileRecord[]);
+        }
+      } else {
+        const myFiles = await fileApi.listMyFiles().catch(() => [] as FileRecord[]);
+        const patientFiles = authUserId
+          ? await fileApi.listPatientFiles(authUserId).catch(() => [] as FileRecord[])
+          : [];
+        merged = Array.from(new Map([...myFiles, ...patientFiles].map((file) => [file.id, file])).values());
+      }
       setFiles(sortNewestFirst(merged));
     } catch (error) {
       console.error('Failed to load files:', error);
@@ -116,17 +143,51 @@ export default function Records() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedPatientId]);
 
   useEffect(() => {
-    loadFiles();
+    let cancelled = false;
+    (async () => {
+      try {
+        const userString = localStorage.getItem('user');
+        const user = userString ? JSON.parse(userString) : null;
+        if (user?.role !== 'doctor') return;
+        const data = await appointmentApi.listAppointments();
+        const list = Array.isArray(data) ? data : [];
+        if (!cancelled) {
+          setAppointments(list);
+          setSelectedPatientId((prev) => {
+            if (prev && list.some((a) => a.patient_id === prev)) return prev;
+            return '';
+          });
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  useEffect(() => {
+    void loadFiles();
+  }, [loadFiles]);
 
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
+
+  useEffect(() => {
+    if (!uploadSuccessOpen) return;
+    const t = window.setTimeout(() => {
+      setUploadSuccessOpen(false);
+      setUploadSuccessFileName(null);
+    }, 5000);
+    return () => window.clearTimeout(t);
+  }, [uploadSuccessOpen]);
 
   const filteredFiles = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -154,7 +215,11 @@ export default function Records() {
       setUploading(true);
       setUploadError(null);
       if (role === 'doctor') {
-        await fileApi.uploadDocument(fileToUpload);
+        if (!selectedPatientId || !docCategory) {
+          setUploadError('Select a patient and record type before uploading.');
+          return;
+        }
+        await fileApi.uploadPatientFile(selectedPatientId, fileToUpload, docCategory);
       } else if (currentUserId) {
         await fileApi.uploadPatientFile(currentUserId, fileToUpload);
       } else {
@@ -162,6 +227,8 @@ export default function Records() {
       }
       setSelectedFile(null);
       await loadFiles();
+      setUploadSuccessFileName(fileToUpload.name);
+      setUploadSuccessOpen(true);
     } catch (error) {
       console.error('Failed to upload file:', error);
       let message = 'Upload failed. Please try again.';
@@ -177,6 +244,11 @@ export default function Records() {
   const handleFileInputChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (isDoctor && (!selectedPatientId || !docCategory)) {
+      event.target.value = '';
+      setUploadError('Select a patient and record type before uploading.');
+      return;
+    }
     setSelectedFile(file);
     await handleUpload(file);
     event.target.value = '';
@@ -185,6 +257,10 @@ export default function Records() {
   const handleDrop = async (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setDragActive(false);
+    if (isDoctor && (!selectedPatientId || !docCategory)) {
+      setUploadError('Select a patient and record type before uploading.');
+      return;
+    }
     const file = event.dataTransfer.files?.[0];
     if (!file) return;
     setSelectedFile(file);
@@ -223,14 +299,30 @@ export default function Records() {
     }
   };
 
-  const handleDelete = async (file: FileRecord) => {
-    if (!window.confirm(`Delete ${file.original_name}? This cannot be undone.`)) return;
+  const requestDelete = (file: FileRecord) => {
+    setUploadError(null);
+    setFilePendingDelete(file);
+  };
+
+  const cancelDelete = () => {
+    if (deleteInProgress) return;
+    setFilePendingDelete(null);
+  };
+
+  const confirmDelete = async () => {
+    const file = filePendingDelete;
+    if (!file) return;
+    setDeleteInProgress(true);
+    setUploadError(null);
     try {
       await fileApi.deleteFile(file.id);
+      setFilePendingDelete(null);
       await loadFiles();
     } catch (error) {
       console.error('Failed to delete file:', error);
       setUploadError('We could not delete this file right now.');
+    } finally {
+      setDeleteInProgress(false);
     }
   };
 
@@ -243,6 +335,7 @@ export default function Records() {
   const canPreview = previewFile ? isPreviewable(previewFile) : false;
   const isImagePreview = previewFile?.mime_type.startsWith('image/') ?? false;
   const isPatient = role !== 'doctor';
+  const doctorUploadReady = isDoctor && Boolean(selectedPatientId && docCategory);
 
   return (
     <div className="min-h-screen bg-[#f2fbfa] flex font-sans text-slate-900">
@@ -389,8 +482,9 @@ export default function Records() {
                 </div>
 
                 <div
-                  className={`w-full lg:w-[340px] rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 ${dragActive ? 'border-brand bg-white' : ''}`}
+                  className={`w-full lg:w-[340px] rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 ${dragActive && (isPatient || doctorUploadReady) ? 'border-brand bg-white' : ''}`}
                   onDragOver={(event) => {
+                    if (isDoctor && !doctorUploadReady) return;
                     event.preventDefault();
                     setDragActive(true);
                   }}
@@ -400,22 +494,88 @@ export default function Records() {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm text-slate-900">Upload a record</p>
-                      <p className="text-xs text-slate-500 mt-1">Prescriptions, reports, notes.</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {isDoctor
+                          ? 'Choose patient and record type, then add a file.'
+                          : 'Prescriptions, reports, notes.'}
+                      </p>
                     </div>
                     <div className="h-11 w-11 rounded-full bg-brand/10 flex items-center justify-center text-brand">
                       <CloudUpload className="h-5 w-5" />
                     </div>
                   </div>
 
-                  <label className="mt-4 block cursor-pointer rounded-[1.25rem] border border-dashed border-slate-200 bg-white px-4 py-5 text-center">
+                  {isDoctor && (
+                    <div className="mt-4 space-y-3">
+                      <div>
+                        <label htmlFor="records-upload-patient" className="block text-xs font-medium text-slate-600 mb-1.5">
+                          Patient
+                        </label>
+                        <select
+                          id="records-upload-patient"
+                          value={selectedPatientId}
+                          onChange={(e) => {
+                            setSelectedPatientId(e.target.value);
+                            setDocCategory('');
+                          }}
+                          className="w-full rounded-[1rem] border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/15"
+                        >
+                          {patientOptions.length === 0 ? (
+                            <option value="">No patients — book or complete an appointment first</option>
+                          ) : (
+                            <>
+                              <option value="">Select a patient…</option>
+                              {patientOptions.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name}
+                                </option>
+                              ))}
+                            </>
+                          )}
+                        </select>
+                      </div>
+                      <div>
+                        <label htmlFor="records-upload-type" className="block text-xs font-medium text-slate-600 mb-1.5">
+                          Record type
+                        </label>
+                        <select
+                          id="records-upload-type"
+                          value={docCategory}
+                          onChange={(e) => setDocCategory(e.target.value as DocumentCategory | '')}
+                          disabled={!selectedPatientId}
+                          className="w-full rounded-[1rem] border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/15 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <option value="">{selectedPatientId ? 'Select record type…' : 'Select a patient first'}</option>
+                          <option value="prescription">Prescription</option>
+                          <option value="medical_report">Medical report</option>
+                          <option value="general">General clinical document</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  <label
+                    className={`mt-4 block rounded-[1.25rem] border border-dashed border-slate-200 bg-white px-4 py-5 text-center ${
+                      uploading || (isDoctor && !doctorUploadReady)
+                        ? 'cursor-not-allowed opacity-50'
+                        : 'cursor-pointer'
+                    }`}
+                  >
                     <input
                       type="file"
                       className="hidden"
+                      disabled={uploading || (isDoctor && !doctorUploadReady)}
                       onChange={handleFileInputChange}
                       accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.doc,.docx,.txt,image/*,application/pdf"
                     />
                     <Upload className="mx-auto h-7 w-7 text-brand" />
-                    <p className="mt-3 text-sm text-slate-900">{uploading ? 'Uploading...' : 'Click to upload or drop a file'}</p>
+                    <p className="mt-3 text-sm text-slate-900">
+                      {uploading
+                        ? 'Uploading...'
+                        : isDoctor && !doctorUploadReady
+                          ? 'Select patient and type to enable upload'
+                          : 'Click to upload or drop a file'}
+                    </p>
                     <p className="mt-1 text-xs text-slate-500">Keeps the original file name.</p>
                   </label>
 
@@ -480,9 +640,11 @@ export default function Records() {
                   </div>
                   <h4 className="mt-4 text-lg text-slate-900">No records found</h4>
                   <p className="mt-2 text-sm text-slate-500 max-w-lg mx-auto">
-                    {files.length === 0
-                      ? 'Once a doctor uploads a prescription or report, it will show up here.'
-                      : 'Try a different search term or filter to narrow the list.'}
+                    {isDoctor && !selectedPatientId
+                      ? 'Select a patient above to view their chart and upload documents.'
+                      : files.length === 0
+                        ? 'Once a doctor uploads a prescription or report, it will show up here.'
+                        : 'Try a different search term or filter to narrow the list.'}
                   </p>
                 </div>
               ) : (
@@ -552,7 +714,7 @@ export default function Records() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleDelete(file)}
+                              onClick={() => requestDelete(file)}
                               className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600 hover:bg-red-100"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -569,6 +731,107 @@ export default function Records() {
           </div>
         </main>
       </div>
+
+      {filePendingDelete && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="delete-record-title"
+          aria-describedby="delete-record-desc"
+          onClick={cancelDelete}
+        >
+          <div
+            className="w-full max-w-md rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-2xl sm:p-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 ring-8 ring-red-50/40">
+                <AlertCircle className="h-6 w-6" strokeWidth={2} aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 id="delete-record-title" className="text-lg font-semibold tracking-tight text-slate-900">
+                  Delete this record?
+                </h2>
+                <p id="delete-record-desc" className="mt-2 text-sm leading-relaxed text-slate-600">
+                  <span className="font-medium text-slate-800 break-all">{filePendingDelete.original_name}</span> will be
+                  permanently removed. This action cannot be undone.
+                </p>
+                <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+                  <button
+                    type="button"
+                    disabled={deleteInProgress}
+                    className="w-full sm:w-auto rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+                    onClick={cancelDelete}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={deleteInProgress}
+                    className="w-full sm:w-auto rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500/30 disabled:opacity-60"
+                    onClick={() => void confirmDelete()}
+                  >
+                    {deleteInProgress ? 'Deleting…' : 'Delete record'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {uploadSuccessOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="upload-success-title"
+          aria-describedby="upload-success-desc"
+          onClick={() => {
+            setUploadSuccessOpen(false);
+            setUploadSuccessFileName(null);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-[1.5rem] border border-teal-100 bg-white p-6 shadow-2xl sm:p-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-8 ring-emerald-50/50">
+                <CheckCircle2 className="h-9 w-9" strokeWidth={2} aria-hidden />
+              </div>
+              <h2 id="upload-success-title" className="mt-5 text-xl font-semibold tracking-tight text-slate-900">
+                Upload successful
+              </h2>
+              <p id="upload-success-desc" className="mt-2 text-sm leading-relaxed text-slate-600">
+                {uploadSuccessFileName ? (
+                  <>
+                    <span className="font-medium text-slate-800">{uploadSuccessFileName}</span>
+                    {isDoctor
+                      ? " was saved to this patient's chart."
+                      : ' was added to your records.'}
+                  </>
+                ) : isDoctor ? (
+                  "The file was saved to this patient's chart."
+                ) : (
+                  'Your file was added to your records.'
+                )}
+              </p>
+              <button
+                type="button"
+                className="mt-8 w-full rounded-full bg-slate-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
+                onClick={() => {
+                  setUploadSuccessOpen(false);
+                  setUploadSuccessFileName(null);
+                }}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {(previewFile || previewLoading) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
