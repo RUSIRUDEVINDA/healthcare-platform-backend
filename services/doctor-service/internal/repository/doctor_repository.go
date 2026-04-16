@@ -9,7 +9,7 @@ import (
 	"healthcare-platform/services/doctor-service/internal/model"
 )
 
-// DoctorRepository handles PostgreSQL access for doctors.
+
 type DoctorRepository struct {
 	db *sql.DB
 }
@@ -18,7 +18,7 @@ func NewDoctorRepository(db *sql.DB) *DoctorRepository {
 	return &DoctorRepository{db: db}
 }
 
-// Create inserts a doctor and returns the persisted row (including generated id and timestamps).
+
 func (r *DoctorRepository) Create(d *model.Doctor) error {
 	query := `
 		INSERT INTO doctors (user_id, email, password_hash, name, specialization, experience, hospital, channeling_fee, nic, slmc_no, created_at, updated_at)
@@ -46,7 +46,6 @@ func (r *DoctorRepository) Create(d *model.Doctor) error {
 	return nil
 }
 
-// List returns all doctors, optionally filtered by specialization (case-insensitive partial match).
 func (r *DoctorRepository) List(specializationFilter string) ([]model.Doctor, error) {
 	base := `SELECT id, user_id, email, password_hash, name, specialization, experience, hospital, channeling_fee, nic, slmc_no, created_at, updated_at FROM doctors`
 	var args []interface{}
@@ -81,7 +80,6 @@ func (r *DoctorRepository) List(specializationFilter string) ([]model.Doctor, er
 	return out, nil
 }
 
-// OtherDoctorIDWithNIC returns another doctor's id that already has this NIC, or (0, false).
 func (r *DoctorRepository) OtherDoctorIDWithNIC(excludeID int64, nic string) (int64, bool, error) {
 	var other int64
 	err := r.db.QueryRow(
@@ -97,7 +95,6 @@ func (r *DoctorRepository) OtherDoctorIDWithNIC(excludeID int64, nic string) (in
 	return other, true, nil
 }
 
-// OtherDoctorIDWithSLMC returns another doctor's id that already has this SLMC number, or (0, false).
 func (r *DoctorRepository) OtherDoctorIDWithSLMC(excludeID int64, slmcNo string) (int64, bool, error) {
 	var other int64
 	err := r.db.QueryRow(
@@ -113,7 +110,6 @@ func (r *DoctorRepository) OtherDoctorIDWithSLMC(excludeID int64, slmcNo string)
 	return other, true, nil
 }
 
-// FindByID returns a doctor by primary key, or nil if not found.
 func (r *DoctorRepository) FindByID(id int64) (*model.Doctor, error) {
 	query := `
 		SELECT id, user_id, email, password_hash, name, specialization, experience, hospital, channeling_fee, nic, slmc_no, created_at, updated_at
@@ -134,7 +130,7 @@ func (r *DoctorRepository) FindByID(id int64) (*model.Doctor, error) {
 	return d, nil
 }
 
-// FindByUserID returns a doctor by auth-service user id, or nil if not found.
+
 func (r *DoctorRepository) FindByUserID(userID string) (*model.Doctor, error) {
 	query := `
 		SELECT id, user_id, email, password_hash, name, specialization, experience, hospital, channeling_fee, nic, slmc_no, created_at, updated_at
@@ -155,7 +151,6 @@ func (r *DoctorRepository) FindByUserID(userID string) (*model.Doctor, error) {
 	return d, nil
 }
 
-// Update replaces mutable fields for an existing doctor.
 func (r *DoctorRepository) Update(d *model.Doctor) error {
 	query := `
 		UPDATE doctors
@@ -177,7 +172,6 @@ func (r *DoctorRepository) Update(d *model.Doctor) error {
 	return nil
 }
 
-// Delete removes a doctor row by id. Returns rows affected count via caller checking.
 func (r *DoctorRepository) Delete(id int64) (int64, error) {
 	res, err := r.db.Exec(`DELETE FROM doctors WHERE id = $1`, id)
 	if err != nil {
