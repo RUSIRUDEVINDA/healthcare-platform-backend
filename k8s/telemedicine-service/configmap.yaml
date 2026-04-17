@@ -6,6 +6,8 @@ metadata:
 data:
   APP_ENV: "production"
   PORT: "8009"
-  APPOINTMENT_SERVICE_URL: "http://appointment-service.healthcare.svc.cluster.local:8004"
+  APPOINTMENT_SERVICE_URL: "http://appointment-service:8082"
+  DATABASE_URL: "postgres://postgres:password123@telemedicine-db:5432/telemedicine_db?sslmode=disable"
+  RABBITMQ_URL: "amqp://admin:password123@rabbitmq:5672/"
   JITSI_BASE_URL: "https://meet.jit.si"
 

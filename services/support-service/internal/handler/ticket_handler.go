@@ -40,3 +40,18 @@ func (h *TicketHandler) List(c *gin.Context) {
 
 	c.JSON(http.StatusOK, model.SuccessResponse(tickets))
 }
+
+func (h *TicketHandler) Resolve(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse("Ticket ID is required"))
+		return
+	}
+
+	if err := h.svc.ResolveTicket(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse("Failed to resolve ticket"))
+		return
+	}
+
+	c.JSON(http.StatusOK, model.MessageResponse("Ticket resolved successfully"))
+}

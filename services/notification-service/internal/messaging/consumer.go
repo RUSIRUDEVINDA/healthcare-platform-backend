@@ -43,6 +43,14 @@ func (c *Consumer) HandleAppointmentCancelled(body []byte) error {
 	return c.svc.HandleAppointmentCancelled(event)
 }
 
+func (c *Consumer) HandlePaymentCompleted(body []byte) error {
+	var event rabbitmq.PaymentCompletedEvent
+	if err := json.Unmarshal(body, &event); err != nil {
+		return fmt.Errorf("consumer.HandlePaymentCompleted unmarshal: %w", err)
+	}
+	return c.svc.HandlePaymentCompleted(event)
+}
+
 func (c *Consumer) HandleConsultationCompleted(body []byte) error {
 	var event rabbitmq.ConsultationCompletedEvent
 	if err := json.Unmarshal(body, &event); err != nil {

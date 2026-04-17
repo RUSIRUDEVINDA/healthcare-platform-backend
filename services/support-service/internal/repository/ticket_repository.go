@@ -72,3 +72,9 @@ func (r *TicketRepository) List(ctx context.Context) ([]model.ReactivationTicket
 	}
 	return tickets, rows.Err()
 }
+
+func (r *TicketRepository) Resolve(ctx context.Context, id string) error {
+	query := `UPDATE reactivation_tickets SET status = $1, updated_at = $2 WHERE id = $3`
+	_, err := r.db.ExecContext(ctx, query, model.StatusResolved, time.Now(), id)
+	return err
+}

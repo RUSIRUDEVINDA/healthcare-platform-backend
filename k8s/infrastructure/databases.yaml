@@ -1,0 +1,426 @@
+# This file contains the database deployments for the Healthcare platform.
+# To save resources in Minikube, we use small resource limits.
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-db
+  namespace: healthcare
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: auth-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-db
+  namespace: healthcare
+spec:
+  selector:
+    matchLabels:
+      app: auth-db
+  template:
+    metadata:
+      labels:
+        app: auth-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_DB
+              value: auth_db
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: password123
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: patient-db
+  namespace: healthcare
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: patient-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patient-db
+  namespace: healthcare
+spec:
+  selector:
+    matchLabels:
+      app: patient-db
+  template:
+    metadata:
+      labels:
+        app: patient-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_DB
+              value: patient_db
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: password123
+          resources:
+            requests:
+              memory: "64Mi"
+            limits:
+              memory: "128Mi"
+
+# ... (Adding others in same pattern)
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: doctor-db
+  namespace: healthcare
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: doctor-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: doctor-db
+  namespace: healthcare
+spec:
+  selector:
+    matchLabels:
+      app: doctor-db
+  template:
+    metadata:
+      labels:
+        app: doctor-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_DB
+              value: doctor_db
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: password123
+          resources:
+            requests:
+              memory: "64Mi"
+            limits:
+              memory: "128Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: support-db
+  namespace: healthcare
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: support-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: support-db
+  namespace: healthcare
+spec:
+  selector:
+    matchLabels:
+      app: support-db
+  template:
+    metadata:
+      labels:
+        app: support-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_DB
+              value: support_db
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: password123
+          resources:
+            requests:
+              memory: "64Mi"
+            limits:
+              memory: "128Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-db
+  namespace: healthcare
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: admin-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-db
+  namespace: healthcare
+spec:
+  selector:
+    matchLabels:
+      app: admin-db
+  template:
+    metadata:
+      labels:
+        app: admin-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_DB
+              value: admin_db
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: password123
+          resources:
+            requests:
+              memory: "64Mi"
+            limits:
+              memory: "128Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-symptom-db
+  namespace: healthcare
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: ai-symptom-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-symptom-db
+  namespace: healthcare
+spec:
+  selector:
+    matchLabels:
+      app: ai-symptom-db
+  template:
+    metadata:
+      labels:
+        app: ai-symptom-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_DB
+              value: symptom_db
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: password123
+          resources:
+            requests:
+              memory: "64Mi"
+            limits:
+              memory: "128Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-db
+  namespace: healthcare
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: payment-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-db
+  namespace: healthcare
+spec:
+  selector:
+    matchLabels:
+      app: payment-db
+  template:
+    metadata:
+      labels:
+        app: payment-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_DB
+              value: payment_db
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: password123
+          resources:
+            requests:
+              memory: "64Mi"
+            limits:
+              memory: "128Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: file-storage-db
+  namespace: healthcare
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: file-storage-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: file-storage-db
+  namespace: healthcare
+spec:
+  selector:
+    matchLabels:
+      app: file-storage-db
+  template:
+    metadata:
+      labels:
+        app: file-storage-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_DB
+              value: file_storage_db
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: password123
+          resources:
+            requests:
+              memory: "64Mi"
+            limits:
+              memory: "128Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: appointment-db
+  namespace: healthcare
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: appointment-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appointment-db
+  namespace: healthcare
+spec:
+  selector:
+    matchLabels:
+      app: appointment-db
+  template:
+    metadata:
+      labels:
+        app: appointment-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_DB
+              value: appointment_db
+            - name: POSTGRES_USER
+              value: user
+            - name: POSTGRES_PASSWORD
+              value: password
+          resources:
+            requests:
+              memory: "64Mi"
+            limits:
+              memory: "128Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: telemedicine-db
+  namespace: healthcare
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: telemedicine-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemedicine-db
+  namespace: healthcare
+spec:
+  selector:
+    matchLabels:
+      app: telemedicine-db
+  template:
+    metadata:
+      labels:
+        app: telemedicine-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_DB
+              value: telemedicine_db
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: password123
+          resources:
+            requests:
+              memory: "64Mi"
+            limits:
+              memory: "128Mi"
+

@@ -89,6 +89,15 @@ func CallerToken(c *gin.Context) (string, bool) {
 	return token, ok
 }
 
+func CallerEmail(c *gin.Context) (string, bool) {
+	v, ok := c.Get("caller_email")
+	if !ok {
+		return "", false
+	}
+	email, ok := v.(string)
+	return email, ok
+}
+
 func CallerFirstName(c *gin.Context) (string, bool) {
 	v, ok := c.Get("caller_first_name")
 	if !ok {

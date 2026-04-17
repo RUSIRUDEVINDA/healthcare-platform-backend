@@ -81,7 +81,8 @@ func (h *AppointmentHandler) Book(c *gin.Context) {
 
 	patientFirst, _ := middleware.CallerFirstName(c)
 	patientLast, _ := middleware.CallerLastName(c)
-	appt, err := h.svc.BookAppointment(userID, role, token, patientFirst, patientLast, &req)
+	patientEmail, _ := middleware.CallerEmail(c)
+	appt, err := h.svc.BookAppointment(userID, role, token, patientEmail, patientFirst, patientLast, &req)
 	if err != nil {
 		if strings.Contains(err.Error(), "only patients can book appointments") {
 			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
@@ -96,6 +97,11 @@ func (h *AppointmentHandler) Book(c *gin.Context) {
 			return
 		}
 		if strings.Contains(err.Error(), "pay later is not allowed") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if strings.Contains(err.Error(), "pay now appointments must be finalized after payment") ||
+			strings.Contains(err.Error(), "pay later appointments cannot be finalized as paid") {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

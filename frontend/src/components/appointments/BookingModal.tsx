@@ -331,7 +331,11 @@ export default function BookingModal({ isOpen, onClose, doctor, slots, consultat
                                         : 'bg-brand hover:bg-brand-dark shadow-brand/20 active:scale-[0.98]'
                                         }`}
                                 >
-                                    {isSubmitting ? 'Processing...' : 'Confirm Appointment'}
+                                    {isSubmitting
+                                        ? 'Processing...'
+                                        : paymentMode === 'pay_now'
+                                            ? 'Proceed to Payment'
+                                            : 'Confirm Appointment'}
                                 </button>
                             </div>
                         </div>

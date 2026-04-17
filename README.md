@@ -1,188 +1,105 @@
-# 🏥 Healthcare Platform — Auth Service
+# 🏥 Healthcare Platform - Microservices Ecosystem
 
-SE3020 Distributed Systems — Assignment 1  
-Group Member: **Rusiru** (Auth Service, Patient Service, Payment Service)
+[![Tech Stack](https://img.shields.io/badge/Stack-Go%20|%20React%20|%20PostgreSQL-0ea5e9?style=for-the-badge)](https://github.com/RUSIRUDEVINDA/healthcare-platform-backend)
+[![Uptime](https://img.shields.io/badge/Architecture-Event--Driven-818cf8?style=for-the-badge)](https://rabbitmq.com)
 
----
-
-## 📁 Project Structure
-
-```
-healthcare-platform/
-├── auth-service/               ← This service (Rusiru)
-│   ├── cmd/main.go             ← Entry point
-│   ├── internal/
-│   │   ├── config/             ← Env var config
-│   │   ├── handler/            ← HTTP handlers (Gin)
-│   │   ├── middleware/         ← JWT auth, CORS, Logger
-│   │   ├── model/              ← Domain models + DTOs
-│   │   ├── repository/         ← PostgreSQL queries
-│   │   └── service/            ← Business logic
-│   ├── pkg/
-│   │   ├── jwt/                ← JWT helpers (reusable)
-│   │   ├── rabbitmq/           ← RabbitMQ client (reusable)
-│   │   └── logger/             ← Structured logging (reusable)
-│   ├── migrations/             ← SQL migration files
-│   ├── Dockerfile
-│   ├── Makefile
-│   └── .env
-├── k8s/auth-service/           ← Kubernetes manifests
-├── nginx/nginx.conf            ← Reverse proxy config
-├── docker-compose.yml          ← Local dev setup
-└── .github/workflows/          ← CI/CD pipelines
-```
+A premium, highly-distributed telemedicine and healthcare management platform built with **Go**, **React**, and **RabbitMQ**. This project leverages a microservices architecture to provide scalable patient care, doctor channeling, and secure payment processing.
 
 ---
 
-## 🚀 Quick Start (Local Development)
+## 🏗️ System Architecture & Ports
 
-### Prerequisites
-- Docker Desktop installed
-- Go 1.21+ (for local development without Docker)
+The platform uses a **Database-per-Service** pattern with **RabbitMQ** orchestrating eventual consistency.
 
-### Step 1: Clone and setup
-```bash
-git clone <your-repo-url>
-cd healthcare-platform
-```
+| Service | Port | Primary Responsibility | Essential .env Keys |
+| :--- | :---: | :--- | :--- |
+| **🔐 Auth** | `8001` | JWT & Identity | `JWT_SECRET`, `ACCESS_TOKEN_TTL` |
+| **👤 Patient** | `8002` | Patient Profiles | `INTERNAL_API_KEY`, `DATABASE_URL` |
+| **🩺 Doctor** | `8003` | Practitioner Data | `AUTH_SERVICE_URL`, `DATABASE_URL` |
+| **📅 Appointment** | `8004` | Booking Engine | `JITSI_BASE_URL`, `INTERNAL_API_KEY` |
+| **💳 Payment** | `8005` | PayHere Checkout | `PAYHERE_MERCHANT_ID`, `PAYHERE_SECRET` |
+| **🔔 Notification**| `8006` | Email/SMS Comms | `SMTP_HOST`, `SMTP_PASS`, `SENDER_EMAIL` |
+| **⚙️ Admin** | `8007` | Resource Control | `RABBITMQ_URL`, `DATABASE_URL` |
+| **🤖 AI Symptom** | `8008` | Medical Triage | `OPENAI_API_KEY`, `AI_PROVIDER` |
+| **📹 Telemedicine**| `8009` | Session Handling | `APPOINTMENT_SERVICE_URL` |
+| **📂 File Storage** | `8010` | Media & Scans | `MAX_IMAGE_SIZE`, `DATABASE_URL` |
+| **🛠️ Support** | `8011` | User Ticketing | `DATABASE_URL`, `PORT` |
+| **🚪 API Gateway** | `8888` | Traffic Routing | `CORS_ALLOWED_ORIGINS` |
 
-### Step 2: Start all services with Docker Compose
+---
+
+## 🛠️ REST API Reference
+
+All services are accessible via the **API Gateway** on port `8888` or directly for internal development.
+
+### Identity & Access (Auth)
+- `POST /v1/auth/register` - Create new patient/doctor.
+- `POST /v1/auth/login` - Authenticate and receive JWT.
+- `GET /v1/auth/me` - Validate session.
+
+### Clinical Management (Appointments)
+- `GET /v1/appointments` - List all current appointments.
+- `POST /v1/appointments` - Book a slot (supports `pay_now` or `pay_later`).
+- `GET /v1/slots` - List doctor availability windows.
+- `PUT /v1/appointments/:id/cancel` - Cancel a booking and release slot.
+
+### Practitioner & Profile
+- `GET /v1/doctors` - Search clinical practitioners.
+- `GET /v1/patients/profile` - Fetch patient-specific history.
+- `PUT /v1/doctor/profile` - Update doctor professional bio.
+
+### Financials (Payment)
+- `POST /v1/payments/checkout` - Generate PayHere checkout session.
+- `POST /v1/payments/webhook` - PayHere IPN notification handler.
+
+### Intelligent Triage (AI)
+- `POST /v1/symptoms/analyze` - Process natural language symptoms for triage.
+
+---
+
+## 📡 Messaging (RabbitMQ Events)
+
+The system utilizes an internal event-bus to maintain sync across 12 isolated databases.
+
+| Event Exchange | Routing Key | Purpose |
+| :--- | :--- | :--- |
+| `appointment.events` | `appointment.booked` | Notifies Payment & Notification services. |
+| `appointment.events` | `appointment.cancelled` | Releases held payments and updates capacity. |
+| `payment.events` | `payment.completed` | Triggers final confirmation in Appointment service. |
+| `user.events` | `patient.deleted` | Cascades data deletion across all 11 other services. |
+
+---
+
+## 🚀 Development Setup
+
+### 1. Prerequisite
+- Docker & Docker Compose
+- Go 1.25+ (for local development)
+- Node.js 20+ (for frontend development)
+
+### 2. Startup
 ```bash
 docker-compose up --build
 ```
+*   **Frontend**: `http://localhost:80`
+*   **RabbitMQ Portal**: `http://localhost:15672` (u: admin, p: password123)
+*   **Health Check**: Every service exposes a `/health` endpoint.
 
-This starts:
-- PostgreSQL on port 5432
-- RabbitMQ on port 5672 (UI: http://localhost:15672)
-- Auth Service on port 8001
-- Nginx on port 80
-
-### Step 3: Test the Auth Service
-
-**Register a new patient:**
-```bash
-curl -X POST http://localhost/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "rusiru@example.com",
-    "password": "password123",
-    "first_name": "Rusiru",
-    "last_name": "Test",
-    "role": "patient"
-  }'
-```
-
-**Login:**
-```bash
-curl -X POST http://localhost/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "rusiru@example.com",
-    "password": "password123"
-  }'
-```
-
-**Refresh token:**
-```bash
-curl -X POST http://localhost/api/auth/refresh \
-  -H "Content-Type: application/json" \
-  -d '{"refresh_token": "YOUR_REFRESH_TOKEN"}'
-```
-
-**Logout:**
-```bash
-curl -X POST http://localhost/api/auth/logout \
-  -H "Content-Type: application/json" \
-  -d '{"refresh_token": "YOUR_REFRESH_TOKEN"}'
-```
+### 3. Database Access
+If using local Docker DBs, ports are mapped in the `5433` to `5443` range. See `docker-compose.yml` for specific service-to-port mapping.
 
 ---
 
-## 🔑 API Endpoints
-
-| Method | Endpoint              | Description                          | Auth Required |
-|--------|-----------------------|--------------------------------------|---------------|
-| POST   | /api/auth/register    | Register new patient or doctor       | No            |
-| POST   | /api/auth/login       | Login and get tokens                 | No            |
-| POST   | /api/auth/logout      | Invalidate refresh token             | No            |
-| POST   | /api/auth/refresh     | Get new access token                 | No            |
-| GET    | /api/auth/validate    | Validate JWT (internal use only)     | Bearer JWT    |
-| GET    | /health               | Service health check                 | No            |
+## 🎨 Design Philosophy
+The platform utilizes a **"Calm Operational Workspace"** aesthetic:
+- **Typography**: Inter (Sans-Serif) for maximum legibility.
+- **Visuals**: Glassmorphism, card-based layouts, and vibrant slate-teal-indigo color palettes.
+- **Experience**: Premium minimalist email designs and human-readable formatting for all transactional data.
 
 ---
 
-## 🐰 RabbitMQ Events Published
+> [!IMPORTANT]  
+> For production deployments, ensure all `.env` secrets are replaced with cryptographically secure keys and that Nginx is configured for SSL termination.
 
-| Routing Key      | Exchange    | When                        | Subscribers               |
-|------------------|-------------|-----------------------------|---------------------------|
-| user.registered  | user_events | New user registers          | patient-service, notification-service |
-
----
-
-## 🐳 Docker Commands
-
-```bash
-# Start all services
-docker-compose up --build
-
-# Start in background
-docker-compose up -d --build
-
-# View logs
-docker-compose logs -f auth-service
-
-# Stop all services
-docker-compose down
-
-# Stop and remove volumes (wipe database)
-docker-compose down -v
-
-# Rebuild just auth service
-docker-compose up --build auth-service
-```
-
----
-
-## ☸️ Kubernetes Deployment
-
-```bash
-# Create namespace
-kubectl create namespace healthcare
-
-# Apply all K8s manifests
-kubectl apply -f k8s/auth-service/
-
-# Check deployment status
-kubectl get pods -n healthcare -l app=auth-service
-
-# View logs
-kubectl logs -n healthcare -l app=auth-service -f
-
-# Port forward for testing
-kubectl port-forward -n healthcare svc/auth-service 8001:8001
-```
-
----
-
-## 🔒 Security Notes
-
-- Passwords hashed with **bcrypt** (cost=12)
-- **Refresh tokens** stored as SHA-256 hashes (never plaintext)
-- **Token rotation**: refresh token is replaced on every use
-- JWT access tokens expire in **15 minutes**
-- **Rate limiting** applied at Nginx level
-
----
-
-## ⚙️ Environment Variables
-
-| Variable                   | Required | Default | Description                   |
-|----------------------------|----------|---------|-------------------------------|
-| APP_ENV                    | No       | development | Environment name         |
-| PORT                       | No       | 8001    | Server port                   |
-| DATABASE_URL               | Yes      | -       | PostgreSQL connection string  |
-| RABBITMQ_URL               | No       | -       | RabbitMQ AMQP URL             |
-| JWT_SECRET                 | Yes      | -       | Access token signing secret   |
-| JWT_REFRESH_SECRET         | Yes      | -       | Refresh token signing secret  |
-| ACCESS_TOKEN_TTL_MINUTES   | No       | 15      | Access token lifetime         |
-| REFRESH_TOKEN_TTL_DAYS     | No       | 7       | Refresh token lifetime        |
+> [!TIP]
+> **Pro-Tip**: For telemedicine video sessions, the `Telemedicine Service` generates short-lived Jitsi tokens. Ensure your `JWT_SECRET` is consistent across all services to allow for seamless token validation.
