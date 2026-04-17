@@ -7,15 +7,12 @@ metadata:
     app: auth-service
     version: v1
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: auth-service
   strategy:
     type: RollingUpdate      # Zero-downtime deployments
-    rollingUpdate:
-      maxUnavailable: 0      # Never take pods down before new ones are ready
-      maxSurge: 1            # Create 1 extra pod during update
   template:
     metadata:
       labels:
@@ -24,7 +21,7 @@ spec:
     spec:
       containers:
         - name: auth-service
-          image: DOCKERHUB_USERNAME/auth-service:latest
+          image: healthyacr2026.azurecr.io/auth-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8001

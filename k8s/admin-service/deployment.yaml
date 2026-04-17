@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-service
+  namespace: healthcare
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin-service
+  template:
+    metadata:
+      labels:
+        app: admin-service
+    spec:
+      containers:
+        - name: admin-service
+          image: healthyacr2026.azurecr.io/admin-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8007
+              name: http
+          envFrom:
+            - configMapRef:
+                name: admin-service-config
+            - secretRef:
+                name: admin-service-secret
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-service
+  namespace: healthcare
+spec:
+  selector:
+    app: admin-service
+  ports:
+    - port: 80
+      targetPort: 8007
