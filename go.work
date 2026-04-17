@@ -1,7 +1,6 @@
 go 1.25.0
 
 use (
-	*.env
 	./pkg
 	./services/admin-service
 	./services/ai-symptom-service
@@ -12,6 +11,7 @@ use (
 	./services/file-storage-service
 	./services/patient-service
 	./services/payment-service
+	./services/notification-service
 	./services/telemedicine-service
 	./services/support-service
 )
