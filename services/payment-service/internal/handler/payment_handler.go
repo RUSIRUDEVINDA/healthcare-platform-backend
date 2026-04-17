@@ -21,6 +21,7 @@ type PaymentHandler struct {
 type PaymentService interface {
 	CreatePayment(req *model.CreatePaymentRequest) (*model.PaymentResponse, error)
 	Checkout(req *model.CheckoutRequest) (*model.CheckoutResponse, error)
+	CompletePayment(paymentID string) error
 	HandlePayHereNotification(n *model.PayHereNotification) error
 	GetPaymentByID(id string) (*model.Payment, error)
 	ListPaymentsByPatient(patientID string) ([]*model.Payment, error)
@@ -35,6 +36,7 @@ func (h *PaymentHandler) RegisterRoutes(router *gin.Engine) {
 	{
 		payments.POST("/", h.CreatePayment)
 		payments.POST("/checkout", h.CheckoutPayment)
+		payments.POST("/:id/complete", h.CompletePayment)
 		payments.POST("/webhook/payhere", h.PayHereWebhook)
 		payments.GET("/:id", h.GetPayment)
 		payments.GET("/patient/:patient_id", h.ListPayments)
@@ -146,6 +148,26 @@ func (h *PaymentHandler) CheckoutPayment(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resp)
+}
+
+func (h *PaymentHandler) CompletePayment(c *gin.Context) {
+	id := c.Param("id")
+	if _, err := uuid.Parse(id); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payment ID format"})
+		return
+	}
+
+	if err := h.svc.CompletePayment(id); err != nil {
+		h.log.Error("Failed to complete payment", "payment_id", id, "error", err)
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Payment not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to complete payment"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "completed"})
 }
 
 func (h *PaymentHandler) PayHereWebhook(c *gin.Context) {
