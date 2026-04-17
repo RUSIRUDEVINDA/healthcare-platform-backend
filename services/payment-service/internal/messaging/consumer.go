@@ -105,6 +105,9 @@ func (c *PaymentConsumer) handlePatientDeleted(body []byte) error {
 	}
 
 	c.log.Info("Processing patient.deleted event", "patient_id", event.PatientID)
-
-	return c.svc.DeletePatientPayments(event.PatientID)
+	// Keep payment history intact even if a patient account is removed.
+	// Other services may still clean up their own data, but payments are retained
+	// for audit/history purposes.
+	c.log.Warn("Skipping hard delete of payment history for patient.deleted event", "patient_id", event.PatientID)
+	return nil
 }
