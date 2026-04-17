@@ -25,6 +25,8 @@ spec:
           env:
             - name: POSTGRES_DB
               value: telemedicine_db
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
             - name: POSTGRES_USER
               value: postgres
             - name: POSTGRES_PASSWORD
