@@ -7,15 +7,12 @@ metadata:
     app: doctor-service
     version: v1
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: doctor-service
   strategy:
     type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
   template:
     metadata:
       labels:
@@ -24,7 +21,7 @@ spec:
     spec:
       containers:
         - name: doctor-service
-          image: DOCKERHUB_USERNAME/doctor-service:latest
+          image: healthyacr2026.azurecr.io/doctor-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8003

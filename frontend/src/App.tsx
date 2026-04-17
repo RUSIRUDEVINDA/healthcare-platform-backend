@@ -19,6 +19,7 @@ import AdminConsole from './pages/AdminConsole';
 import NotificationMonitor from './pages/NotificationMonitor';
 
 import { Toaster } from 'react-hot-toast';
+import MedicalRecords from './pages/MedicalRecords';
 
 function App() {
   return (
