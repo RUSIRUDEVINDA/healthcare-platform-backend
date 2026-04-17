@@ -42,7 +42,8 @@ func main() {
 	api := router.Group("/api/support")
 	{
 		api.POST("/tickets", h.Create)
-		api.GET("/tickets", h.List) // Internal/Admin
+		api.GET("/tickets", h.List)
+		api.PUT("/tickets/:id/resolve", h.Resolve)
 	}
 
 	srv := &http.Server{
