@@ -36,36 +36,50 @@ export default function PaymentStatus({ type }: PaymentStatusProps) {
 
          const storageKey = `pending-booking:${orderId}`;
          const rawDraft = localStorage.getItem(storageKey);
-         if (!rawDraft) {
-             setIsFinalizing(false);
-             setFinalizeError('We could not find the pending appointment details for this payment.');
-             return;
-         }
-
-         let draft: PendingBookingDraft | null = null;
-         try {
-             draft = JSON.parse(rawDraft) as PendingBookingDraft;
-         } catch {
-             setIsFinalizing(false);
-             setFinalizeError('The pending appointment details were corrupted.');
-             return;
-         }
 
          let isMounted = true;
          const finalize = async () => {
              try {
-                 await appointmentApi.bookAppointment({
-                     appointment_id: draft!.appointment_id,
-                     doctor_id: draft!.doctor_id,
-                     slot_id: draft!.slot_id,
-                     scheduled_at: draft!.scheduled_at,
-                     notes: draft!.notes,
-                     payment_mode: draft!.payment_mode || 'pay_now',
-                     consultation_mode: draft!.consultation_mode || 'jitsi',
-                     payment_completed: true,
-                 });
+                 if (rawDraft) {
+                     let draft: PendingBookingDraft | null = null;
+                     try {
+                         draft = JSON.parse(rawDraft) as PendingBookingDraft;
+                     } catch {
+                         throw new Error('The pending appointment details were corrupted.');
+                     }
+
+                     let appointmentExists = false;
+                     try {
+                         await appointmentApi.getAppointmentStatus(draft!.appointment_id);
+                         appointmentExists = true;
+                     } catch {
+                         appointmentExists = false;
+                     }
+
+                     if (!appointmentExists) {
+                         try {
+                             await appointmentApi.bookAppointment({
+                                 appointment_id: draft!.appointment_id,
+                                 doctor_id: draft!.doctor_id,
+                                 slot_id: draft!.slot_id,
+                                 scheduled_at: draft!.scheduled_at,
+                                 notes: draft!.notes,
+                                 payment_mode: draft!.payment_mode || 'pay_now',
+                                 consultation_mode: draft!.consultation_mode || 'jitsi',
+                                 payment_completed: true,
+                             });
+                         } catch {
+                             // If the appointment was created by a concurrent/previous step,
+                             // we treat that as success and continue with payment completion.
+                             await appointmentApi.getAppointmentStatus(draft!.appointment_id);
+                         }
+                     }
+                 }
+
                  await paymentApi.completePayment(orderId);
-                 localStorage.removeItem(storageKey);
+                 if (rawDraft) {
+                     localStorage.removeItem(storageKey);
+                 }
                  if (!isMounted) return;
                  setFinalized(true);
                  setIsFinalizing(false);
@@ -73,7 +87,11 @@ export default function PaymentStatus({ type }: PaymentStatusProps) {
                  console.error('Failed to finalize appointment after payment:', error);
                  if (!isMounted) return;
                  setIsFinalizing(false);
-                 setFinalizeError('Payment went through, but we could not create the appointment yet. Please go to Appointments and try again.');
+                 setFinalizeError(
+                     rawDraft
+                         ? 'Payment went through, but we could not create the appointment yet. Please go to Appointments and try again.'
+                         : 'Payment went through, but we could not update the appointment yet. Please go to Appointments and refresh.'
+                 );
              }
          };
 
