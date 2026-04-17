@@ -34,6 +34,8 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [formAlert, setFormAlert] = useState('');
 
   const formatDateOnly = (value?: string | null) => {
     if (!value) return 'Not set';
@@ -119,49 +121,138 @@ export default function Profile() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    setFormErrors(prev => {
+      if (!prev[name]) return prev;
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormErrors({});
+    setFormAlert('');
+
     try {
       setLoading(true);
       if (role === 'doctor') {
         const updateData: Record<string, string | number> = {};
+        const errors: Record<string, string> = {};
 
         const specialization = formData.specialization.trim();
         const hospital = formData.hospital.trim();
         const nic = formData.nic.trim();
         const slmcNo = formData.slmc_no.trim();
         const experienceRaw = formData.experience.trim();
+        const channelingFeeRaw = formData.channeling_fee.trim();
 
-        if (specialization !== '') updateData.specialization = specialization;
-        if (hospital !== '') updateData.hospital = hospital;
-        if (nic !== '') updateData.nic = nic;
-        if (slmcNo !== '') updateData.slmc_no = slmcNo;
-        if (experienceRaw !== '') {
-          const parsedExperience = Number.parseInt(experienceRaw, 10);
-          if (!Number.isNaN(parsedExperience)) {
-            updateData.experience = parsedExperience;
+        if (specialization !== '') {
+          if (specialization.length > 100) {
+            errors.specialization = 'Specialization must be 100 characters or fewer.';
+          } else if (/\d/.test(specialization)) {
+            errors.specialization = 'Specialization cannot contain numbers.';
+          } else {
+            updateData.specialization = specialization;
           }
         }
-        const channelingFeeRaw = formData.channeling_fee.trim();
-        if (channelingFeeRaw !== '') {
-          const parsedFee = Number.parseFloat(channelingFeeRaw);
-          if (!Number.isNaN(parsedFee)) {
-            updateData.channeling_fee = parsedFee;
+        if (hospital !== '') {
+          if (hospital.length > 100) {
+            errors.hospital = 'Hospital name must be 100 characters or fewer.';
+          } else {
+            updateData.hospital = hospital;
           }
+        }
+        if (nic !== '') {
+          if (!/^(?:\d{10}|\d{12})$/.test(nic)) {
+            errors.nic = 'NIC must be 10 or 12 digits.';
+          } else {
+            updateData.nic = nic;
+          }
+        }
+        if (slmcNo !== '') {
+          if (!/^\d+$/.test(slmcNo)) {
+            errors.slmc_no = 'SLMC number must contain only digits.';
+          } else {
+            updateData.slmc_no = slmcNo;
+          }
+        }
+        if (experienceRaw !== '') {
+          if (!/^[0-9]{1,2}$/.test(experienceRaw)) {
+            errors.experience = 'Experience can contain only one or two digits.';
+          } else {
+            updateData.experience = Number.parseInt(experienceRaw, 10);
+          }
+        }
+        if (channelingFeeRaw !== '') {
+          if (!/^[0-9]{1,5}$/.test(channelingFeeRaw)) {
+            errors.channeling_fee = 'Channeling fee must be a valid number up to 5 digits.';
+          } else {
+            updateData.channeling_fee = Number.parseInt(channelingFeeRaw, 10);
+          }
+        }
+
+        if (Object.keys(errors).length > 0) {
+          setFormErrors(errors);
+          setLoading(false);
+          return;
         }
 
         if (Object.keys(updateData).length === 0) {
-          alert('Please enter at least one doctor profile field to update.');
+          setFormAlert('Please enter at least one doctor profile field to update.');
           setLoading(false);
           return;
         }
 
         await doctorApi.updateProfile((profile as DoctorProfile).id, updateData);
       } else {
+        const errors: Record<string, string> = {};
+        const phone = formData.phone_number.trim();
+        const dob = formData.date_of_birth.trim();
+        const nic = formData.nic.trim();
+        const address = formData.address.trim();
+        const emergency = formData.emergency_contact.trim();
+        const nationality = formData.nationality.trim();
+
+        if (dob !== '') {
+          const selected = new Date(dob);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          if (Number.isNaN(selected.getTime())) {
+            errors.date_of_birth = 'Please enter a valid date of birth.';
+          } else if (selected > today) {
+            errors.date_of_birth = 'Date of birth cannot be in the future.';
+          }
+        }
+        if (phone !== '' && !/^\d{10}$/.test(phone)) {
+          errors.phone_number = 'Phone number must contain exactly 10 digits.';
+        }
+        if (nic !== '' && !/^(?:\d{10}|\d{12})$/.test(nic)) {
+          errors.nic = 'NIC must be 10 or 12 digits.';
+        }
+        if (address !== '' && address.length > 150) {
+          errors.address = 'Address can contain only 150 characters.';
+        }
+        if (emergency !== '' && !/^\d{10}$/.test(emergency)) {
+          errors.emergency_contact = 'Emergency contact must be exactly 10 digits.';
+        }
+        if (nationality !== '') {
+          if (nationality.length > 50) {
+            errors.nationality = 'Nationality must be 50 characters or fewer.';
+          } else if (!/^[A-Za-z\s]+$/.test(nationality)) {
+            errors.nationality = 'Nationality can contain letters only.';
+          }
+        }
+
+        if (Object.keys(errors).length > 0) {
+          setFormErrors(errors);
+          setLoading(false);
+          return;
+        }
+
         await patientApi.updateProfile(formData);
       }
+
       await fetchProfile();
       setIsEditing(false);
     } catch (err: unknown) {
@@ -170,7 +261,7 @@ export default function Profile() {
       if (axios.isAxiosError(err)) {
         message = err.response?.data?.error || message;
       }
-      alert(message);
+      setFormAlert(message);
     } finally {
       setLoading(false);
     }
@@ -219,7 +310,11 @@ export default function Profile() {
           <div className="flex items-center gap-4 shrink-0">
             {!isEditing && profile && (
               <button
-                onClick={() => setIsEditing(true)}
+                onClick={() => {
+                  setFormErrors({});
+                  setFormAlert('');
+                  setIsEditing(true);
+                }}
                 className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-dark transition-colors shadow-sm"
               >
                 <Edit2 className="h-4 w-4" /> Edit Profile
@@ -276,7 +371,7 @@ export default function Profile() {
                           {(profile as DoctorProfile).name}
                         </h2>
                         {!isEditing && (
-                          <p className="mt-1 text-base font-medium text-brand">
+                          <p className="mt-1 text-base font-medium text-brand break-words whitespace-normal">
                             {(profile as DoctorProfile).specialization?.trim() || 'Specialization not set'}
                           </p>
                         )}
@@ -295,6 +390,11 @@ export default function Profile() {
                   <div className="relative z-0">
                   {isEditing ? (
                     <form onSubmit={handleSubmit} className="space-y-6">
+                      {formAlert && (
+                        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                          {formAlert}
+                        </div>
+                      )}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {role !== 'doctor' && (
                           <div className="md:col-span-2">
@@ -325,9 +425,13 @@ export default function Profile() {
                                   value={formData.specialization}
                                   onChange={handleInputChange}
                                   placeholder="e.g. Cardiologist"
-                                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+                                  maxLength={100}
+                                  className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl transition-all focus:ring-2 focus:border-transparent ${formErrors.specialization ? 'border-red-300 focus:ring-red-300' : 'border-gray-200 focus:ring-brand'}`}
                                 />
                               </div>
+                              {formErrors.specialization && (
+                                <p className="mt-2 text-sm text-red-600">{formErrors.specialization}</p>
+                              )}
                             </div>
                             <div>
                               <label className="block text-sm font-semibold text-gray-700 mb-2">Experience (Years)</label>
@@ -339,9 +443,12 @@ export default function Profile() {
                                   value={formData.experience}
                                   onChange={handleInputChange}
                                   placeholder="e.g. 10"
-                                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+                                  className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl transition-all focus:ring-2 focus:border-transparent ${formErrors.experience ? 'border-red-300 focus:ring-red-300' : 'border-gray-200 focus:ring-brand'}`}
                                 />
                               </div>
+                              {formErrors.experience && (
+                                <p className="mt-2 text-sm text-red-600">{formErrors.experience}</p>
+                              )}
                             </div>
                             <div className="md:col-span-2">
                               <label className="block text-sm font-semibold text-gray-700 mb-2">Hospital</label>
@@ -353,9 +460,13 @@ export default function Profile() {
                                   value={formData.hospital}
                                   onChange={handleInputChange}
                                   placeholder="e.g. General Hospital"
-                                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+                                  maxLength={100}
+                                  className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl transition-all focus:ring-2 focus:border-transparent ${formErrors.hospital ? 'border-red-300 focus:ring-red-300' : 'border-gray-200 focus:ring-brand'}`}
                                 />
                               </div>
+                              {formErrors.hospital && (
+                                <p className="mt-2 text-sm text-red-600">{formErrors.hospital}</p>
+                              )}
                             </div>
                             <div className="md:col-span-2 pt-4 border-t border-slate-100">
                               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -372,9 +483,12 @@ export default function Profile() {
                                   value={formData.nic}
                                   onChange={handleInputChange}
                                   placeholder="Enter 12-digit NIC"
-                                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+                                  className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl transition-all focus:ring-2 focus:border-transparent ${formErrors.nic ? 'border-red-300 focus:ring-red-300' : 'border-gray-200 focus:ring-brand'}`}
                                 />
                               </div>
+                              {formErrors.nic && (
+                                <p className="mt-2 text-sm text-red-600">{formErrors.nic}</p>
+                              )}
                             </div>
                             <div>
                               <label className="block text-sm font-semibold text-gray-700 mb-2">SLMC Registration No</label>
@@ -386,9 +500,12 @@ export default function Profile() {
                                   value={formData.slmc_no}
                                   onChange={handleInputChange}
                                   placeholder="e.g. 12345"
-                                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+                                  className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl transition-all focus:ring-2 focus:border-transparent ${formErrors.slmc_no ? 'border-red-300 focus:ring-red-300' : 'border-gray-200 focus:ring-brand'}`}
                                 />
                               </div>
+                              {formErrors.slmc_no && (
+                                <p className="mt-2 text-sm text-red-600">{formErrors.slmc_no}</p>
+                              )}
                             </div>
                             <div className="md:col-span-2">
                               <label className="block text-sm font-semibold text-gray-700 mb-2">Channeling fee (LKR)</label>
@@ -401,10 +518,14 @@ export default function Profile() {
                                   onChange={handleInputChange}
                                   placeholder="e.g. 2500"
                                   min={0}
-                                  step={100}
-                                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+                                  max={99999}
+                                  step={1}
+                                  className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl transition-all focus:ring-2 focus:border-transparent ${formErrors.channeling_fee ? 'border-red-300 focus:ring-red-300' : 'border-gray-200 focus:ring-brand'}`}
                                 />
                               </div>
+                              {formErrors.channeling_fee && (
+                                <p className="mt-2 text-sm text-red-600">{formErrors.channeling_fee}</p>
+                              )}
                             </div>
                           </>
                         ) : (
@@ -418,9 +539,13 @@ export default function Profile() {
                                   name="date_of_birth"
                                   value={formData.date_of_birth}
                                   onChange={handleInputChange}
-                                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+                                  max={new Date().toISOString().split('T')[0]}
+                                  className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl transition-all focus:ring-2 focus:border-transparent ${formErrors.date_of_birth ? 'border-red-300 focus:ring-red-300' : 'border-gray-200 focus:ring-brand'}`}
                                 />
                               </div>
+                              {formErrors.date_of_birth && (
+                                <p className="mt-2 text-sm text-red-600">{formErrors.date_of_birth}</p>
+                              )}
                             </div>
                             <div>
                               <label className="block text-sm font-semibold text-gray-700 mb-2">Gender</label>
@@ -448,10 +573,14 @@ export default function Profile() {
                                   name="phone_number"
                                   value={formData.phone_number}
                                   onChange={handleInputChange}
-                                  placeholder="+94 77 123 4567"
-                                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+                                  placeholder="e.g. 0771234567"
+                                  maxLength={10}
+                                  className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl transition-all focus:ring-2 focus:border-transparent ${formErrors.phone_number ? 'border-red-300 focus:ring-red-300' : 'border-gray-200 focus:ring-brand'}`}
                                 />
                               </div>
+                              {formErrors.phone_number && (
+                                <p className="mt-2 text-sm text-red-600">{formErrors.phone_number}</p>
+                              )}
                             </div>
                             <div>
                               <label className="block text-sm font-semibold text-gray-700 mb-2">NIC Number</label>
@@ -463,9 +592,12 @@ export default function Profile() {
                                   value={formData.nic}
                                   onChange={handleInputChange}
                                   placeholder="e.g. 199512345678"
-                                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+                                  className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl transition-all focus:ring-2 focus:border-transparent ${formErrors.nic ? 'border-red-300 focus:ring-red-300' : 'border-gray-200 focus:ring-brand'}`}
                                 />
                               </div>
+                              {formErrors.nic && (
+                                <p className="mt-2 text-sm text-red-600">{formErrors.nic}</p>
+                              )}
                             </div>
                             <div>
                               <label className="block text-sm font-semibold text-gray-700 mb-2">Blood Group</label>
@@ -498,9 +630,13 @@ export default function Profile() {
                                   value={formData.address}
                                   onChange={handleInputChange}
                                   rows={2}
-                                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+                                  maxLength={150}
+                                  className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl transition-all focus:ring-2 focus:border-transparent ${formErrors.address ? 'border-red-300 focus:ring-red-300' : 'border-gray-200 focus:ring-brand'}`}
                                 ></textarea>
                               </div>
+                              {formErrors.address && (
+                                <p className="mt-2 text-sm text-red-600">{formErrors.address}</p>
+                              )}
                             </div>
                             <div className="md:col-span-2">
                               <label className="block text-sm font-semibold text-gray-700 mb-2">Emergency Contact</label>
@@ -511,10 +647,14 @@ export default function Profile() {
                                   name="emergency_contact"
                                   value={formData.emergency_contact}
                                   onChange={handleInputChange}
-                                  placeholder="Name - Relationship - Phone"
-                                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+                                  placeholder="10 digit phone number"
+                                  maxLength={10}
+                                  className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl transition-all focus:ring-2 focus:border-transparent ${formErrors.emergency_contact ? 'border-red-300 focus:ring-red-300' : 'border-gray-200 focus:ring-brand'}`}
                                 />
                               </div>
+                              {formErrors.emergency_contact && (
+                                <p className="mt-2 text-sm text-red-600">{formErrors.emergency_contact}</p>
+                              )}
                             </div>
                             <div>
                               <label className="block text-sm font-semibold text-gray-700 mb-2">Nationality</label>
@@ -526,9 +666,13 @@ export default function Profile() {
                                   value={formData.nationality}
                                   onChange={handleInputChange}
                                   placeholder="e.g. Sri Lankan"
-                                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-transparent transition-all"
+                                  maxLength={50}
+                                  className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl transition-all focus:ring-2 focus:border-transparent ${formErrors.nationality ? 'border-red-300 focus:ring-red-300' : 'border-gray-200 focus:ring-brand'}`}
                                 />
                               </div>
+                              {formErrors.nationality && (
+                                <p className="mt-2 text-sm text-red-600">{formErrors.nationality}</p>
+                              )}
                             </div>
                           </>
                         )}
@@ -544,7 +688,11 @@ export default function Profile() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setIsEditing(false)}
+                          onClick={() => {
+                            setIsEditing(false);
+                            setFormErrors({});
+                            setFormAlert('');
+                          }}
                           className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
                         >
                           Cancel
@@ -595,7 +743,7 @@ export default function Profile() {
                                       </div>
                                       <div className="min-w-0">
                                         <dt className="text-xs font-medium text-slate-500">Primary hospital</dt>
-                                        <dd className="mt-0.5 text-sm font-medium text-slate-900">
+                                        <dd className="mt-0.5 text-sm font-medium text-slate-900 break-words whitespace-normal">
                                           {doc.hospital?.trim() || '—'}
                                         </dd>
                                       </div>
