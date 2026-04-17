@@ -58,6 +58,17 @@ func main() {
 	}
 
 	if err := mqClient.ConsumeQueue(
+		"notification_payment_completed_queue",
+		rabbitmq.ExchangePaymentEvents,
+		notificationConsumer.HandlePaymentCompleted,
+		rabbitmq.RoutingKeyPaymentCompleted,
+		"payment_completed",
+		"payment-completed",
+	); err != nil {
+		log.Fatal("Failed to subscribe payment.completed", "error", err)
+	}
+
+	if err := mqClient.ConsumeQueue(
 		"notification_consultation_completed_queue",
 		rabbitmq.ExchangeAppointmentEvents,
 		notificationConsumer.HandleConsultationCompleted,

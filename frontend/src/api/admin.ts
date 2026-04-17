@@ -1,6 +1,5 @@
 import apiClient from './client';
 
-const adminServiceBaseUrl = import.meta.env.VITE_ADMIN_API_URL ?? 'http://localhost:8007';
 
 type ApiEnvelope<T> = {
   success?: boolean;
@@ -63,32 +62,63 @@ function unwrap<T>(body: ApiEnvelope<T> | T): T {
 
 export const adminApi = {
   listUsers: async (): Promise<AdminUser[]> => {
-    const response = await apiClient.get<ApiEnvelope<AdminUser[]> | AdminUser[]>(`${adminServiceBaseUrl}/admin/users`);
+    const response = await apiClient.get<ApiEnvelope<AdminUser[]> | AdminUser[]>('/admin/users');
     const data = unwrap(response.data);
     return Array.isArray(data) ? data : [];
   },
 
   listAppointments: async (): Promise<AdminAppointment[]> => {
-    const response = await apiClient.get<ApiEnvelope<AdminAppointment[]> | AdminAppointment[]>(`${adminServiceBaseUrl}/admin/appointments`);
+    const response = await apiClient.get<ApiEnvelope<AdminAppointment[]> | AdminAppointment[]>('/admin/appointments');
     const data = unwrap(response.data);
     return Array.isArray(data) ? data : [];
   },
 
   listTransactions: async (): Promise<AdminTransaction[]> => {
-    const response = await apiClient.get<ApiEnvelope<AdminTransaction[]> | AdminTransaction[]>(`${adminServiceBaseUrl}/admin/transactions`);
+    const response = await apiClient.get<ApiEnvelope<AdminTransaction[]> | AdminTransaction[]>('/admin/transactions');
     const data = unwrap(response.data);
     return Array.isArray(data) ? data : [];
   },
 
   verifyDoctor: async (doctorId: string, notes?: string): Promise<DoctorVerification> => {
-    const response = await apiClient.put<ApiEnvelope<DoctorVerification> | DoctorVerification>(`${adminServiceBaseUrl}/admin/doctors/${doctorId}/verify`, {
+    const response = await apiClient.put<ApiEnvelope<DoctorVerification> | DoctorVerification>(`/admin/doctors/${doctorId}/verify`, {
       notes: notes ?? '',
     });
     return unwrap(response.data);
   },
 
   deactivateUser: async (userId: string): Promise<string> => {
-    const response = await apiClient.delete<ApiEnvelope<unknown>>(`${adminServiceBaseUrl}/admin/users/${userId}`);
+    const response = await apiClient.delete<ApiEnvelope<unknown>>(`/admin/users/${userId}`);
     return response.data?.message ?? 'User deactivated';
+  },
+
+  reactivateUser: async (userId: string): Promise<string> => {
+    const response = await apiClient.post<ApiEnvelope<unknown>>(`/admin/users/${userId}/reactivate`);
+    return response.data?.message ?? 'User reactivated';
+  },
+
+  syncData: async (): Promise<void> => {
+    await apiClient.post('/admin/sync');
+  },
+
+  createUser: async (user: any): Promise<AdminUser> => {
+    const response = await apiClient.post<ApiEnvelope<AdminUser>>('/admin/users', user);
+    return unwrap(response.data);
+  },
+
+  updateUser: async (id: string, user: any): Promise<void> => {
+    await apiClient.put(`/admin/users/${id}`, user);
+  },
+
+  createAppointment: async (appt: any): Promise<AdminAppointment> => {
+    const response = await apiClient.post<ApiEnvelope<AdminAppointment>>('/admin/appointments', appt);
+    return unwrap(response.data);
+  },
+
+  updateAppointment: async (id: string, appt: any): Promise<void> => {
+    await apiClient.put(`/admin/appointments/${id}`, appt);
+  },
+
+  cancelAppointment: async (id: string): Promise<void> => {
+    await apiClient.delete(`/admin/appointments/${id}`);
   },
 };

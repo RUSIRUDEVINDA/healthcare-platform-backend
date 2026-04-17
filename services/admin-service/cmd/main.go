@@ -50,7 +50,7 @@ func main() {
 	jwtHelper := jwt.New(cfg.JWTSecret, "", 0, 0)
 
 	repo := repository.NewAdminRepository(db)
-	adminSvc := service.NewAdminService(repo, log, cfg.AuthDatabaseURL)
+	adminSvc := service.NewAdminService(repo, log, cfg.AuthDatabaseURL, cfg.AppointmentDatabaseURL, cfg.PaymentDatabaseURL)
 	consumer := messaging.NewConsumer(mqClient, adminSvc, log)
 	if err := consumer.Start(); err != nil {
 		log.Fatal("Failed to start admin consumers", "error", err)

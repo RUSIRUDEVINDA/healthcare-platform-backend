@@ -36,6 +36,7 @@ type Config struct {
 	TelemedicineServiceURL  string
 	FileStorageServiceURL   string
 	NotificationServiceURL  string
+	SupportServiceURL       string
 }
 
 // Load reads configuration from environment (.env optional).
@@ -55,6 +56,7 @@ func Load() (*Config, error) {
 		TelemedicineServiceURL: strings.TrimRight(getEnv("TELEMEDICINE_SERVICE_URL", "http://telemedicine-service:8009"), "/"),
 		FileStorageServiceURL:  strings.TrimRight(getEnv("FILE_STORAGE_SERVICE_URL", "http://file-storage-service:8010"), "/"),
 		NotificationServiceURL: strings.TrimRight(getEnv("NOTIFICATION_SERVICE_URL", "http://notification-service:8006"), "/"),
+		SupportServiceURL:      strings.TrimRight(getEnv("SUPPORT_SERVICE_URL", "http://support-service:8011"), "/"),
 	}
 
 	for _, u := range []struct {
@@ -71,6 +73,7 @@ func Load() (*Config, error) {
 		{"TELEMEDICINE_SERVICE_URL", cfg.TelemedicineServiceURL},
 		{"FILE_STORAGE_SERVICE_URL", cfg.FileStorageServiceURL},
 		{"NOTIFICATION_SERVICE_URL", cfg.NotificationServiceURL},
+		{"SUPPORT_SERVICE_URL", cfg.SupportServiceURL},
 	} {
 		if _, err := url.Parse(u.val); err != nil {
 			return nil, fmt.Errorf("%s: %w", u.name, err)

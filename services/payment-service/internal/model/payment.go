@@ -29,7 +29,7 @@ type Payment struct {
 type CreatePaymentRequest struct {
 	AppointmentID string  `json:"appointment_id" binding:"required,uuid4"`
 	PatientID     string  `json:"patient_id"     binding:"required,uuid4"`
-	Amount        float64 `json:"amount"         binding:"required,gt=0"`
+	Amount        float64 `json:"amount"         binding:"gt=0"`
 	Currency      string  `json:"currency"       binding:"required,len=3"` // ISO 4217
 }
 
@@ -41,7 +41,10 @@ type PaymentResponse struct {
 
 type CheckoutRequest struct {
 	PaymentID     string          `json:"payment_id"     binding:"omitempty,uuid4"`
-	AppointmentID string          `json:"appointment_id" binding:"omitempty,uuid4"`
+	AppointmentID string          `json:"appointment_id" binding:"required,uuid4"`
+	PatientID     string          `json:"patient_id"     binding:"required,uuid4"`
+	Amount        float64         `json:"amount"         binding:"gt=0"`
+	Currency      string          `json:"currency"       binding:"required,len=3"`
 	Items         string          `json:"items"          binding:"omitempty,max=255"`
 	Customer      PayHereCustomer `json:"customer"       binding:"required"`
 }

@@ -598,8 +598,9 @@ export default function Dashboard() {
                                 <p className="text-sm font-semibold text-slate-900 tabular-nums">
                                   {formatTime(appointment.scheduled_at)}
                                 </p>
-                                {(appointment.consultation_mode === "jitsi" ||
-                                  appointment.consultation_mode === "video") &&
+                                {(appointment.payment_status || "").toLowerCase() === "paid" &&
+                                  (appointment.consultation_mode === "jitsi" ||
+                                    appointment.consultation_mode === "video") &&
                                   appointment.join_url &&
                                   appointment.status !== "cancelled" && (
                                     <button

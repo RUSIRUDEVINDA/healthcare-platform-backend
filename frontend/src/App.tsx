@@ -43,9 +43,10 @@ function App() {
           <Route path="/bmi-calculator" element={<BmiCalculator />} />
           <Route path="/symptom-checker" element={<SymptomChecker />} />
           <Route path="/telemedicine" element={<Telemedicine />} />
-          <Route path="/admin" element={<AdminConsole />} />
           <Route path="/notifications" element={<NotificationMonitor />} />
         </Route>
+
+        <Route path="/admin" element={<AdminConsole />} />
 
         {/* Payment redirection targets */}
         <Route path="/payment/success" element={<PaymentStatus type="success" />} />

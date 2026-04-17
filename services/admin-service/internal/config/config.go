@@ -11,9 +11,11 @@ type Config struct {
 	AppEnv          string
 	Port            string
 	DatabaseURL     string
-	AuthDatabaseURL string
-	RabbitMQURL     string
-	JWTSecret       string
+	AuthDatabaseURL        string
+	AppointmentDatabaseURL string
+	PaymentDatabaseURL     string
+	RabbitMQURL            string
+	JWTSecret              string
 }
 
 func Load() (*Config, error) {
@@ -23,9 +25,11 @@ func Load() (*Config, error) {
 		AppEnv:          getEnv("APP_ENV", "development"),
 		Port:            getEnv("PORT", "8007"),
 		DatabaseURL:     getEnv("DATABASE_URL", ""),
-		AuthDatabaseURL: getEnv("AUTH_DATABASE_URL", ""),
-		RabbitMQURL:     getEnv("RABBITMQ_URL", ""),
-		JWTSecret:       getEnv("JWT_SECRET", ""),
+		AuthDatabaseURL:        getEnv("AUTH_DATABASE_URL", ""),
+		AppointmentDatabaseURL: getEnv("APPOINTMENT_DATABASE_URL", ""),
+		PaymentDatabaseURL:     getEnv("PAYMENT_DATABASE_URL", ""),
+		RabbitMQURL:            getEnv("RABBITMQ_URL", ""),
+		JWTSecret:              getEnv("JWT_SECRET", ""),
 	}
 
 	if err := cfg.validate(); err != nil {

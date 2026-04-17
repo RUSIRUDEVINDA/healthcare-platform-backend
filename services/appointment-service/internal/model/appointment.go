@@ -82,6 +82,7 @@ type Appointment struct {
 	PaymentDueAt      *time.Time        `json:"payment_due_at,omitempty"`
 	PaidAt            *time.Time        `json:"paid_at,omitempty"`
 	Notes             string            `json:"notes"`
+	ConsultFee        float64           `json:"consult_fee"`
 	CreatedAt         time.Time         `json:"created_at"`
 	UpdatedAt         time.Time         `json:"updated_at"`
 }
@@ -99,14 +100,16 @@ type Slot struct {
 // ---- Request / Response DTOs ----
 
 type BookAppointmentRequest struct {
-	SlotID string `json:"slot_id,omitempty"       binding:"omitempty,uuid4"`
+	AppointmentID    string           `json:"appointment_id,omitempty" binding:"omitempty,uuid4"`
+	SlotID           string           `json:"slot_id,omitempty"       binding:"omitempty,uuid4"`
 	// Doctor IDs are stored as stringified numeric profile IDs, not UUIDs.
-	DoctorID         string           `json:"doctor_id,omitempty"`
-	ScheduledAt      *time.Time       `json:"scheduled_at,omitempty"`
-	DurationMinutes  *int             `json:"duration_minutes,omitempty" binding:"omitempty,min=5,max=120"`
-	Notes            string           `json:"notes"                   binding:"omitempty,max=1000"`
-	PaymentMode      PaymentMode      `json:"payment_mode,omitempty"  binding:"required,oneof=pay_now pay_later"`
-	ConsultationMode ConsultationMode `json:"consultation_mode,omitempty" binding:"required,oneof=physical jitsi"`
+	DoctorID          string           `json:"doctor_id,omitempty"`
+	ScheduledAt       *time.Time       `json:"scheduled_at,omitempty"`
+	DurationMinutes   *int             `json:"duration_minutes,omitempty" binding:"omitempty,min=5,max=120"`
+	Notes             string           `json:"notes"                   binding:"omitempty,max=1000"`
+	PaymentMode       PaymentMode      `json:"payment_mode,omitempty"  binding:"required,oneof=pay_now pay_later"`
+	ConsultationMode  ConsultationMode `json:"consultation_mode,omitempty" binding:"required,oneof=physical jitsi"`
+	PaymentCompleted  bool             `json:"payment_completed,omitempty"`
 }
 
 type UpdateAppointmentRequest struct {

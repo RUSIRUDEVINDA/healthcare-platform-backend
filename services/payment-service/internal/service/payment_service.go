@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"time"
+	"strings"
 
 	"github.com/google/uuid"
 	"healthcare-platform/pkg/logger"
@@ -141,7 +142,25 @@ func (s *PaymentService) Checkout(req *model.CheckoutRequest) (*model.CheckoutRe
 		return nil, fmt.Errorf("service.Checkout: find payment: %w", err)
 	}
 	if p == nil {
-		return nil, fmt.Errorf("service.Checkout: payment not found")
+		p = &model.Payment{
+			ID:            uuid.New().String(),
+			AppointmentID: req.AppointmentID,
+			PatientID:     req.PatientID,
+			Amount:        req.Amount,
+			Currency:      strings.ToUpper(strings.TrimSpace(req.Currency)),
+			Status:        model.StatusPending,
+			Provider:      s.provider.Name(),
+			CreatedAt:     time.Now().UTC(),
+			UpdatedAt:     time.Now().UTC(),
+		}
+		if err := s.repo.Create(p); err != nil {
+			return nil, fmt.Errorf("service.Checkout create payment: %w", err)
+		}
+		s.log.Info("Payment created during checkout", "payment_id", p.ID, "appointment_id", p.AppointmentID)
+	} else {
+		if p.PatientID != req.PatientID || p.Amount != req.Amount || !strings.EqualFold(p.Currency, req.Currency) {
+			return nil, fmt.Errorf("service.Checkout: payment request does not match stored payment")
+		}
 	}
 	if p.Status == model.StatusCompleted {
 		return nil, fmt.Errorf("service.Checkout: payment already completed")
@@ -152,6 +171,27 @@ func (s *PaymentService) Checkout(req *model.CheckoutRequest) (*model.CheckoutRe
 		return nil, fmt.Errorf("service.Checkout: provider: %w", err)
 	}
 	return resp, nil
+}
+
+func (s *PaymentService) CompletePayment(paymentID string) error {
+	p, err := s.repo.FindByID(paymentID)
+	if err != nil {
+		return fmt.Errorf("service.CompletePayment find payment: %w", err)
+	}
+	if p == nil {
+		return fmt.Errorf("service.CompletePayment: payment not found")
+	}
+	if p.Status == model.StatusCompleted {
+		return nil
+	}
+
+	if err := s.repo.UpdateStatus(p.ID, model.StatusCompleted, p.ProviderID); err != nil {
+		return fmt.Errorf("service.CompletePayment update status: %w", err)
+	}
+
+	s.publishPaymentCompleted(p.ID, p.AppointmentID, p.ProviderID)
+	s.log.Info("Payment marked as completed", "payment_id", p.ID, "appointment_id", p.AppointmentID)
+	return nil
 }
 
 func (s *PaymentService) HandlePayHereNotification(n *model.PayHereNotification) error {
@@ -213,6 +253,10 @@ func (s *PaymentService) CancelPaymentByAppointmentID(appointmentID string) erro
 	p, err := s.repo.FindByAppointmentID(appointmentID)
 	if err != nil {
 		return fmt.Errorf("service.CancelPayment: find payment: %w", err)
+	}
+	if p == nil {
+		s.log.Info("No payment found for cancelled appointment; skipping payment cancellation", "appointment_id", appointmentID)
+		return nil
 	}
 
 	// Only cancel if it's still pending
