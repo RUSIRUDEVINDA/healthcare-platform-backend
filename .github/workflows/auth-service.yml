@@ -3,12 +3,12 @@ name: Auth Service CI/CD
 # Triggers: only when auth-service files change
 on:
   push:
-    branches: [main, develop]
+    branches: [main, dev]
     paths:
       - 'services/auth-service/**'
       - '.github/workflows/auth-service.yml'
   pull_request:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - 'services/auth-service/**'
 

@@ -23,7 +23,11 @@ func (r *AppointmentRepository) Create(a *model.Appointment) error {
 	if strings.TrimSpace(a.ID) == "" {
 		a.ID = uuid.New().String()
 	}
-	a.Status = model.StatusPending
+	if a.PaymentStatus == model.PaymentPaid {
+		a.Status = model.StatusConfirmed
+	} else {
+		a.Status = model.StatusPending
+	}
 	if a.PaymentStatus == "" {
 		a.PaymentStatus = model.PaymentPending
 	}
