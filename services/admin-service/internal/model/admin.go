@@ -59,6 +59,33 @@ type VerifyDoctorRequest struct {
 	Notes string `json:"notes"`
 }
 
+type CreateUserRequest struct {
+	Email     string `json:"email" binding:"required,email"`
+	FirstName string `json:"first_name" binding:"required"`
+	LastName  string `json:"last_name" binding:"required"`
+	Role      Role   `json:"role" binding:"required"`
+	Password  string `json:"password" binding:"required,min=6"`
+}
+
+type UpdateUserRequest struct {
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+}
+
+type CreateAppointmentRequest struct {
+	PatientID   string    `json:"patient_id" binding:"required"`
+	DoctorID    string    `json:"doctor_id" binding:"required"`
+	ScheduledAt time.Time `json:"scheduled_at" binding:"required"`
+	Reason      string    `json:"reason"`
+}
+
+type UpdateAppointmentRequest struct {
+	Status      string    `json:"status"`
+	ScheduledAt time.Time `json:"scheduled_at"`
+	Reason      string    `json:"reason"`
+}
+
 type APIResponse struct {
 	Success bool        `json:"success"`
 	Data    interface{} `json:"data,omitempty"`

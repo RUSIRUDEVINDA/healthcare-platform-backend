@@ -21,3 +21,7 @@ func (s *TicketService) CreateTicket(ctx context.Context, ticket *model.Reactiva
 func (s *TicketService) ListTickets(ctx context.Context) ([]model.ReactivationTicket, error) {
 	return s.repo.List(ctx)
 }
+
+func (s *TicketService) ResolveTicket(ctx context.Context, id string) error {
+	return s.repo.Resolve(ctx, id)
+}

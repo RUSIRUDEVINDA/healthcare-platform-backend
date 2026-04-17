@@ -59,8 +59,11 @@ type UserRegisteredEvent struct {
 type AppointmentBookedEvent struct {
 	AppointmentID     string  `json:"appointment_id"`
 	PatientID         string  `json:"patient_id"`
+	PatientName       string  `json:"patient_name,omitempty"`
 	DoctorID          string  `json:"doctor_id"`
+	DoctorName        string  `json:"doctor_name,omitempty"`
 	DoctorOwnerUserID string  `json:"doctor_owner_user_id,omitempty"`
+	PaymentStatus     string  `json:"payment_status,omitempty"`
 	ConsultationMode  string  `json:"consultation_mode,omitempty"`
 	RoomName          string  `json:"room_name,omitempty"`
 	JoinURL           string  `json:"join_url,omitempty"`

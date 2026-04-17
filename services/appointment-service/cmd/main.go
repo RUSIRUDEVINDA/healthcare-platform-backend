@@ -185,6 +185,7 @@ func runMigrations(db *sql.DB, log *logger.Logger) error {
 	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
 	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS patient_first_name TEXT NOT NULL DEFAULT '';
 	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS patient_last_name TEXT NOT NULL DEFAULT '';
+	ALTER TABLE appointments ADD COLUMN IF NOT EXISTS consult_fee DECIMAL(10,2) NOT NULL DEFAULT 0;
 	ALTER TABLE slots ALTER COLUMN doctor_id TYPE TEXT USING doctor_id::text;
 	ALTER TABLE slots ADD COLUMN IF NOT EXISTS owner_user_id TEXT NOT NULL DEFAULT '';
 	ALTER TABLE slots ADD COLUMN IF NOT EXISTS hospital TEXT NOT NULL DEFAULT '';

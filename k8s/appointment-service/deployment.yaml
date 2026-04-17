@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: appointment-service
+  namespace: healthcare
   labels:
     app: appointment-service
 spec:
@@ -16,7 +17,7 @@ spec:
     spec:
       containers:
         - name: appointment-service
-          image: appointment-service:latest
+          image: healthyacr2026.azurecr.io/appointment-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8082

@@ -55,7 +55,7 @@ func (s *AppointmentService) DeletePatientAppointments(patientID string) error {
 	return s.repo.DeleteByPatientID(patientID)
 }
 
-func (s *AppointmentService) BookAppointment(patientID, role, callerToken, firstName, lastName string, req *model.BookAppointmentRequest) (*model.Appointment, error) {
+func (s *AppointmentService) BookAppointment(patientID, role, callerToken, patientEmail, firstName, lastName string, req *model.BookAppointmentRequest) (*model.Appointment, error) {
 	if role != "patient" {
 		return nil, fmt.Errorf("only patients can book appointments")
 	}
@@ -72,6 +72,12 @@ func (s *AppointmentService) BookAppointment(patientID, role, callerToken, first
 	if !model.IsValidConsultationMode(consultationMode) {
 		return nil, fmt.Errorf("invalid consultation mode; allowed values: physical, jitsi")
 	}
+	if paymentMode == model.PaymentModePayNow && !req.PaymentCompleted {
+		return nil, fmt.Errorf("pay now appointments must be finalized after payment")
+	}
+	if paymentMode == model.PaymentModePayLater && req.PaymentCompleted {
+		return nil, fmt.Errorf("pay later appointments cannot be finalized as paid")
+	}
 
 	now := time.Now().UTC()
 	appt := &model.Appointment{
@@ -80,7 +86,9 @@ func (s *AppointmentService) BookAppointment(patientID, role, callerToken, first
 		PatientLastName:  lastName,
 		Notes:            req.Notes,
 		ConsultationMode: consultationMode,
-		PaymentStatus:    model.PaymentPending,
+	}
+	if strings.TrimSpace(req.AppointmentID) != "" {
+		appt.ID = strings.TrimSpace(req.AppointmentID)
 	}
 
 	if strings.TrimSpace(req.SlotID) != "" {
@@ -144,11 +152,22 @@ func (s *AppointmentService) BookAppointment(patientID, role, callerToken, first
 		appt.JoinURL = s.joinURL(roomName)
 	}
 
-	doctorFee, err := s.getDoctorConsultationFee(appt.DoctorID)
+	if req.PaymentCompleted {
+		appt.PaymentStatus = model.PaymentPaid
+		paidAt := now
+		appt.PaidAt = &paidAt
+		appt.PaymentDueAt = nil
+	} else {
+		appt.PaymentStatus = model.PaymentPending
+	}
+
+	doctorProfile, err := s.getDoctorProfile("", "/doctors/"+url.PathEscape(strings.TrimSpace(appt.DoctorID)))
 	if err != nil {
 		return nil, err
 	}
+	doctorFee := doctorProfile.Data.ChannelingFee
 	totalConsultFee := doctorFee + hospitalFee
+	appt.ConsultFee = totalConsultFee
 
 	if err := s.repo.Create(appt); err != nil {
 		return nil, fmt.Errorf("service.BookAppointment: %w", err)
@@ -157,20 +176,26 @@ func (s *AppointmentService) BookAppointment(patientID, role, callerToken, first
 	event := rabbitmq.AppointmentBookedEvent{
 		AppointmentID:     appt.ID,
 		PatientID:         appt.PatientID,
+		PatientName:       fmt.Sprintf("%s %s", appt.PatientFirstName, appt.PatientLastName),
 		DoctorID:          appt.DoctorID,
+		DoctorName:        strings.TrimSpace(string(doctorProfile.Data.Name)),
 		DoctorOwnerUserID: appt.DoctorOwnerUserID,
+		PaymentStatus:     string(appt.PaymentStatus),
 		ConsultationMode:  string(appt.ConsultationMode),
 		RoomName:          appt.RoomName,
 		JoinURL:           appt.JoinURL,
+		PatientEmail:      strings.TrimSpace(patientEmail),
 		ScheduledAt:       appt.ScheduledAt.Format(time.RFC3339),
 		ConsultFee:        totalConsultFee,
 	}
+	// Clean up doctor name if it was JSON string
+	event.DoctorName = strings.Trim(event.DoctorName, `"`)
 	if err := s.mq.PublishAppointmentBooked(event); err != nil {
 		s.log.Error("Failed to publish appointment.booked event", "error", err)
 	}
 
-	s.log.Info("Appointment booked successfully", "id", appt.ID)
-	return appt, nil
+	s.log.Info("Appointment booked successfully", "id", appt.ID, "payment_status", appt.PaymentStatus)
+	return s.sanitizeAppointmentForResponse(appt), nil
 }
 
 func (s *AppointmentService) GetStatus(id, callerID, role string) (*model.Appointment, error) {
@@ -181,7 +206,7 @@ func (s *AppointmentService) GetStatus(id, callerID, role string) (*model.Appoin
 	if !s.canAccessAppointment(appt, callerID, role) {
 		return nil, fmt.Errorf("forbidden: not your appointment")
 	}
-	return appt, nil
+	return s.sanitizeAppointmentForResponse(appt), nil
 }
 
 func (s *AppointmentService) ListAppointments(callerID, role string) ([]model.Appointment, error) {
@@ -201,6 +226,10 @@ func (s *AppointmentService) ListAppointments(callerID, role string) ([]model.Ap
 		return nil, err
 	}
 	s.enrichMissingPatientNames(appts)
+
+	for i := range appts {
+		appts[i] = *s.sanitizeAppointmentForResponse(&appts[i])
+	}
 	return appts, nil
 }
 
@@ -441,8 +470,12 @@ func (s *AppointmentService) UpdateAppointmentStatus(id, callerID, role string, 
 
 func (s *AppointmentService) HandlePaymentCompleted(appointmentID string) error {
 	appt, err := s.repo.GetByID(appointmentID)
-	if err != nil || appt == nil {
+	if err != nil {
 		return fmt.Errorf("appointment not found")
+	}
+	if appt == nil {
+		s.log.Info("Payment completed before appointment creation; skipping until appointment exists", "appointment_id", appointmentID)
+		return nil
 	}
 	if appt.Status == model.StatusCancelled {
 		return nil
@@ -457,6 +490,18 @@ func (s *AppointmentService) HandlePaymentCompleted(appointmentID string) error 
 
 	s.log.Info("Appointment marked as paid", "appointment_id", appointmentID)
 	return nil
+}
+
+func (s *AppointmentService) sanitizeAppointmentForResponse(appt *model.Appointment) *model.Appointment {
+	if appt == nil {
+		return nil
+	}
+
+	sanitized := *appt
+	if sanitized.PaymentStatus != model.PaymentPaid {
+		sanitized.JoinURL = ""
+	}
+	return &sanitized
 }
 
 func (s *AppointmentService) ExpireOverdueAppointments(now time.Time) error {
@@ -507,6 +552,7 @@ type doctorProfileResponse struct {
 	Success bool `json:"success"`
 	Data    struct {
 		ID            json.RawMessage `json:"id"`
+		Name          json.RawMessage `json:"name"`
 		ChannelingFee float64         `json:"channeling_fee"`
 	} `json:"data"`
 }

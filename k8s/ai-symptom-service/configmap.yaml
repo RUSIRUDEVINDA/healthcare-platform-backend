@@ -6,7 +6,8 @@ metadata:
 data:
   APP_ENV: "production"
   PORT: "8008"
-  AUTH_SERVICE_URL: "http://auth-service.healthcare.svc.cluster.local:8001"
-  AI_PROVIDER: "openai"
-  OPENAI_MODEL: "gpt-4o-mini"
+  AUTH_SERVICE_URL: "http://auth-service:8001"
+  DATABASE_URL: "postgres://postgres:password123@ai-symptom-db:5432/symptom_db?sslmode=disable"
+  AI_PROVIDER: "gemini"
   GEMINI_MODEL: "gemini-2.5-flash"
+
