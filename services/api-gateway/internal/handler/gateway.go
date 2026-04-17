@@ -91,6 +91,7 @@ func NewGateway(cfg *config.Config, log *logger.Logger) (*Gateway, error) {
 		{"/api/admin", cfg.AdminServiceURL, "/admin"},
 		{"/api/v1/files", cfg.FileStorageServiceURL, "/api/v1/files"},
 		{"/api/auth", cfg.AuthServiceURL, "/auth"},
+		{"/api/support", cfg.SupportServiceURL, "/api/support"},
 	}
 
 	var routes []route
