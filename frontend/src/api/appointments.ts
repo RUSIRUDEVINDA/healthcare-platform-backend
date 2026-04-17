@@ -43,18 +43,21 @@ export interface Appointment {
     payment_due_at?: string;
     paid_at?: string;
     notes?: string;
+    consult_fee?: number;
     reason?: string;
     created_at?: string;
     updated_at?: string;
 }
 
 export interface BookAppointmentRequest {
+    appointment_id?: string;
     doctor_id: string;
     slot_id: string;
     scheduled_at?: string;
     notes?: string;
     payment_mode?: 'pay_now' | 'pay_later';
     consultation_mode?: 'jitsi' | 'physical';
+    payment_completed?: boolean;
 }
 
 export const appointmentApi = {

@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Activity, BellRing, CheckCircle2, Clock3, LogOut, ShieldCheck, TriangleAlert } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Activity, BellRing, CheckCircle2, Clock3, ShieldCheck, TriangleAlert, RefreshCw } from 'lucide-react';
 import { notificationApi, type ServiceHealth } from '../api/notification';
-import { redirectToLogin } from '../utils/navigation';
 
 type HealthState = {
   health?: ServiceHealth;
@@ -44,130 +42,135 @@ export default function NotificationMonitor() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user');
-    redirectToLogin();
-  };
-
   const healthy = state.health?.status === 'healthy';
   const ready = state.ready?.status === 'ready';
 
   return (
-    <div className="min-h-screen bg-[#f6f8fa] flex font-sans">
-      <aside className="w-60 bg-white border-r border-gray-100 hidden lg:flex flex-col sticky top-0 h-screen">
-        <div className="px-6 pt-6 pb-5">
-          <Link to="/dashboard" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
-              <Activity className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-lg font-bold text-gray-900 tracking-tight">AyaRX</span>
-          </Link>
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">
+      <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <BellRing className="h-5 w-5 text-brand" />
+          <h2 className="text-xl font-bold text-slate-800 tracking-tight">Notification Monitoring</h2>
+        </div>
+        <button
+          onClick={loadHealth}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-xl text-sm font-semibold hover:bg-brand-dark transition-all disabled:opacity-50"
+        >
+          {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          Refresh Status
+        </button>
+      </header>
+
+      <main className="p-8 lg:p-10 max-w-6xl mx-auto w-full">
+        <div className="mb-10">
+          <h3 className="text-3xl font-black text-slate-900 tracking-tight">System Reliability</h3>
+          <p className="text-slate-500 mt-2 text-lg">Real-time connectivity and delivery health for the MediPulse notification engine.</p>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-3">Menu</p>
-          <Link to="/dashboard" className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm">
-            <Activity className="h-[18px] w-[18px]" /> Dashboard
-          </Link>
-          <Link to="/admin" className="flex items-center gap-3 px-3 py-2.5 text-gray-500 hover:bg-gray-50 rounded-xl transition-colors text-sm">
-            <ShieldCheck className="h-[18px] w-[18px]" /> Admin Console
-          </Link>
-          <Link to="/notifications" className="flex items-center gap-3 px-3 py-2.5 bg-brand/10 text-brand rounded-xl font-semibold transition-all text-sm shadow-sm">
-            <BellRing className="h-[18px] w-[18px]" /> Notification Monitor
-          </Link>
-        </nav>
-
-        <div className="p-4 border-t border-gray-100 mx-4 mb-4">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2.5 w-full px-3 py-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors text-sm font-medium"
-          >
-            <LogOut className="h-[18px] w-[18px]" /> Sign Out
-          </button>
-        </div>
-      </aside>
-
-      <div className="flex-1 flex flex-col min-h-screen">
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 bg-white/80 backdrop-blur-md sticky top-0 z-10">
-          <h2 className="text-xl font-semibold text-gray-800">Notification Service Monitor</h2>
-          <button
-            onClick={loadHealth}
-            className="px-4 py-2 bg-brand text-white rounded-xl text-sm font-semibold hover:bg-brand-dark transition-colors"
-          >
-            Refresh
-          </button>
-        </header>
-
-        <main className="p-8 overflow-y-auto">
-          <div className="mb-8">
-            <h3 className="text-2xl font-bold text-gray-900">Event Delivery Readiness</h3>
-            <p className="text-gray-500 mt-1">Live health view for notification-service and expected event subscriptions.</p>
+        {loading && !state.checkedAt ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-100 border-t-brand mb-4"></div>
+            <p className="text-slate-400 font-semibold">Probing services...</p>
           </div>
+        ) : (
+          <>
+            {state.error && (
+              <div className="mb-8 p-5 rounded-2xl border-l-4 border-red-500 bg-red-50 text-red-700 font-medium flex items-center gap-3 shadow-sm">
+                <TriangleAlert className="h-5 w-5" />
+                Connection Failure: {state.error}
+              </div>
+            )}
 
-          {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+              <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Service Liveness</p>
+                  {healthy ? <CheckCircle2 className="h-6 w-6 text-emerald-500" /> : <TriangleAlert className="h-6 w-6 text-amber-500" />}
+                </div>
+                <p className={`text-4xl font-black capitalize ${healthy ? 'text-emerald-600' : 'text-amber-600'}`}>
+                  {state.health?.status ?? 'Unknown'}
+                </p>
+                <div className="mt-6 pt-6 border-t border-slate-50">
+                  <code className="text-[10px] bg-slate-50 px-2 py-1 rounded text-slate-400">GET /health/notification</code>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Message Readiness</p>
+                  {ready ? <CheckCircle2 className="h-6 w-6 text-emerald-500" /> : <Clock3 className="h-6 w-6 text-amber-500" />}
+                </div>
+                <p className={`text-4xl font-black capitalize ${ready ? 'text-emerald-600' : 'text-amber-600'}`}>
+                  {state.ready?.status ?? 'Unknown'}
+                </p>
+                <div className="mt-6 pt-6 border-t border-slate-50">
+                  <code className="text-[10px] bg-slate-50 px-2 py-1 rounded text-slate-400">GET /health/notification/ready</code>
+                </div>
+              </div>
             </div>
-          ) : (
-            <>
-              {state.error && (
-                <div className="mb-6 p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm">
-                  Unable to query notification service: {state.error}
-                </div>
-              )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-7">
-                <div className="bg-white rounded-2xl border border-gray-200 p-5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-gray-500">Liveness</p>
-                    {healthy ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <TriangleAlert className="h-5 w-5 text-amber-500" />}
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900 mt-2">{state.health?.status ?? 'unknown'}</p>
-                  <p className="text-xs text-gray-500 mt-2">GET /health/notification</p>
+            <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/50 p-8 mb-8">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
+                  <Activity className="h-5 w-5 text-slate-400" />
                 </div>
-
-                <div className="bg-white rounded-2xl border border-gray-200 p-5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-gray-500">Readiness</p>
-                    {ready ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Clock3 className="h-5 w-5 text-amber-500" />}
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900 mt-2">{state.ready?.status ?? 'unknown'}</p>
-                  <p className="text-xs text-gray-500 mt-2">GET /health/notification/ready</p>
-                </div>
+                <h4 className="text-xl font-black text-slate-900">Event Subscriptions</h4>
               </div>
-
-              <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 mb-6">
-                <h4 className="text-lg font-bold text-gray-900 mb-4">Subscribed Event Routes</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div className="rounded-xl border border-gray-200 p-4">
-                    <p className="font-semibold text-gray-800">appointment.booked</p>
-                    <p className="text-gray-500 mt-1">Queue: notification_appointment_booked_queue</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[
+                  { name: 'appointment.booked', queue: 'notification_appointment_booked_queue' },
+                  { name: 'appointment.cancelled', queue: 'notification_appointment_cancelled_queue' },
+                  { name: 'consultation.completed', queue: 'notification_consultation_completed_queue' },
+                ].map((event, i) => (
+                  <div key={i} className="rounded-2xl border border-slate-100 p-6 bg-slate-50/50 hover:bg-white hover:border-brand/30 hover:shadow-md transition-all cursor-default">
+                    <p className="font-bold text-slate-900 text-lg mb-1">{event.name}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">Active RabbitMQ Binding</p>
+                    <p className="text-xs text-brand font-medium mt-3 bg-brand/5 inline-block px-2 py-1 rounded-lg truncate w-full">{event.queue}</p>
                   </div>
-                  <div className="rounded-xl border border-gray-200 p-4">
-                    <p className="font-semibold text-gray-800">appointment.cancelled</p>
-                    <p className="text-gray-500 mt-1">Queue: notification_appointment_cancelled_queue</p>
-                  </div>
-                  <div className="rounded-xl border border-gray-200 p-4">
-                    <p className="font-semibold text-gray-800">consultation.completed</p>
-                    <p className="text-gray-500 mt-1">Queue: notification_consultation_completed_queue</p>
-                  </div>
-                </div>
+                ))}
               </div>
+            </div>
 
-              <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6">
-                <h4 className="text-lg font-bold text-gray-900 mb-3">Operational Notes</h4>
-                <ul className="text-sm text-gray-600 space-y-2">
-                  <li>If SMTP/Twilio are not configured, the service logs delivery attempts instead of failing.</li>
-                  <li>Failed message handlers are NACKed and requeued by RabbitMQ.</li>
-                  <li>Open RabbitMQ management at <a className="text-brand font-semibold hover:underline" href="http://localhost:15672" target="_blank" rel="noreferrer">http://localhost:15672</a> to publish test events.</li>
+            <div className="bg-slate-900 rounded-[2rem] p-10 text-white shadow-2xl overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-brand/10 blur-[100px] rounded-full -mr-32 -mt-32"></div>
+              <h4 className="text-2xl font-black mb-6 flex items-center gap-3">
+                <ShieldCheck className="h-6 w-6 text-brand" />
+                Infrastructure Metrics
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <ul className="text-slate-400 space-y-4">
+                  <li className="flex items-start gap-3">
+                    <div className="w-1.5 h-1.5 bg-brand rounded-full mt-1.5 shrink-0"></div>
+                    <p className="text-sm">Fail-safe logging: Service defaults to local I/O logs if SMTP/Twilio configuration is missing.</p>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-1.5 h-1.5 bg-brand rounded-full mt-1.5 shrink-0"></div>
+                    <p className="text-sm">Resilience: RabbitMQ NACK/Requeue policy ensures no message loss during downtime.</p>
+                  </li>
                 </ul>
-                <p className="text-xs text-gray-400 mt-4">Last checked: {state.checkedAt ?? 'never'}</p>
+                <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700/50 backdrop-blur-sm">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Management Access</p>
+                  <a 
+                    href="http://localhost:15672" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="flex items-center justify-between group"
+                  >
+                    <span className="text-brand font-bold hover:underline">RabbitMQ Dashboard</span>
+                    <RefreshCw className="h-4 w-4 text-slate-600 group-hover:text-brand transition-colors" />
+                  </a>
+                  <p className="text-[10px] text-slate-500 mt-2 font-mono">guest:guest (Default credentials)</p>
+                </div>
               </div>
-            </>
-          )}
-        </main>
-      </div>
+              <div className="mt-10 pt-10 border-t border-slate-800 flex justify-between items-center text-[11px] font-bold text-slate-500 tracking-widest">
+                <span>MEDIPULSE SRILANKA CORE</span>
+                <span>LAST CHECKED: {state.checkedAt?.toUpperCase() ?? 'PENDING'}</span>
+              </div>
+            </div>
+          </>
+        )}
+      </main>
     </div>
   );
 }

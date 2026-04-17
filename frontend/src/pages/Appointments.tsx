@@ -29,6 +29,20 @@ import Dialog from '../components/ui/Dialog';
 type TabKey = 'doctors' | 'appointments' | 'slots';
 
 const HOSPITAL_FEE = 500;
+const PENDING_BOOKING_PREFIX = 'pending-booking:';
+
+type AppointmentStatusFilter = 'all' | 'pending' | 'confirmed' | 'cancelled' | 'completed';
+type PaymentStatusFilter = 'all' | 'pending' | 'paid' | 'overdue' | 'failed' | 'expired';
+type ConsultationModeFilter = 'all' | 'jitsi' | 'physical';
+
+function makeDraftId() {
+    return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function safeText(value: unknown, fallback: string) {
+    const text = typeof value === 'string' ? value.trim() : '';
+    return text || fallback;
+}
 
 function readUserRole(): string | null {
     try {
@@ -72,6 +86,10 @@ export default function Appointments() {
     const [consultationsPageSize, setConsultationsPageSize] = useState(10);
     const [availabilityPage, setAvailabilityPage] = useState(1);
     const [availabilityPageSize, setAvailabilityPageSize] = useState(10);
+    const [statusFilter, setStatusFilter] = useState<AppointmentStatusFilter>('all');
+    const [paymentFilter, setPaymentFilter] = useState<PaymentStatusFilter>('all');
+    const [modeFilter, setModeFilter] = useState<ConsultationModeFilter>('all');
+    const [payNowLoadingId, setPayNowLoadingId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchData();
@@ -145,34 +163,51 @@ export default function Appointments() {
 
     const handleBook = async (data: BookAppointmentRequest) => {
         try {
-            const appt = await appointmentApi.bookAppointment(data);
-            
-            if (data.payment_mode === 'pay_now' && appt.id) {
-                // Fetch patient profile to get customer details for PayHere
+            const doctor =
+                selectedDoctor ?? doctors.find((d) => String(d.id) === data.doctor_id) ?? null;
+
+            if (data.payment_mode === 'pay_now') {
                 const profile = await patientApi.getProfile();
-                
-                // Get checkout parameters from our payment service
+                const appointmentId = makeDraftId();
+                const totalAmount = Number(doctor?.channeling_fee || 0) + HOSPITAL_FEE;
                 const checkout = await paymentApi.checkout({
-                    appointment_id: appt.id,
-                    items: `Consultation with ${getDoctorName(data.doctor_id)}`,
+                    appointment_id: appointmentId,
+                    patient_id: profile.user_id,
+                    amount: totalAmount,
+                    currency: 'LKR',
+                    items: `Consultation with ${safeText(doctor?.name ?? getDoctorName(data.doctor_id), 'Doctor')}`,
                     customer: {
-                        first_name: profile.first_name,
-                        last_name: profile.last_name,
-                        email: profile.email,
-                        phone: profile.phone_number || '0000000000',
-                        address: profile.address || 'Colombo',
+                        first_name: safeText(profile.first_name, 'Patient'),
+                        last_name: safeText(profile.last_name, 'User'),
+                        email: safeText(profile.email, 'patient@example.com'),
+                        phone: safeText(profile.phone_number, '0000000000'),
+                        address: safeText(profile.address, 'Colombo'),
                         city: 'Colombo',
                         country: 'Sri Lanka'
                     }
                 });
 
-                // Redirect to PayHere Checkout
+                localStorage.setItem(
+                    `${PENDING_BOOKING_PREFIX}${checkout.payment_id}`,
+                    JSON.stringify({
+                        ...data,
+                        appointment_id: appointmentId,
+                        payment_completed: true,
+                        payment_mode: 'pay_now',
+                    }),
+                );
+
                 setIsRedirecting(true);
                 submitPayHereForm(checkout);
-            } else {
-                await fetchData();
-                setActiveTab('appointments');
+                return;
             }
+
+            await appointmentApi.bookAppointment({
+                ...data,
+                payment_completed: false,
+            });
+            await fetchData();
+            setActiveTab('appointments');
         } catch (error: unknown) {
             const apiMessage =
                 error && typeof error === 'object' && 'response' in error
@@ -281,6 +316,50 @@ export default function Appointments() {
         }
     };
 
+    const handlePayNow = async (appt: Appointment) => {
+        setPayNowLoadingId(appt.id);
+        try {
+            const profile = await patientApi.getProfile();
+            const payments = await paymentApi.listPayments(profile.user_id);
+            const payment = payments.find((item) => item.appointment_id === appt.id);
+            const amount = Number(payment?.amount ?? appt.consult_fee ?? 0);
+            if (!Number.isFinite(amount) || amount <= 0) {
+                throw new Error('This appointment does not have a valid consultation fee yet. Please refresh and try again.');
+            }
+            
+            // Backend Checkout logic can create a payment if appointment_id is provided but payment_id is not.
+            const checkout = await paymentApi.checkout({
+                payment_id: payment?.id,
+                appointment_id: appt.id,
+                patient_id: profile.user_id,
+                amount,
+                currency: payment?.currency ?? 'LKR',
+                items: `Consultation with ${safeText(getDoctorName(appt.doctor_id), 'Doctor')}`,
+                customer: {
+                    first_name: safeText(profile.first_name, 'Patient'),
+                    last_name: safeText(profile.last_name, 'User'),
+                    email: safeText(profile.email, 'patient@example.com'),
+                    phone: safeText(profile.phone_number, '0000000000'),
+                    address: safeText(profile.address, 'Colombo'),
+                    city: 'Colombo',
+                    country: 'Sri Lanka',
+                },
+            });
+
+            setIsRedirecting(true);
+            submitPayHereForm(checkout);
+        } catch (error) {
+            console.error('Failed to start pay-now checkout:', error);
+            const apiMessage =
+                error && typeof error === 'object' && 'response' in error
+                    ? (error as { response?: { data?: { error?: string; details?: string } } }).response?.data
+                    : undefined;
+            toast.error(apiMessage?.details || apiMessage?.error || (error instanceof Error ? error.message : 'Unable to start payment.'));
+        } finally {
+            setPayNowLoadingId(null);
+        }
+    };
+
 
     const hasAppointmentEnded = (appt: Appointment) => {
         const scheduledAtRaw = appt.scheduled_at || appt.scheduled_time;
@@ -309,22 +388,57 @@ export default function Appointments() {
             d.hospital.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const filteredAppointments = appointments.filter((appt) => {
+    const sortedAppointments = useMemo(
+        () =>
+            [...appointments].sort((a, b) => {
+                const aCreated = new Date(a.created_at || a.updated_at || a.scheduled_at || 0).getTime();
+                const bCreated = new Date(b.created_at || b.updated_at || b.scheduled_at || 0).getTime();
+                return bCreated - aCreated;
+            }),
+        [appointments],
+    );
+
+    const filteredAppointments = useMemo(() => {
         const query = searchQuery.toLowerCase();
-        if (isDoctor) {
-            const patientName = getPatientDisplayName(appt).toLowerCase();
+        return sortedAppointments.filter((appt) => {
             const displayStatus = getAppointmentDisplayStatus(appt);
+            const paymentStatus = (appt.payment_status || '').toLowerCase();
+            const consultationMode = (appt.consultation_mode || '').toLowerCase();
+
+            if (statusFilter !== 'all' && displayStatus !== statusFilter) {
+                return false;
+            }
+            if (paymentFilter !== 'all' && paymentStatus !== paymentFilter) {
+                return false;
+            }
+            if (modeFilter !== 'all') {
+                const normalizedMode = consultationMode === 'video' ? 'jitsi' : consultationMode;
+                if (normalizedMode !== modeFilter) {
+                    return false;
+                }
+            }
+
+            if (isDoctor) {
+                const patientName = getPatientDisplayName(appt).toLowerCase();
+                return (
+                    patientName.includes(query) ||
+                    displayStatus.includes(query) ||
+                    paymentStatus.includes(query) ||
+                    consultationMode.includes(query)
+                );
+            }
+
+            const docName = getDoctorName(appt.doctor_id).toLowerCase();
+            const specialty = getDoctorSpecialty(appt.doctor_id).toLowerCase();
             return (
-                patientName.includes(query) ||
+                docName.includes(query) ||
+                specialty.includes(query) ||
                 displayStatus.includes(query) ||
-                (appt.payment_status && appt.payment_status.toLowerCase().includes(query))
+                paymentStatus.includes(query) ||
+                consultationMode.includes(query)
             );
-        }
-        const docName = getDoctorName(appt.doctor_id).toLowerCase();
-        const specialty = getDoctorSpecialty(appt.doctor_id).toLowerCase();
-        const displayStatus = getAppointmentDisplayStatus(appt);
-        return docName.includes(query) || specialty.includes(query) || displayStatus.includes(query);
-    });
+        });
+    }, [sortedAppointments, searchQuery, statusFilter, paymentFilter, modeFilter, isDoctor]);
 
     const filteredMySlots = mySlots.filter((slot) => {
         const q = searchQuery.toLowerCase();
@@ -795,7 +909,65 @@ export default function Appointments() {
                                 <h3 className="text-base font-semibold text-gray-800">
                                     {isDoctor ? 'Consultations' : 'My Appointments'}
                                 </h3>
-                                <p className="text-sm text-gray-400 mt-1">{appointments.length} total</p>
+                                <p className="text-sm text-gray-400 mt-1">
+                                    {filteredAppointments.length} shown · {sortedAppointments.length} total
+                                </p>
+                            </div>
+
+                            <div className="grid gap-3 rounded-2xl border border-gray-100 bg-white p-4 sm:grid-cols-2 xl:grid-cols-4">
+                                <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                    Status
+                                    <select
+                                        value={statusFilter}
+                                        onChange={(event) => setStatusFilter(event.target.value as AppointmentStatusFilter)}
+                                        className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 outline-none"
+                                    >
+                                        <option value="all">All statuses</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="confirmed">Confirmed</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </label>
+                                <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                    Payment
+                                    <select
+                                        value={paymentFilter}
+                                        onChange={(event) => setPaymentFilter(event.target.value as PaymentStatusFilter)}
+                                        className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 outline-none"
+                                    >
+                                        <option value="all">All payments</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="paid">Paid</option>
+                                        <option value="overdue">Overdue</option>
+                                        <option value="failed">Failed</option>
+                                        <option value="expired">Expired</option>
+                                    </select>
+                                </label>
+                                <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                    Mode
+                                    <select
+                                        value={modeFilter}
+                                        onChange={(event) => setModeFilter(event.target.value as ConsultationModeFilter)}
+                                        className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 outline-none"
+                                    >
+                                        <option value="all">All modes</option>
+                                        <option value="jitsi">Jitsi</option>
+                                        <option value="physical">Physical</option>
+                                    </select>
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setStatusFilter('all');
+                                        setPaymentFilter('all');
+                                        setModeFilter('all');
+                                        setSearchQuery('');
+                                    }}
+                                    className="self-end rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:border-brand/30 hover:text-brand"
+                                >
+                                    Clear filters
+                                </button>
                             </div>
 
                             {appointments.length === 0 ? (
@@ -850,115 +1022,152 @@ export default function Appointments() {
 
                                     {paginatedConsultations.map((appt) => {
                                         const displayStatus = getAppointmentDisplayStatus(appt);
-                                        const hasEnded = displayStatus === 'unavailable';
+                                        const hasEnded = displayStatus === 'unavailable' || displayStatus === 'completed';
+                                        const canPayNow = (appt.payment_status || '').toLowerCase() === 'pending' && appt.status !== 'cancelled' && !hasEnded;
+                                        const canJoinMeeting =
+                                            (appt.payment_status || '').toLowerCase() === 'paid' &&
+                                            (appt.consultation_mode === 'jitsi' || appt.consultation_mode === 'video') &&
+                                            Boolean(appt.join_url) &&
+                                            appt.status !== 'cancelled';
                                         return (
-                                        <div key={appt.id} className="bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-md transition-all group flex items-center gap-6">
-                                            <div className="w-14 h-14 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-brand font-bold shrink-0 shadow-sm group-hover:border-brand/20 transition-colors">
-                                                {isDoctor
-                                                    ? initialsFromName(getPatientDisplayName(appt))
-                                                    : getDoctorName(appt.doctor_id)
-                                                          .split(' ')
-                                                          .map((n: string) => n[0])
-                                                          .join('')
-                                                          .slice(0, 2)
-                                                          .toUpperCase()}
-                                            </div>
-
-                                            <div className="w-56 shrink-0">
-                                                <h4 className="text-[14px] font-bold text-gray-900 truncate">
-                                                    {isDoctor ? getPatientDisplayName(appt) : getDoctorName(appt.doctor_id)}
-                                                </h4>
-                                                <p className="text-xs text-brand font-medium mt-0.5 truncate">
+                                            <div key={appt.id} className="bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-md transition-all group flex items-center gap-6">
+                                                <div className="w-14 h-14 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-brand font-bold shrink-0 shadow-sm group-hover:border-brand/20 transition-colors">
                                                     {isDoctor
-                                                        ? `${appt.consultation_mode === 'jitsi' || appt.consultation_mode === 'video' ? 'Video' : 'Physical'} · ${displayStatus}`
-                                                        : getDoctorSpecialty(appt.doctor_id)}
-                                                </p>
-                                            </div>
-
-                                            {/* Date & Time */}
-                                            <div className="flex-1 flex items-center gap-8">
-                                                <div className="flex items-center gap-2.5 min-w-[120px]">
-                                                    <Calendar className="h-4 w-4 text-gray-400" />
-                                                    <span className="text-sm text-gray-600 font-medium">
-                                                        {new Date(appt.scheduled_at || appt.scheduled_time || '').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                    </span>
+                                                        ? initialsFromName(getPatientDisplayName(appt))
+                                                        : getDoctorName(appt.doctor_id)
+                                                              .split(' ')
+                                                              .map((n: string) => n[0])
+                                                              .join('')
+                                                              .slice(0, 2)
+                                                              .toUpperCase()}
                                                 </div>
-                                                <div className="flex items-center gap-2.5">
-                                                    <Clock className="h-4 w-4 text-gray-400" />
-                                                    <span className="text-sm text-gray-600 font-medium">
-                                                        {new Date(appt.scheduled_at || appt.scheduled_time || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    </span>
+
+                                                <div className="w-56 shrink-0">
+                                                    <h4 className="text-[14px] font-bold text-gray-900 truncate">
+                                                        {isDoctor ? getPatientDisplayName(appt) : getDoctorName(appt.doctor_id)}
+                                                    </h4>
+                                                    <p className="text-xs text-brand font-medium mt-0.5 truncate">
+                                                        {isDoctor
+                                                            ? `${appt.consultation_mode === 'jitsi' || appt.consultation_mode === 'video' ? 'Video' : 'Physical'} · ${displayStatus}`
+                                                            : getDoctorSpecialty(appt.doctor_id)}
+                                                    </p>
                                                 </div>
-                                            </div>
 
-                                            {/* Mode & Status */}
-                                            <div className="w-56 flex items-center gap-4 justify-center">
-                                                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-500 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
-                                                    {appt.consultation_mode === 'jitsi' || appt.consultation_mode === 'video' ? (
-                                                        <><Video className="h-3.5 w-3.5 text-brand" /> Video</>
-                                                    ) : (
-                                                        <><MapPin className="h-3.5 w-3.5 text-blue-500" /> Physical</>
-                                                    )}
-                                                </span>
-                                                <span 
-                                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
-                                                        statusColor[displayStatus] || 'bg-gray-100 text-gray-500'
-                                                    }`}
-                                                >
-                                                    {displayStatus}
-                                                </span>
-                                            </div>
+                                                {/* Date & Time */}
+                                                <div className="flex-1 flex items-center gap-8">
+                                                    <div className="flex items-center gap-2.5 min-w-[120px]">
+                                                        <Calendar className="h-4 w-4 text-gray-400" />
+                                                        <span className="text-sm text-gray-600 font-medium">
+                                                            {new Date(appt.scheduled_at || appt.scheduled_time || '').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2.5">
+                                                        <Clock className="h-4 w-4 text-gray-400" />
+                                                        <span className="text-sm text-gray-600 font-medium">
+                                                            {new Date(appt.scheduled_at || appt.scheduled_time || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </div>
+                                                </div>
 
-                                            {/* Payment & CTA */}
-                                            <div className="w-64 flex items-center justify-end gap-6">
-                                                 <div className="text-right">
-                                                    <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tight block">Payment</span>
+                                                {/* Mode & Status */}
+                                                <div className="w-56 flex items-center gap-4 justify-center">
+                                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-500 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
+                                                        {appt.consultation_mode === 'jitsi' || appt.consultation_mode === 'video' ? (
+                                                            <><Video className="h-3.5 w-3.5 text-brand" /> Video</>
+                                                        ) : (
+                                                            <><MapPin className="h-3.5 w-3.5 text-blue-500" /> Physical</>
+                                                        )}
+                                                    </span>
                                                     <span 
-                                                        className={`text-xs font-bold mt-0.5 ${
-                                                            appt.payment_status === 'paid' ? 'text-green-600' : 'text-amber-600'
+                                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                                                            statusColor[displayStatus] || 'bg-gray-100 text-gray-500'
                                                         }`}
                                                     >
-                                                        {appt.payment_status || 'Pending'}
+                                                        {displayStatus}
                                                     </span>
                                                 </div>
 
-                                                {(appt.consultation_mode === 'jitsi' || appt.consultation_mode === 'video') && appt.join_url && appt.status !== 'cancelled' && (
-                                                    <button 
-                                                        type="button"
-                                                        onClick={() =>
-                                                            navigate(
-                                                                `/telemedicine?join_url=${encodeURIComponent(appt.join_url || '')}&peer=${encodeURIComponent(isDoctor ? getPatientDisplayName(appt) : getDoctorName(appt.doctor_id))}&title=${encodeURIComponent('Telemedicine Session')}`
-                                                            )
-                                                        }
-                                                        disabled={hasEnded}
-                                                        title={hasEnded ? 'This meeting has ended' : 'Join meeting'}
-                                                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm shadow-black/5 transition-all ${
-                                                            hasEnded
-                                                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                                                : 'bg-gray-900 text-white hover:bg-brand active:scale-95'
-                                                        }`}
-                                                    >
-                                                        <Video className="h-3.5 w-3.5" /> 
-                                                        {hasEnded ? 'Ended' : 'Join'}
-                                                    </button>
-                                                )}
+                                                {/* Payment & CTA */}
+                                                <div className="w-64 flex items-center justify-end gap-6">
+                                                     <div className="text-right">
+                                                        <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tight block">Payment</span>
+                                                        <span 
+                                                            className={`text-xs font-bold mt-0.5 ${
+                                                                appt.payment_status === 'paid' ? 'text-green-600' : 'text-amber-600'
+                                                            }`}
+                                                        >
+                                                            {appt.payment_status || 'Pending'}
+                                                        </span>
+                                                    </div>
 
-                                                {appt.status !== 'cancelled' && appt.status !== 'completed' && !hasEnded && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setAppointmentToCancel(appt);
-                                                            setCancelDialogOpen(true);
-                                                        }}
-                                                        className="flex items-center justify-center p-2.5 rounded-xl border border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200 transition-all active:scale-95"
-                                                        title="Cancel Appointment"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
-                                                )}
+                                                    {canJoinMeeting && (
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const now = new Date();
+                                                                const start = new Date(appt.scheduled_at || appt.scheduled_time || '');
+                                                                const diffMs = start.getTime() - now.getTime();
+                                                                
+                                                                if (diffMs > 0) {
+                                                                    const diffMins = Math.floor(diffMs / 60000);
+                                                                    const h = Math.floor(diffMins / 60);
+                                                                    const m = diffMins % 60;
+                                                                    const waitStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                                                                    toast(`This meeting starts in ${waitStr} (${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`, {
+                                                                        icon: '⏳',
+                                                                        duration: 5000
+                                                                    });
+                                                                }
+                                                                
+                                                                navigate(
+                                                                    `/telemedicine?join_url=${encodeURIComponent(appt.join_url || '')}&peer=${encodeURIComponent(isDoctor ? getPatientDisplayName(appt) : getDoctorName(appt.doctor_id))}&title=${encodeURIComponent('Telemedicine Session')}`
+                                                                );
+                                                            }}
+                                                            disabled={hasEnded}
+                                                            title={hasEnded ? 'This meeting has ended' : 'Join meeting'}
+                                                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm shadow-black/5 transition-all ${
+                                                                hasEnded
+                                                                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                                                    : 'bg-gray-900 text-white hover:bg-brand active:scale-95'
+                                                            }`}
+                                                        >
+                                                            <Video className="h-3.5 w-3.5" /> 
+                                                            {hasEnded ? 'Ended' : 'Join'}
+                                                        </button>
+                                                    )}
+
+                                                    {canPayNow && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handlePayNow(appt)}
+                                                            disabled={payNowLoadingId === appt.id}
+                                                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm shadow-black/5 transition-all ${
+                                                                payNowLoadingId === appt.id
+                                                                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                                                    : 'bg-brand text-white hover:bg-brand-dark active:scale-95'
+                                                            }`}
+                                                        >
+                                                            {payNowLoadingId === appt.id ? 'Opening...' : 'Pay Now'}
+                                                        </button>
+                                                    )}
+
+                                                    {appt.status !== 'cancelled' && appt.status !== 'completed' && !hasEnded && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setAppointmentToCancel(appt);
+                                                                setCancelDialogOpen(true);
+                                                            }}
+                                                            className="flex items-center justify-center p-2.5 rounded-xl border border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200 transition-all active:scale-95"
+                                                            title="Cancel Appointment"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    );})}
+                                        );
+                                    })}
 
                                     <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                                         <span className="text-sm text-gray-500">
