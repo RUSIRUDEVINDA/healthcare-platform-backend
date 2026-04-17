@@ -19,6 +19,8 @@ spec:
         app: auth-service
         version: v1
     spec:
+      imagePullSecrets:
+        - name: acr-secret
       containers:
         - name: auth-service
           image: healthyacr2026.azurecr.io/auth-service:latest

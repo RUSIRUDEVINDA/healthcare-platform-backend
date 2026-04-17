@@ -10,10 +10,13 @@ data:
   DOCTOR_SERVICE_URL: "http://doctor-service:8003"
   AI_SYMPTOM_SERVICE_URL: "http://ai-symptom-service:8008"
   PATIENT_SERVICE_URL: "http://patient-service:8002"
-  APPOINTMENT_SERVICE_URL: "http://appointment-service:8004"
+  APPOINTMENT_SERVICE_URL: "http://appointment-service:8082"
   PAYMENT_SERVICE_URL: "http://payment-service:8005"
   TELEMEDICINE_SERVICE_URL: "http://telemedicine-service:8009"
   FILE_STORAGE_SERVICE_URL: "http://file-storage-service:8010"
+  ADMIN_SERVICE_URL: "http://admin-service:80"
+  NOTIFICATION_SERVICE_URL: "http://notification-service:8006"
+  SUPPORT_SERVICE_URL: "http://support-service:8011"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -37,7 +40,7 @@ spec:
         ports:
         - containerPort: 8000
         envFrom:
-        - configMapRef:
+        - configMapRef: 
             name: api-gateway-config
         resources:
           requests:
