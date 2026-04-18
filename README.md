@@ -2,8 +2,31 @@
 
 [![Tech Stack](https://img.shields.io/badge/Stack-Go%20|%20React%20|%20PostgreSQL-0ea5e9?style=for-the-badge)](https://github.com/RUSIRUDEVINDA/healthcare-platform-backend)
 [![Uptime](https://img.shields.io/badge/Architecture-Event--Driven-818cf8?style=for-the-badge)](https://rabbitmq.com)
+[![Nginx](https://img.shields.io/badge/nginx-%23009639.svg?style=for-the-badge&logo=nginx&logoColor=white)](https://nginx.org)
+[![Ngrok](https://img.shields.io/badge/ngrok-1F1E1E.svg?style=for-the-badge&logo=ngrok&logoColor=white)](https://ngrok.com)
+[![Gin](https://img.shields.io/badge/Gin-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://gin-gonic.com)
+[![RabbitMQ](https://img.shields.io/badge/RabbitMQ-FF6600?style=for-the-badge&logo=rabbitmq&logoColor=white)](https://rabbitmq.com)
+[![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)](https://typescriptlang.org)
 
-A premium, highly-distributed telemedicine and healthcare management platform built with **Go**, **React**, and **RabbitMQ**. This project leverages a microservices architecture to provide scalable patient care, doctor channeling, and secure payment processing.
+A premium, highly-distributed telemedicine and healthcare management platform built with **Go (Gin)**, **React (TypeScript)**, **Nginx**, and **RabbitMQ**. This project leverages a microservices architecture to provide scalable patient care, doctor channeling, and secure payment processing.
+
+---
+
+## 🛠️ Technical Stack & Infrastructure
+
+The project utilizes a robust and modern tech stack selected for performance, security, and developer productivity.
+
+#### Backend Technology Layer
+- **Core Language**: **Go (Golang)** – Used for its legendary performance in concurrent microservices.
+- **Web Engine**: **Gin** – A high-performance HTTP web framework (Gin Gonic).
+- **Event Messaging**: **RabbitMQ 3.12** – Facilitates asynchronous, event-driven communication (Pub/Sub).
+- **Relational Storage**: **PostgreSQL 17** – Utilized as the primary data store with specialized schemas for each service.
+- **Reverse Proxy & Entry**: **NGINX & Custom API Gateway** – Handles path-based routing, TLS termination, and request scrubbing.
+
+#### Frontend & DevOps
+- **Frontend Core**: **TypeScript** & **React** – Ensuring type-safety and robust UI component architecture.
+- **Tunneling**: **Ngrok** – Utilized for secure tunneling of local services for external webhook testing (e.g., PayHere callbacks).
+- **Containerization**: **Docker** & **Kubernetes** – Providing environment parity and orchestration.
 
 ---
 
