@@ -114,6 +114,10 @@ func (h *PatientHandler) UpdateProfile(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Patient profile not found"})
 			return
 		}
+		if errors.Is(err, service.ErrPatientNICAlreadyExists) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
 		h.log.Error("Failed to update profile", "user_id", userID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update profile"})
 		return
@@ -138,6 +142,10 @@ func (h *PatientHandler) PatchProfile(c *gin.Context) {
 	if err := h.svc.PatchProfile(userID.(string), &req); err != nil {
 		if errors.Is(err, service.ErrPatientNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Patient profile not found"})
+			return
+		}
+		if errors.Is(err, service.ErrPatientNICAlreadyExists) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			return
 		}
 		h.log.Error("Failed to patch profile", "user_id", userID, "error", err)
