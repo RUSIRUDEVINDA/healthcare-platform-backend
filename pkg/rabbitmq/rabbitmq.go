@@ -28,6 +28,7 @@ const (
 	RoutingKeyAppointmentCancelled  = "appointment.cancelled"
 	RoutingKeyConsultationCompleted = "consultation.completed"
 	RoutingKeyPaymentCompleted      = "payment.completed"
+	RoutingKeyPaymentRefunded       = "payment.refunded"
 	RoutingKeyPaymentFailed         = "payment.failed"
 	RoutingKeyDoctorCreated         = "doctor.created"
 	RoutingKeyDoctorProfileUpdated  = "doctor.profile.updated"
@@ -133,6 +134,7 @@ type AppointmentCancelledEvent struct {
 	PatientPhone  string `json:"patient_phone,omitempty"`
 	DoctorEmail   string `json:"doctor_email,omitempty"`
 	Reason        string `json:"reason,omitempty"`
+	CancelledBy   string `json:"cancelled_by,omitempty"` // "doctor" or "patient"
 	Timestamp     string `json:"timestamp"`
 }
 
@@ -145,6 +147,14 @@ type PaymentCompletedEvent struct {
 	AppointmentID string `json:"appointment_id"`
 	ProviderID    string `json:"provider_id"`
 	Timestamp     string `json:"timestamp"`
+}
+
+// PaymentRefundedEvent is published by payment-service
+type PaymentRefundedEvent struct {
+	PaymentID     string  `json:"payment_id"`
+	AppointmentID string  `json:"appointment_id"`
+	Amount        float64 `json:"amount"`
+	Timestamp     string  `json:"timestamp"`
 }
 
 // ConsultationCompletedEvent is published when a consultation ends.
@@ -324,6 +334,11 @@ func (c *Client) PublishAppointmentCancelled(event AppointmentCancelledEvent) er
 func (c *Client) PublishPaymentCompleted(event PaymentCompletedEvent) error {
 	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
 	return c.publish(ExchangePaymentEvents, RoutingKeyPaymentCompleted, event)
+}
+
+func (c *Client) PublishPaymentRefunded(event PaymentRefundedEvent) error {
+	event.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	return c.publish(ExchangePaymentEvents, RoutingKeyPaymentRefunded, event)
 }
 
 // PublishDoctorCreated publishes to the doctor_events topic exchange (routing: doctor.created).

@@ -20,15 +20,24 @@ func NewAppointmentConsumer(mqClient *rabbitmq.Client, svc *service.AppointmentS
 }
 
 func (c *AppointmentConsumer) Start() error {
-	// Queue for payment completion events
-	paymentQueueName := "appointment_payment_completed_queue"
+	// Handle Payment Completed
 	if err := c.mqClient.ConsumeQueue(
-		paymentQueueName,
+		"appointment_service_payment_completed_queue",
 		rabbitmq.ExchangePaymentEvents,
 		c.handlePaymentCompleted,
 		rabbitmq.RoutingKeyPaymentCompleted,
 	); err != nil {
-		return fmt.Errorf("messaging.Start payment: %w", err)
+		return fmt.Errorf("messaging.Start payment.completed: %w", err)
+	}
+
+	// Handle Payment Refunded
+	if err := c.mqClient.ConsumeQueue(
+		"appointment_service_payment_refunded_queue",
+		rabbitmq.ExchangePaymentEvents,
+		c.handlePaymentRefunded,
+		rabbitmq.RoutingKeyPaymentRefunded,
+	); err != nil {
+		return fmt.Errorf("messaging.Start payment.refunded: %w", err)
 	}
 
 	// Queue for patient deletion events
@@ -55,6 +64,17 @@ func (c *AppointmentConsumer) handlePaymentCompleted(body []byte) error {
 	c.log.Info("Processing payment.completed event", "appointment_id", event.AppointmentID)
 
 	return c.svc.HandlePaymentCompleted(event.AppointmentID)
+}
+
+func (c *AppointmentConsumer) handlePaymentRefunded(body []byte) error {
+	var event rabbitmq.PaymentRefundedEvent
+	if err := json.Unmarshal(body, &event); err != nil {
+		return fmt.Errorf("consumer.handlePaymentRefunded unmarshal: %w", err)
+	}
+
+	c.log.Info("Processing payment.refunded event", "appointment_id", event.AppointmentID)
+
+	return c.svc.HandlePaymentRefunded(event.AppointmentID)
 }
 
 func (c *AppointmentConsumer) handlePatientDeleted(body []byte) error {
