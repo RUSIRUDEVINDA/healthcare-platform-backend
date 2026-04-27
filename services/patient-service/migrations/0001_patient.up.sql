@@ -10,9 +10,14 @@ CREATE TABLE IF NOT EXISTS patients (
 	address            TEXT,
 	emergency_contact  VARCHAR(255),
 	blood_group        VARCHAR(5),
+	nationality        VARCHAR(100),
+	nic                VARCHAR(20),
 	created_at         TIMESTAMPTZ DEFAULT NOW(),
 	updated_at         TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_patients_user_id ON patients(user_id);
 CREATE INDEX IF NOT EXISTS idx_patients_email ON patients(email);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_nic_unique
+	ON patients ((NULLIF(BTRIM(nic), '')))
+	WHERE NULLIF(BTRIM(nic), '') IS NOT NULL;

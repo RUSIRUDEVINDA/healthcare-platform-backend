@@ -39,7 +39,7 @@ export interface Appointment {
     scheduled_time?: string; // alias kept for compat
     duration_minutes?: number;
     status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
-    payment_status?: 'pending' | 'paid' | 'overdue' | 'failed' | 'expired';
+    payment_status?: 'pending' | 'paid' | 'overdue' | 'failed' | 'expired' | 'refunded' | 'partially_refunded';
     payment_due_at?: string;
     paid_at?: string;
     notes?: string;

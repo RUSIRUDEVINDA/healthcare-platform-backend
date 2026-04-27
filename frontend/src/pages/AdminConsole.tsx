@@ -69,6 +69,10 @@ function statusTone(status?: string) {
     case 'failed':
     case 'expired':
       return 'bg-rose-50 text-rose-700 border-rose-100';
+    case 'refunded':
+      return 'bg-blue-50 text-blue-700 border-blue-100';
+    case 'partially_refunded':
+      return 'bg-indigo-50 text-indigo-700 border-indigo-100';
     case 'pending':
     default:
       return 'bg-amber-50 text-amber-700 border-amber-100';

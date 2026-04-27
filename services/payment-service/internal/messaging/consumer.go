@@ -3,6 +3,7 @@ package messaging
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"healthcare-platform/pkg/logger"
 	"healthcare-platform/pkg/rabbitmq"
 	"healthcare-platform/services/payment-service/internal/model"
@@ -20,11 +21,12 @@ func NewPaymentConsumer(mqClient *rabbitmq.Client, svc *service.PaymentService, 
 }
 
 func (c *PaymentConsumer) Start() error {
-	queueName := "payment_service_queue"
-
-	// Existing: Handle Booked
+	// Build unique queue names per event type to prevent competing consumers
+	// from "stealing" messages with different schemas.
+	
+	// Handle Booked
 	err := c.mqClient.ConsumeQueue(
-		queueName,
+		"payment_service_booked_queue",
 		rabbitmq.ExchangeAppointmentEvents,
 		c.handleAppointmentBooked,
 		rabbitmq.RoutingKeyAppointmentBooked,
@@ -33,9 +35,9 @@ func (c *PaymentConsumer) Start() error {
 		return fmt.Errorf("messaging.Start: booked: %w", err)
 	}
 
-	// New: Handle Cancelled
+	// Handle Cancelled
 	err = c.mqClient.ConsumeQueue(
-		queueName,
+		"payment_service_cancelled_queue",
 		rabbitmq.ExchangeAppointmentEvents,
 		c.handleAppointmentCancelled,
 		rabbitmq.RoutingKeyAppointmentCancelled,
@@ -44,18 +46,18 @@ func (c *PaymentConsumer) Start() error {
 		return fmt.Errorf("messaging.Start: cancelled: %w", err)
 	}
 
-	// New: Handle Patient Deleted
-	errP := c.mqClient.ConsumeQueue(
-		queueName,
+	// Handle Patient Deleted
+	err = c.mqClient.ConsumeQueue(
+		"payment_service_patient_deleted_queue",
 		rabbitmq.ExchangeUserEvents,
 		c.handlePatientDeleted,
 		rabbitmq.RoutingKeyPatientDeleted,
 	)
-	if errP != nil {
-		return fmt.Errorf("messaging.Start: patient.deleted: %w", errP)
+	if err != nil {
+		return fmt.Errorf("messaging.Start: patient.deleted: %w", err)
 	}
 
-	c.log.Info("Payment service consumer started")
+	c.log.Info("Payment service consumers started with dedicated queues")
 	return nil
 }
 
@@ -89,10 +91,16 @@ func (c *PaymentConsumer) handleAppointmentCancelled(body []byte) error {
 		return fmt.Errorf("messaging.handleAppointmentCancelled unmarshal: %w", err)
 	}
 
-	c.log.Info("Processing appointment.cancelled event", "appointment_id", event.AppointmentID)
+	c.log.Info("Processing appointment.cancelled event", "appointment_id", event.AppointmentID, "cancelled_by", event.CancelledBy)
 
-	if err := c.svc.CancelPaymentByAppointmentID(event.AppointmentID); err != nil {
-		return fmt.Errorf("messaging.handleAppointmentCancelled service: %w", err)
+	if strings.ToLower(event.CancelledBy) == "doctor" {
+		if err := c.svc.RefundPayment(event.AppointmentID); err != nil {
+			return fmt.Errorf("messaging.handleAppointmentCancelled refund: %w", err)
+		}
+	} else {
+		if err := c.svc.CancelPaymentByAppointmentID(event.AppointmentID); err != nil {
+			return fmt.Errorf("messaging.handleAppointmentCancelled service: %w", err)
+		}
 	}
 
 	return nil

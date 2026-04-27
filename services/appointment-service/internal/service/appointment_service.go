@@ -319,6 +319,9 @@ func (s *AppointmentService) CancelAppointment(id, callerID, role string) error 
 	event := rabbitmq.AppointmentCancelledEvent{
 		AppointmentID: appt.ID,
 		PatientID:     appt.PatientID,
+		DoctorID:      appt.DoctorID,
+		CancelledBy:   role,
+		Timestamp:     time.Now().UTC().Format(time.RFC3339),
 	}
 	if err := s.mq.PublishAppointmentCancelled(event); err != nil {
 		s.log.Error("Failed to publish appointment.cancelled event", "error", err)
@@ -490,6 +493,10 @@ func (s *AppointmentService) HandlePaymentCompleted(appointmentID string) error 
 
 	s.log.Info("Appointment marked as paid", "appointment_id", appointmentID)
 	return nil
+}
+
+func (s *AppointmentService) HandlePaymentRefunded(appointmentID string) error {
+	return s.repo.UpdatePaymentStatus(appointmentID, model.PaymentRefunded)
 }
 
 func (s *AppointmentService) sanitizeAppointmentForResponse(appt *model.Appointment) *model.Appointment {

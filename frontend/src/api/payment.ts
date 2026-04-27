@@ -31,7 +31,7 @@ export interface Payment {
     patient_id: string;
     amount: number;
     currency: string;
-    status: 'pending' | 'completed' | 'failed';
+    status: 'pending' | 'completed' | 'failed' | 'refunded' | 'partially_refunded';
     provider: string;
     provider_id: string;
     created_at: string;

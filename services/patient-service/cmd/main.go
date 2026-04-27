@@ -142,6 +142,10 @@ func runMigrations(db *sql.DB, log *logger.Logger) error {
 	ALTER TABLE patients ADD COLUMN IF NOT EXISTS nic         VARCHAR(20);
 
 	CREATE INDEX IF NOT EXISTS idx_patients_user_id ON patients(user_id);
+	CREATE INDEX IF NOT EXISTS idx_patients_email ON patients(email);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_nic_unique
+		ON patients ((NULLIF(BTRIM(nic), '')))
+		WHERE NULLIF(BTRIM(nic), '') IS NOT NULL;
 	`
 	_, err := db.Exec(migrationSQL)
 	if err != nil {

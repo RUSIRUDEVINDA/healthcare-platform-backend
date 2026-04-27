@@ -23,3 +23,14 @@ func (p *RabbitMQEventPublisher) PublishPaymentCompleted(event service.PaymentCo
 
 	return p.mqClient.PublishPaymentCompleted(msg)
 }
+
+func (p *RabbitMQEventPublisher) PublishPaymentRefunded(event service.PaymentRefundedEvent) error {
+	msg := rabbitmq.PaymentRefundedEvent{
+		PaymentID:     event.PaymentID,
+		AppointmentID: event.AppointmentID,
+		Amount:        event.Amount,
+		Timestamp:     event.Timestamp,
+	}
+
+	return p.mqClient.PublishPaymentRefunded(msg)
+}

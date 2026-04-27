@@ -56,6 +56,8 @@ func main() {
 	paymentProvider := provider.NewPayHereProvider(
 		cfg.PayHereMerchantID,
 		cfg.PayHereMerchantSecret,
+		cfg.PayHereAppID,
+		cfg.PayHereAppSecret,
 		cfg.PayHereEnv,
 		cfg.PayHereReturnURL,
 		cfg.PayHereCancelURL,

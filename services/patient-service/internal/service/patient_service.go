@@ -3,9 +3,11 @@ package service
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"healthcare-platform/pkg/logger"
 	"healthcare-platform/pkg/rabbitmq"
 	"healthcare-platform/services/patient-service/internal/model"
@@ -13,6 +15,7 @@ import (
 )
 
 var ErrPatientNotFound = errors.New("patient not found")
+var ErrPatientNICAlreadyExists = errors.New("NIC already exists")
 
 type PatientService struct {
 	repo *repository.PatientRepository
@@ -89,7 +92,12 @@ func (s *PatientService) UpdateProfile(userID string, req *model.UpdatePatientRe
 		return ErrPatientNotFound
 	}
 
+	normalizeOptionalString(&req.NIC)
+
 	if err := s.repo.Update(userID, req); err != nil {
+		if isUniqueViolation(err) {
+			return ErrPatientNICAlreadyExists
+		}
 		return fmt.Errorf("service.UpdateProfile: %w", err)
 	}
 	s.log.Info("Patient profile updated", "user_id", userID)
@@ -105,7 +113,12 @@ func (s *PatientService) PatchProfile(userID string, req *model.PatchPatientRequ
 		return ErrPatientNotFound
 	}
 
+	normalizeOptionalString(&req.NIC)
+
 	if err := s.repo.UpdatePartial(userID, req); err != nil {
+		if isUniqueViolation(err) {
+			return ErrPatientNICAlreadyExists
+		}
 		return fmt.Errorf("service.PatchProfile: %w", err)
 	}
 	s.log.Info("Patient profile patched", "user_id", userID)
@@ -142,4 +155,23 @@ func (s *PatientService) DeleteProfile(userID string) error {
 	}
 
 	return nil
+}
+
+func normalizeOptionalString(value **string) {
+	if value == nil || *value == nil {
+		return
+	}
+
+	trimmed := strings.TrimSpace(**value)
+	if trimmed == "" {
+		*value = nil
+		return
+	}
+
+	**value = trimmed
+}
+
+func isUniqueViolation(err error) bool {
+	var pqErr *pq.Error
+	return errors.As(err, &pqErr) && pqErr.Code == "23505"
 }

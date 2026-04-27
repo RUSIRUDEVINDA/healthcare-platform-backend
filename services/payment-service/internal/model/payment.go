@@ -7,10 +7,12 @@ import (
 type PaymentStatus string
 
 const (
-	StatusPending   PaymentStatus = "pending"
-	StatusCompleted PaymentStatus = "completed"
-	StatusFailed    PaymentStatus = "failed"
-	StatusCancelled PaymentStatus = "cancelled"
+	StatusPending           PaymentStatus = "pending"
+	StatusCompleted         PaymentStatus = "completed"
+	StatusFailed            PaymentStatus = "failed"
+	StatusCancelled         PaymentStatus = "cancelled"
+	StatusRefunded          PaymentStatus = "refunded"
+	StatusPartiallyRefunded PaymentStatus = "partially_refunded"
 )
 
 type Payment struct {

@@ -210,6 +210,11 @@ func (r *AppointmentRepository) UpdateStatus(id string, status model.Appointment
 	return err
 }
 
+func (r *AppointmentRepository) UpdatePaymentStatus(id string, status model.PaymentStatus) error {
+	_, err := r.db.Exec(`UPDATE appointments SET payment_status = $1, updated_at = NOW() WHERE id = $2`, status, id)
+	return err
+}
+
 func (r *AppointmentRepository) MarkPaymentCompleted(id string) error {
 	_, err := r.db.Exec(`
 		UPDATE appointments

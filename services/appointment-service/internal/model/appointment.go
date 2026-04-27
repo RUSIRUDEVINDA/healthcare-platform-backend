@@ -18,11 +18,13 @@ const (
 )
 
 const (
-	PaymentPending PaymentStatus = "pending"
-	PaymentPaid    PaymentStatus = "paid"
-	PaymentOverdue PaymentStatus = "overdue"
-	PaymentFailed  PaymentStatus = "failed"
-	PaymentExpired PaymentStatus = "expired"
+	PaymentPending           PaymentStatus = "pending"
+	PaymentPaid              PaymentStatus = "paid"
+	PaymentOverdue           PaymentStatus = "overdue"
+	PaymentFailed            PaymentStatus = "failed"
+	PaymentExpired           PaymentStatus = "expired"
+	PaymentRefunded          PaymentStatus = "refunded"
+	PaymentPartiallyRefunded PaymentStatus = "partially_refunded"
 )
 
 const (
@@ -43,11 +45,13 @@ var allowedAppointmentStatuses = map[AppointmentStatus]struct{}{
 }
 
 var allowedPaymentStatuses = map[PaymentStatus]struct{}{
-	PaymentPending: {},
-	PaymentPaid:    {},
-	PaymentOverdue: {},
-	PaymentFailed:  {},
-	PaymentExpired: {},
+	PaymentPending:           {},
+	PaymentPaid:              {},
+	PaymentOverdue:           {},
+	PaymentFailed:            {},
+	PaymentExpired:           {},
+	PaymentRefunded:          {},
+	PaymentPartiallyRefunded: {},
 }
 
 func IsValidAppointmentStatus(status AppointmentStatus) bool {
