@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link} from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Mail, Lock, LogIn, AlertCircle, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import apiClient from '../api/client';
@@ -17,11 +17,11 @@ export default function Login() {
 
     try {
       const response = await apiClient.post('/auth/login', { email, password });
-      
+
       // The backend returns { "success": true, "data": { "access_token": "..." } }
       const token = response.data?.data?.access_token;
       const user = response.data?.data?.user;
-      
+
       if (token) {
         localStorage.setItem('access_token', token);
         if (user) {
@@ -54,11 +54,10 @@ export default function Login() {
       </div>
 
       {error && (
-        <div className={`mb-6 p-5 rounded-2xl border transition-all animate-in fade-in slide-in-from-top-2 ${
-          error.includes('deactivated') 
-            ? 'bg-amber-50 border-amber-100' 
-            : 'bg-red-50 border-red-100 text-red-700'
-        }`}>
+        <div className={`mb-6 p-5 rounded-2xl border transition-all animate-in fade-in slide-in-from-top-2 ${error.includes('deactivated')
+          ? 'bg-amber-50 border-amber-100'
+          : 'bg-red-50 border-red-100 text-red-700'
+          }`}>
           {error.includes('deactivated') ? (
             <div className="flex gap-4">
               <div className="shrink-0 w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600">
@@ -69,8 +68,8 @@ export default function Login() {
                 <span className="text-amber-700 text-sm mt-1 font-medium leading-relaxed">
                   Your profile has been deactivated. If you believe this is an error or wish to return, please submit a request.
                 </span>
-                <Link 
-                  to="/auth/reactivate" 
+                <Link
+                  to="/auth/reactivate"
                   className="mt-3 inline-flex items-center text-amber-900 font-bold text-sm bg-white px-4 py-2 rounded-lg border border-amber-200 shadow-sm hover:bg-amber-100 transition-all w-fit"
                 >
                   Request account reactivation
@@ -120,9 +119,7 @@ export default function Login() {
             />
           </div>
           <div className="flex items-center justify-end mt-2">
-            <a href="#" className="font-medium text-sm text-brand hover:text-brand-dark transition-colors">
-              Forgot your password?
-            </a>
+
           </div>
         </div>
 
