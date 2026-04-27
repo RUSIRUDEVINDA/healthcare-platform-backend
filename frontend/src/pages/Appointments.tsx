@@ -13,7 +13,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import type { Slot, Appointment, BookAppointmentRequest } from '../api/appointments';
 import { appointmentApi } from '../api/appointments';
 import { doctorApi as doctorsListApi, type Doctor } from '../api/doctors';
@@ -32,7 +32,7 @@ const HOSPITAL_FEE = 500;
 const PENDING_BOOKING_PREFIX = 'pending-booking:';
 
 type AppointmentStatusFilter = 'all' | 'pending' | 'confirmed' | 'cancelled' | 'completed';
-type PaymentStatusFilter = 'all' | 'pending' | 'paid' | 'overdue' | 'failed' | 'expired';
+type PaymentStatusFilter = 'all' | 'pending' | 'paid' | 'overdue' | 'failed' | 'expired' | 'refunded' | 'partially_refunded';
 type ConsultationModeFilter = 'all' | 'jitsi' | 'physical';
 
 function makeDraftId() {
@@ -60,6 +60,7 @@ function initialAppointmentsTab(): TabKey {
 
 export default function Appointments() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const isDoctor = readUserRole() === 'doctor';
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -68,7 +69,13 @@ export default function Appointments() {
     const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeTab, setActiveTab] = useState<TabKey>(initialAppointmentsTab);
+    const [activeTab, setActiveTab] = useState<TabKey>(() => {
+        const tab = searchParams.get('tab');
+        if (tab === 'appointments' || tab === 'doctors' || tab === 'slots') {
+            return tab as TabKey;
+        }
+        return initialAppointmentsTab();
+    });
     const [isRedirecting, setIsRedirecting] = useState(false);
     const [mySlots, setMySlots] = useState<Slot[]>([]);
     const [doctorProfile, setDoctorProfile] = useState<DoctorProfile | null>(null);
@@ -942,6 +949,8 @@ export default function Appointments() {
                                         <option value="overdue">Overdue</option>
                                         <option value="failed">Failed</option>
                                         <option value="expired">Expired</option>
+                                        <option value="refunded">Refunded</option>
+                                        <option value="partially_refunded">Partially Refunded</option>
                                     </select>
                                 </label>
                                 <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
@@ -1093,7 +1102,10 @@ export default function Appointments() {
                                                         <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tight block">Payment</span>
                                                         <span 
                                                             className={`text-xs font-bold mt-0.5 ${
-                                                                appt.payment_status === 'paid' ? 'text-green-600' : 'text-amber-600'
+                                                                appt.payment_status === 'paid' ? 'text-green-600' : 
+                                                                appt.payment_status === 'refunded' ? 'text-blue-600' : 
+                                                                appt.payment_status === 'partially_refunded' ? 'text-indigo-600' : 
+                                                                'text-amber-600'
                                                             }`}
                                                         >
                                                             {appt.payment_status || 'Pending'}

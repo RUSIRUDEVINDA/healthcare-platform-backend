@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, CheckCircle, Clock, AlertCircle, CreditCard } from 'lucide-react';
+import { User, CheckCircle, Clock, AlertCircle, CreditCard, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { patientApi, type PatientProfile } from '../api/patient';
 import { paymentApi, type Payment } from '../api/payment';
@@ -65,6 +65,10 @@ export default function Payments() {
       case 'failed':
       case 'expired':
         return 'bg-red-100 text-red-700 border-red-200';
+      case 'refunded':
+        return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'partially_refunded':
+        return 'bg-indigo-100 text-indigo-700 border-indigo-200';
       default:
         return 'bg-gray-100 text-gray-700 border-gray-200';
     }
@@ -79,6 +83,9 @@ export default function Payments() {
         return <CheckCircle className="h-4 w-4 mr-1.5" />;
       case 'pending':
         return <Clock className="h-4 w-4 mr-1.5" />;
+      case 'refunded':
+      case 'partially_refunded':
+        return <RefreshCw className="h-4 w-4 mr-1.5" />;
       default:
         return <AlertCircle className="h-4 w-4 mr-1.5" />;
     }
@@ -159,6 +166,10 @@ export default function Payments() {
                               <span className={`text-xs font-bold uppercase ${
                                 (appt?.payment_status || payment.status) === 'paid' || (appt?.payment_status || payment.status) === 'completed' 
                                   ? 'text-green-600' 
+                                  : (appt?.payment_status || payment.status) === 'refunded' 
+                                  ? 'text-blue-600'
+                                  : (appt?.payment_status || payment.status) === 'partially_refunded'
+                                  ? 'text-indigo-600'
                                   : 'text-amber-600'
                               }`}>
                                 {appt?.payment_status || (payment.status === 'completed' ? 'paid' : payment.status)}

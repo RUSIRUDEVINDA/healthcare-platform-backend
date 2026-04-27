@@ -260,6 +260,9 @@ export default function Profile() {
       let message = 'Failed to update profile';
       if (axios.isAxiosError(err)) {
         message = err.response?.data?.error || message;
+        if (message.toLowerCase().includes('nic already exists')) {
+          setFormErrors(prev => ({ ...prev, nic: message }));
+        }
       }
       setFormAlert(message);
     } finally {
