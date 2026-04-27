@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     Search,
     Calendar,
@@ -98,11 +98,7 @@ export default function Appointments() {
     const [modeFilter, setModeFilter] = useState<ConsultationModeFilter>('all');
     const [payNowLoadingId, setPayNowLoadingId] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
             let appts: Appointment[] = [];
@@ -166,7 +162,11 @@ export default function Appointments() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [isDoctor]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     const handleBook = async (data: BookAppointmentRequest) => {
         try {
@@ -232,15 +232,15 @@ export default function Appointments() {
         setIsModalOpen(true);
     };
 
-    const getDoctorName = (doctorId: string) => {
+    const getDoctorName = useCallback((doctorId: string) => {
         const doc = doctors.find((d) => String(d.id) === doctorId);
         return doc?.name ?? 'Doctor';
-    };
+    }, [doctors]);
 
-    const getDoctorSpecialty = (doctorId: string) => {
+    const getDoctorSpecialty = useCallback((doctorId: string) => {
         const doc = doctors.find((d) => String(d.id) === doctorId);
         return doc?.specialization ?? '';
-    };
+    }, [doctors]);
 
     const getPatientDisplayName = (appt: Appointment) => {
         const parts = [appt.patient_first_name, appt.patient_last_name].filter(Boolean);
@@ -368,7 +368,7 @@ export default function Appointments() {
     };
 
 
-    const hasAppointmentEnded = (appt: Appointment) => {
+    const hasAppointmentEnded = useCallback((appt: Appointment) => {
         const scheduledAtRaw = appt.scheduled_at || appt.scheduled_time;
         if (!scheduledAtRaw) return false;
 
@@ -378,15 +378,15 @@ export default function Appointments() {
         const durationMinutes = appt.duration_minutes ?? 30;
         const endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
         return endTime.getTime() <= Date.now();
-    };
+    }, []);
 
-    const getAppointmentDisplayStatus = (appt: Appointment) => {
+    const getAppointmentDisplayStatus = useCallback((appt: Appointment) => {
         const normalizedStatus = (appt.status || '').toLowerCase();
         if (normalizedStatus === 'cancelled' || normalizedStatus === 'completed') {
             return normalizedStatus;
         }
         return hasAppointmentEnded(appt) ? 'unavailable' : normalizedStatus || 'pending';
-    };
+    }, [hasAppointmentEnded]);
 
     const filteredDoctors = doctors.filter(
         (d) =>
@@ -445,7 +445,7 @@ export default function Appointments() {
                 consultationMode.includes(query)
             );
         });
-    }, [sortedAppointments, searchQuery, statusFilter, paymentFilter, modeFilter, isDoctor]);
+    }, [sortedAppointments, searchQuery, statusFilter, paymentFilter, modeFilter, isDoctor, getAppointmentDisplayStatus, getDoctorName, getDoctorSpecialty]);
 
     const filteredMySlots = mySlots.filter((slot) => {
         const q = searchQuery.toLowerCase();
