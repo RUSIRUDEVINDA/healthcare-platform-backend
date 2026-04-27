@@ -19,6 +19,8 @@ type Config struct {
 	PayHereReturnURL      string
 	PayHereCancelURL      string
 	PayHereNotifyURL      string
+	PayHereAppID          string
+	PayHereAppSecret      string
 }
 
 func Load() (*Config, error) {
@@ -36,6 +38,8 @@ func Load() (*Config, error) {
 		PayHereReturnURL:      getEnv("PAYHERE_RETURN_URL", "http://localhost:3000/payment/success"),
 		PayHereCancelURL:      getEnv("PAYHERE_CANCEL_URL", "http://localhost:3000/payment/cancel"),
 		PayHereNotifyURL:      getEnv("PAYHERE_NOTIFY_URL", "http://localhost:8005/api/v1/payments/webhook/payhere"),
+		PayHereAppID:          getEnv("PAYHERE_APP_ID", ""),
+		PayHereAppSecret:      getEnv("PAYHERE_APP_SECRET", ""),
 	}
 
 	if cfg.DatabaseURL == "" {

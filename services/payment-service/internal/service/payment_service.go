@@ -32,10 +32,12 @@ type PaymentProvider interface {
 	BuildCheckout(p *model.Payment, req *model.CheckoutRequest) (*model.CheckoutResponse, error)
 	VerifyNotification(n *model.PayHereNotification) (bool, error)
 	MapStatus(statusCode int) model.PaymentStatus
+	Refund(paymentID string, amount float64) error
 }
 
 type EventPublisher interface {
 	PublishPaymentCompleted(event PaymentCompletedEvent) error
+	PublishPaymentRefunded(event PaymentRefundedEvent) error
 }
 
 type PaymentCompletedEvent struct {
@@ -44,6 +46,16 @@ type PaymentCompletedEvent struct {
 	ProviderID    string
 	Timestamp     string
 }
+
+type PaymentRefundedEvent struct {
+	PaymentID     string
+	AppointmentID string
+	Amount        float64
+	Timestamp     string
+}
+
+// ... (rest of the file remains, I will add RefundPayment at bottom)
+
 
 type PaymentAlreadyExistsError struct {
 	AppointmentID string
@@ -273,6 +285,49 @@ func (s *PaymentService) CancelPaymentByAppointmentID(appointmentID string) erro
 	return nil
 }
 
+func (s *PaymentService) RefundPayment(appointmentID string) error {
+	p, err := s.repo.FindByAppointmentID(appointmentID)
+	if err != nil {
+		return fmt.Errorf("service.RefundPayment: find payment: %w", err)
+	}
+	if p == nil {
+		s.log.Info("No payment found for refund", "appointment_id", appointmentID)
+		return nil
+	}
+
+	if p.Status != model.StatusCompleted {
+		s.log.Warn("Attempted to refund a non-completed payment", "payment_id", p.ID, "status", p.Status)
+		return nil
+	}
+
+	if err := s.provider.Refund(p.ProviderID, p.Amount); err != nil {
+		return fmt.Errorf("service.RefundPayment provider: %w", err)
+	}
+
+	if err := s.repo.UpdateStatus(p.ID, model.StatusRefunded, p.ProviderID); err != nil {
+		return fmt.Errorf("service.RefundPayment update status: %w", err)
+	}
+
+	s.publishPaymentRefunded(p.ID, p.AppointmentID, p.Amount)
+	s.log.Info("Payment refunded", "payment_id", p.ID, "appointment_id", p.AppointmentID)
+	return nil
+}
+
+func (s *PaymentService) publishPaymentRefunded(paymentID, appointmentID string, amount float64) {
+	event := PaymentRefundedEvent{
+		PaymentID:     paymentID,
+		AppointmentID: appointmentID,
+		Amount:        amount,
+		Timestamp:     time.Now().UTC().Format(time.RFC3339),
+	}
+
+	if err := s.publisher.PublishPaymentRefunded(event); err != nil {
+		s.log.Error("Failed to publish payment.refunded event", "payment_id", paymentID, "error", err)
+	} else {
+		s.log.Info("Published payment.refunded event", "payment_id", paymentID)
+	}
+}
+
 func (s *PaymentService) DeletePatientPayments(patientID string) error {
 	if err := s.repo.DeleteByPatientID(patientID); err != nil {
 		return fmt.Errorf("service.DeletePatientPayments: %w", err)
@@ -280,3 +335,4 @@ func (s *PaymentService) DeletePatientPayments(patientID string) error {
 	s.log.Info("Patient payments deleted", "patient_id", patientID)
 	return nil
 }
+
