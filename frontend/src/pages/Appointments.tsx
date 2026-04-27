@@ -1,17 +1,17 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Search,
-  Calendar,
-  Clock,
-  Video,
-  MapPin,
-  Plus,
-  User,
-  ChevronRight,
-  Building2,
-  Briefcase,
-  Pencil,
-  Trash2,
+    Search,
+    Calendar,
+    Clock,
+    Video,
+    MapPin,
+    Plus,
+    User,
+    ChevronRight,
+    Building2,
+    Briefcase,
+    Pencil,
+    Trash2,
 } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import type { Slot, Appointment, BookAppointmentRequest } from '../api/appointments';
@@ -32,7 +32,7 @@ const HOSPITAL_FEE = 500;
 const PENDING_BOOKING_PREFIX = 'pending-booking:';
 
 type AppointmentStatusFilter = 'all' | 'pending' | 'confirmed' | 'cancelled' | 'completed';
-type PaymentStatusFilter = 'all' | 'pending' | 'paid' | 'overdue' | 'failed' | 'expired' | 'refunded' | 'partially_refunded';
+type PaymentStatusFilter = 'all' | 'pending' | 'paid' | 'overdue' | 'failed' | 'expired';
 type ConsultationModeFilter = 'all' | 'jitsi' | 'physical';
 
 function makeDraftId() {
@@ -85,7 +85,7 @@ export default function Appointments() {
     const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
     const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
     const [isCancelling, setIsCancelling] = useState(false);
-    
+
     // Slot deletion dialog state
     const [deleteSlotDialogOpen, setDeleteSlotDialogOpen] = useState(false);
     const [slotToDelete, setSlotToDelete] = useState<Slot | null>(null);
@@ -98,11 +98,7 @@ export default function Appointments() {
     const [modeFilter, setModeFilter] = useState<ConsultationModeFilter>('all');
     const [payNowLoadingId, setPayNowLoadingId] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
             let appts: Appointment[] = [];
@@ -166,7 +162,11 @@ export default function Appointments() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [isDoctor]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     const handleBook = async (data: BookAppointmentRequest) => {
         try {
@@ -232,15 +232,15 @@ export default function Appointments() {
         setIsModalOpen(true);
     };
 
-    const getDoctorName = (doctorId: string) => {
+    const getDoctorName = useCallback((doctorId: string) => {
         const doc = doctors.find((d) => String(d.id) === doctorId);
         return doc?.name ?? 'Doctor';
-    };
+    }, [doctors]);
 
-    const getDoctorSpecialty = (doctorId: string) => {
+    const getDoctorSpecialty = useCallback((doctorId: string) => {
         const doc = doctors.find((d) => String(d.id) === doctorId);
         return doc?.specialization ?? '';
-    };
+    }, [doctors]);
 
     const getPatientDisplayName = (appt: Appointment) => {
         const parts = [appt.patient_first_name, appt.patient_last_name].filter(Boolean);
@@ -333,7 +333,7 @@ export default function Appointments() {
             if (!Number.isFinite(amount) || amount <= 0) {
                 throw new Error('This appointment does not have a valid consultation fee yet. Please refresh and try again.');
             }
-            
+
             // Backend Checkout logic can create a payment if appointment_id is provided but payment_id is not.
             const checkout = await paymentApi.checkout({
                 payment_id: payment?.id,
@@ -368,7 +368,7 @@ export default function Appointments() {
     };
 
 
-    const hasAppointmentEnded = (appt: Appointment) => {
+    const hasAppointmentEnded = useCallback((appt: Appointment) => {
         const scheduledAtRaw = appt.scheduled_at || appt.scheduled_time;
         if (!scheduledAtRaw) return false;
 
@@ -378,15 +378,15 @@ export default function Appointments() {
         const durationMinutes = appt.duration_minutes ?? 30;
         const endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
         return endTime.getTime() <= Date.now();
-    };
+    }, []);
 
-    const getAppointmentDisplayStatus = (appt: Appointment) => {
+    const getAppointmentDisplayStatus = useCallback((appt: Appointment) => {
         const normalizedStatus = (appt.status || '').toLowerCase();
         if (normalizedStatus === 'cancelled' || normalizedStatus === 'completed') {
             return normalizedStatus;
         }
         return hasAppointmentEnded(appt) ? 'unavailable' : normalizedStatus || 'pending';
-    };
+    }, [hasAppointmentEnded]);
 
     const filteredDoctors = doctors.filter(
         (d) =>
@@ -445,7 +445,7 @@ export default function Appointments() {
                 consultationMode.includes(query)
             );
         });
-    }, [sortedAppointments, searchQuery, statusFilter, paymentFilter, modeFilter, isDoctor]);
+    }, [sortedAppointments, searchQuery, statusFilter, paymentFilter, modeFilter, isDoctor, getAppointmentDisplayStatus, getDoctorName, getDoctorSpecialty]);
 
     const filteredMySlots = mySlots.filter((slot) => {
         const q = searchQuery.toLowerCase();
@@ -507,8 +507,7 @@ export default function Appointments() {
             .toUpperCase() || '?';
 
     const tabBtn = (on: boolean) =>
-        `rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-            on ? 'bg-brand/10 text-brand' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+        `rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${on ? 'bg-brand/10 text-brand' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
         }`;
 
     return (
@@ -520,10 +519,10 @@ export default function Appointments() {
                             {activeTab === 'doctors'
                                 ? 'Book Appointment'
                                 : activeTab === 'slots'
-                                  ? 'Availability'
-                                  : isDoctor
-                                    ? 'Consultations'
-                                    : 'My Appointments'}
+                                    ? 'Availability'
+                                    : isDoctor
+                                        ? 'Consultations'
+                                        : 'My Appointments'}
                         </h2>
                         <div
                             className="flex flex-wrap gap-1.5"
@@ -568,13 +567,12 @@ export default function Appointments() {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <input
                                 type="text"
-                                placeholder={`Search ${
-                                    activeTab === 'doctors'
+                                placeholder={`Search ${activeTab === 'doctors'
                                         ? 'doctors...'
                                         : activeTab === 'slots'
-                                          ? 'slots...'
-                                          : 'appointments...'
-                                }`}
+                                            ? 'slots...'
+                                            : 'appointments...'
+                                    }`}
                                 className="w-56 pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand/40 transition-all"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -594,18 +592,18 @@ export default function Appointments() {
                             </button>
                         )}
                         {!isDoctor && (
-                        <button
-                            onClick={() => {
-                                if (activeTab !== 'doctors') setActiveTab('doctors');
-                                if (doctors.length > 0) {
-                                    setSelectedDoctor(doctors[0]);
-                                    setIsModalOpen(true);
-                                }
-                            }}
-                            className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-dark transition-colors shadow-sm"
-                        >
-                            <Plus className="h-4 w-4" /> Book New
-                        </button>
+                            <button
+                                onClick={() => {
+                                    if (activeTab !== 'doctors') setActiveTab('doctors');
+                                    if (doctors.length > 0) {
+                                        setSelectedDoctor(doctors[0]);
+                                        setIsModalOpen(true);
+                                    }
+                                }}
+                                className="flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-dark transition-colors shadow-sm"
+                            >
+                                <Plus className="h-4 w-4" /> Book New
+                            </button>
                         )}
                     </div>
                 </header>
@@ -825,13 +823,12 @@ export default function Appointments() {
                                                             </td>
                                                             <td className="px-5 py-3.5">
                                                                 <span
-                                                                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                                                        booked
+                                                                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${booked
                                                                             ? 'bg-amber-50 text-amber-700 border border-amber-100'
                                                                             : unavailable
                                                                                 ? 'bg-slate-100 text-slate-700 border border-slate-200'
                                                                                 : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                                                                    }`}
+                                                                        }`}
                                                                 >
                                                                     {booked ? 'Booked' : unavailable ? 'Unavailable' : 'Available'}
                                                                 </span>
@@ -949,8 +946,6 @@ export default function Appointments() {
                                         <option value="overdue">Overdue</option>
                                         <option value="failed">Failed</option>
                                         <option value="expired">Expired</option>
-                                        <option value="refunded">Refunded</option>
-                                        <option value="partially_refunded">Partially Refunded</option>
                                     </select>
                                 </label>
                                 <label className="flex flex-col gap-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
@@ -987,12 +982,12 @@ export default function Appointments() {
                                         {isDoctor ? 'Scheduled consultations will appear here.' : 'Book your first appointment with a doctor'}
                                     </p>
                                     {!isDoctor && (
-                                    <button
-                                        onClick={() => setActiveTab('doctors')}
-                                        className="mt-5 px-5 py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-dark transition-colors shadow-sm"
-                                    >
-                                        Browse Doctors
-                                    </button>
+                                        <button
+                                            onClick={() => setActiveTab('doctors')}
+                                            className="mt-5 px-5 py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-dark transition-colors shadow-sm"
+                                        >
+                                            Browse Doctors
+                                        </button>
                                     )}
                                 </div>
                             ) : filteredAppointments.length === 0 ? (
@@ -1044,11 +1039,11 @@ export default function Appointments() {
                                                     {isDoctor
                                                         ? initialsFromName(getPatientDisplayName(appt))
                                                         : getDoctorName(appt.doctor_id)
-                                                              .split(' ')
-                                                              .map((n: string) => n[0])
-                                                              .join('')
-                                                              .slice(0, 2)
-                                                              .toUpperCase()}
+                                                            .split(' ')
+                                                            .map((n: string) => n[0])
+                                                            .join('')
+                                                            .slice(0, 2)
+                                                            .toUpperCase()}
                                                 </div>
 
                                                 <div className="w-56 shrink-0">
@@ -1087,10 +1082,9 @@ export default function Appointments() {
                                                             <><MapPin className="h-3.5 w-3.5 text-blue-500" /> Physical</>
                                                         )}
                                                     </span>
-                                                    <span 
-                                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
-                                                            statusColor[displayStatus] || 'bg-gray-100 text-gray-500'
-                                                        }`}
+                                                    <span
+                                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${statusColor[displayStatus] || 'bg-gray-100 text-gray-500'
+                                                            }`}
                                                     >
                                                         {displayStatus}
                                                     </span>
@@ -1098,28 +1092,24 @@ export default function Appointments() {
 
                                                 {/* Payment & CTA */}
                                                 <div className="w-64 flex items-center justify-end gap-6">
-                                                     <div className="text-right">
+                                                    <div className="text-right">
                                                         <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tight block">Payment</span>
-                                                        <span 
-                                                            className={`text-xs font-bold mt-0.5 ${
-                                                                appt.payment_status === 'paid' ? 'text-green-600' : 
-                                                                appt.payment_status === 'refunded' ? 'text-blue-600' : 
-                                                                appt.payment_status === 'partially_refunded' ? 'text-indigo-600' : 
-                                                                'text-amber-600'
-                                                            }`}
+                                                        <span
+                                                            className={`text-xs font-bold mt-0.5 ${appt.payment_status === 'paid' ? 'text-green-600' : 'text-amber-600'
+                                                                }`}
                                                         >
                                                             {appt.payment_status || 'Pending'}
                                                         </span>
                                                     </div>
 
                                                     {canJoinMeeting && (
-                                                        <button 
+                                                        <button
                                                             type="button"
                                                             onClick={() => {
                                                                 const now = new Date();
                                                                 const start = new Date(appt.scheduled_at || appt.scheduled_time || '');
                                                                 const diffMs = start.getTime() - now.getTime();
-                                                                
+
                                                                 if (diffMs > 0) {
                                                                     const diffMins = Math.floor(diffMs / 60000);
                                                                     const h = Math.floor(diffMins / 60);
@@ -1130,20 +1120,19 @@ export default function Appointments() {
                                                                         duration: 5000
                                                                     });
                                                                 }
-                                                                
+
                                                                 navigate(
                                                                     `/telemedicine?join_url=${encodeURIComponent(appt.join_url || '')}&peer=${encodeURIComponent(isDoctor ? getPatientDisplayName(appt) : getDoctorName(appt.doctor_id))}&title=${encodeURIComponent('Telemedicine Session')}`
                                                                 );
                                                             }}
                                                             disabled={hasEnded}
                                                             title={hasEnded ? 'This meeting has ended' : 'Join meeting'}
-                                                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm shadow-black/5 transition-all ${
-                                                                hasEnded
+                                                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm shadow-black/5 transition-all ${hasEnded
                                                                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                                                     : 'bg-gray-900 text-white hover:bg-brand active:scale-95'
-                                                            }`}
+                                                                }`}
                                                         >
-                                                            <Video className="h-3.5 w-3.5" /> 
+                                                            <Video className="h-3.5 w-3.5" />
                                                             {hasEnded ? 'Ended' : 'Join'}
                                                         </button>
                                                     )}
@@ -1153,11 +1142,10 @@ export default function Appointments() {
                                                             type="button"
                                                             onClick={() => handlePayNow(appt)}
                                                             disabled={payNowLoadingId === appt.id}
-                                                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm shadow-black/5 transition-all ${
-                                                                payNowLoadingId === appt.id
+                                                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm shadow-black/5 transition-all ${payNowLoadingId === appt.id
                                                                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                                                     : 'bg-brand text-white hover:bg-brand-dark active:scale-95'
-                                                            }`}
+                                                                }`}
                                                         >
                                                             {payNowLoadingId === appt.id ? 'Opening...' : 'Pay Now'}
                                                         </button>
@@ -1269,7 +1257,7 @@ export default function Appointments() {
             )}
 
             {/* Cancellation Confirmation Dialog */}
-            <Dialog 
+            <Dialog
                 isOpen={cancelDialogOpen}
                 onClose={() => {
                     if (!isCancelling) {

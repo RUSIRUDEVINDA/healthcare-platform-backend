@@ -100,21 +100,21 @@ export const adminApi = {
     await apiClient.post('/admin/sync');
   },
 
-  createUser: async (user: any): Promise<AdminUser> => {
+  createUser: async (user: Partial<AdminUser>): Promise<AdminUser> => {
     const response = await apiClient.post<ApiEnvelope<AdminUser>>('/admin/users', user);
     return unwrap(response.data);
   },
 
-  updateUser: async (id: string, user: any): Promise<void> => {
+  updateUser: async (id: string, user: Partial<AdminUser>): Promise<void> => {
     await apiClient.put(`/admin/users/${id}`, user);
   },
 
-  createAppointment: async (appt: any): Promise<AdminAppointment> => {
+  createAppointment: async (appt: Partial<AdminAppointment>): Promise<AdminAppointment> => {
     const response = await apiClient.post<ApiEnvelope<AdminAppointment>>('/admin/appointments', appt);
     return unwrap(response.data);
   },
 
-  updateAppointment: async (id: string, appt: any): Promise<void> => {
+  updateAppointment: async (id: string, appt: Partial<AdminAppointment>): Promise<void> => {
     await apiClient.put(`/admin/appointments/${id}`, appt);
   },
 

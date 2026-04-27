@@ -7,7 +7,7 @@ import {
   type AdminTransaction,
   type AdminUser,
 } from '../api/admin.ts';
-import { appointmentApi, type Appointment } from '../api/appointments';
+import { appointmentApi, type Appointment } from '../api/appointments.ts';
 import { supportApi, type AdminSupportTicket } from '../api/support.ts';
 
 type TabKey = 'patients' | 'doctors' | 'appointments' | 'payments' | 'tickets';
@@ -98,7 +98,7 @@ export default function AdminConsole() {
   // CRUD States
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
-  
+
   const [apptModalOpen, setApptModalOpen] = useState(false);
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
 
@@ -140,7 +140,7 @@ export default function AdminConsole() {
       return;
     }
     loadData();
-  }, [role]);
+  }, [role, loading, navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
@@ -155,7 +155,7 @@ export default function AdminConsole() {
       await adminApi.deactivateUser(userId);
       toast.success('Account deactivated');
       await loadData();
-    } catch (e) {
+    } catch {
       toast.error('Deactivation failed');
     } finally {
       setActionLoadingId(null);
@@ -168,7 +168,7 @@ export default function AdminConsole() {
       await adminApi.reactivateUser(userId);
       toast.success('Account reactivated');
       await loadData();
-    } catch (e) {
+    } catch {
       toast.error('Reactivation failed');
     } finally {
       setActionLoadingId(null);
@@ -183,7 +183,7 @@ export default function AdminConsole() {
       if (u) await adminApi.reactivateUser(u.id);
       toast.success('Ticket resolved and account restored');
       await loadData();
-    } catch (e) {
+    } catch {
       toast.error('Action failed');
     } finally {
       setActionLoadingId(null);
@@ -196,14 +196,14 @@ export default function AdminConsole() {
       await adminApi.syncData();
       toast.success('Platform sync initiated');
       await loadData();
-    } catch (e) {
+    } catch {
       toast.error('Sync failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSaveUser = async (user: any) => {
+  const handleSaveUser = async (user: Partial<AdminUser>) => {
     setSaving(true);
     try {
       if (editingUser) {
@@ -216,14 +216,14 @@ export default function AdminConsole() {
       setUserModalOpen(false);
       setEditingUser(null);
       await loadData();
-    } catch (e) {
+    } catch {
       toast.error('Failed to save user profile');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleSaveAppt = async (appt: any) => {
+  const handleSaveAppt = async (appt: Partial<Appointment>) => {
     setSaving(true);
     try {
       if (editingAppt) {
@@ -236,7 +236,7 @@ export default function AdminConsole() {
       setApptModalOpen(false);
       setEditingAppt(null);
       await loadData();
-    } catch (e) {
+    } catch {
       toast.error('Failed to finalize booking');
     } finally {
       setSaving(false);
@@ -250,24 +250,24 @@ export default function AdminConsole() {
       await adminApi.cancelAppointment(apptId);
       toast.success('Appointment cancelled');
       await loadData();
-    } catch (e) {
+    } catch {
       toast.error('Cancellation failed');
     } finally {
       setActionLoadingId(null);
     }
   };
 
-  const filteredPatients = useMemo(() => 
-    users.filter(u => u.role === 'patient' && 
-      (u.first_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-       u.email.toLowerCase().includes(searchQuery.toLowerCase()))),
+  const filteredPatients = useMemo(() =>
+    users.filter(u => u.role === 'patient' &&
+      (u.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        u.email.toLowerCase().includes(searchQuery.toLowerCase()))),
     [users, searchQuery]
   );
 
-  const filteredDoctors = useMemo(() => 
-    users.filter(u => u.role === 'doctor' && 
-      (u.first_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-       u.email.toLowerCase().includes(searchQuery.toLowerCase()))),
+  const filteredDoctors = useMemo(() =>
+    users.filter(u => u.role === 'doctor' &&
+      (u.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        u.email.toLowerCase().includes(searchQuery.toLowerCase()))),
     [users, searchQuery]
   );
 
@@ -277,7 +277,7 @@ export default function AdminConsole() {
     <div className="min-h-screen bg-[#eff9f8] font-sans text-slate-900">
       <div className="flex min-h-screen flex-col overflow-hidden">
         <Toaster position="top-right" />
-        
+
         <header className="h-16 bg-white border-b border-teal-100 flex items-center justify-between px-6 lg:px-8 sticky top-0 z-10 transition-all duration-300">
           <div className="flex items-center gap-6">
             <Link to="/dashboard" className="h-10 w-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-brand hover:border-brand/20 transition-all" title="Back to Dashboard">
@@ -322,7 +322,7 @@ export default function AdminConsole() {
               <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
                 <LayoutDashboard size={200} />
               </div>
-              
+
               <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between relative z-10">
                 <div className="max-w-3xl space-y-4">
                   <div className="inline-flex items-center gap-2 rounded-full bg-brand/10 px-3 py-1 text-xs font-medium text-brand border border-brand/10">
@@ -410,17 +410,16 @@ export default function AdminConsole() {
                     <button
                       key={tab}
                       onClick={() => { setActiveTab(tab); setSearchQuery(''); }}
-                      className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
-                        activeTab === tab 
-                          ? 'bg-brand/10 text-brand' 
+                      className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${activeTab === tab
+                          ? 'bg-brand/10 text-brand'
                           : 'text-slate-500 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       {tab.charAt(0).toUpperCase() + tab.slice(1)}
                     </button>
                   ))}
                 </div>
-                
+
                 {error && (
                   <div className="flex items-center gap-2 text-xs font-medium text-red-500 bg-red-50 px-3 py-1.5 rounded-full border border-red-100">
                     <XCircle className="h-3.5 w-3.5" />
@@ -439,30 +438,30 @@ export default function AdminConsole() {
                   <div className="overflow-x-auto">
                     {activeTab === 'patients' && (
                       <div className="p-2">
-                        <UserTable 
-                          users={filteredPatients} 
-                          onDeactivate={handleDeactivateUser} 
-                          onReactivate={handleReactivateUser} 
-                          onEdit={(u: any) => { setEditingUser(u); setUserModalOpen(true); }}
-                          actionId={actionLoadingId} 
+                        <UserTable
+                          users={filteredPatients}
+                          onDeactivate={handleDeactivateUser}
+                          onReactivate={handleReactivateUser}
+                          onEdit={(u: AdminUser) => { setEditingUser(u); setUserModalOpen(true); }}
+                          actionId={actionLoadingId}
                         />
                       </div>
                     )}
                     {activeTab === 'doctors' && (
                       <div className="p-2">
-                        <UserTable 
-                          users={filteredDoctors} 
-                          onDeactivate={handleDeactivateUser} 
-                          onReactivate={handleReactivateUser} 
-                          onEdit={(u: any) => { setEditingUser(u); setUserModalOpen(true); }}
-                          actionId={actionLoadingId} 
+                        <UserTable
+                          users={filteredDoctors}
+                          onDeactivate={handleDeactivateUser}
+                          onReactivate={handleReactivateUser}
+                          onEdit={(u: AdminUser) => { setEditingUser(u); setUserModalOpen(true); }}
+                          actionId={actionLoadingId}
                         />
                       </div>
                     )}
                     {activeTab === 'appointments' && (
-                      <AppointmentList 
-                        appointments={appointments} 
-                        onEdit={(a: any) => { setEditingAppt(a); setApptModalOpen(true); }}
+                      <AppointmentList
+                        appointments={appointments}
+                        onEdit={(a: Appointment) => { setEditingAppt(a); setApptModalOpen(true); }}
                         onCancel={handleCancelAppt}
                       />
                     )}
@@ -480,22 +479,22 @@ export default function AdminConsole() {
                 )}
               </section>
             </div>
-            
+
             {/* Modals */}
             {userModalOpen && (
-              <UserModal 
-                isOpen={userModalOpen} 
-                onClose={() => setUserModalOpen(false)} 
-                onSave={handleSaveUser} 
+              <UserModal
+                isOpen={userModalOpen}
+                onClose={() => setUserModalOpen(false)}
+                onSave={handleSaveUser}
                 editingUser={editingUser}
                 saving={saving}
               />
             )}
             {apptModalOpen && (
-              <ApptModal 
-                isOpen={apptModalOpen} 
-                onClose={() => setApptModalOpen(false)} 
-                onSave={handleSaveAppt} 
+              <ApptModal
+                isOpen={apptModalOpen}
+                onClose={() => setApptModalOpen(false)}
+                onSave={handleSaveAppt}
                 editingAppt={editingAppt}
                 saving={saving}
                 patients={users.filter(u => u.role === 'patient')}
@@ -511,7 +510,15 @@ export default function AdminConsole() {
 
 // ─── Sub-Components ─────────────────────────────────────────────────────────
 
-function UserModal({ isOpen, onClose, onSave, editingUser, saving }: any) {
+interface UserModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (user: Partial<AdminUser>) => Promise<void>;
+  editingUser: AdminUser | null;
+  saving: boolean;
+}
+
+function UserModal({ isOpen, onClose, onSave, editingUser, saving }: UserModalProps) {
   const [form, setForm] = useState({
     first_name: editingUser?.first_name || '',
     last_name: editingUser?.last_name || '',
@@ -532,29 +539,29 @@ function UserModal({ isOpen, onClose, onSave, editingUser, saving }: any) {
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X className="h-5 w-5 text-slate-400" /></button>
         </div>
-        
+
         <form onSubmit={(e) => { e.preventDefault(); onSave(form); }} className="p-8 space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">First Name</label>
-              <input required value={form.first_name} onChange={e=>setForm({...form, first_name: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20" />
+              <input required value={form.first_name} onChange={e => setForm({ ...form, first_name: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20" />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Last Name</label>
-              <input required value={form.last_name} onChange={e=>setForm({...form, last_name: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20" />
+              <input required value={form.last_name} onChange={e => setForm({ ...form, last_name: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20" />
             </div>
           </div>
-          
+
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email Address</label>
-            <input type="email" required value={form.email} onChange={e=>setForm({...form, email: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20" />
+            <input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20" />
           </div>
 
           {!editingUser && (
             <>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Account Role</label>
-                <select value={form.role} onChange={e=>setForm({...form, role: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20">
+                <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20">
                   <option value="patient">Patient</option>
                   <option value="doctor">Doctor</option>
                   <option value="admin">Administrator</option>
@@ -562,16 +569,16 @@ function UserModal({ isOpen, onClose, onSave, editingUser, saving }: any) {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Temporary Password</label>
-                <input type="password" required value={form.password} onChange={e=>setForm({...form, password: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20" />
+                <input type="password" required value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20" />
               </div>
             </>
           )}
 
           <div className="pt-4 flex gap-3">
-             <button type="button" onClick={onClose} className="flex-1 px-6 py-4 border border-slate-100 font-bold text-slate-600 rounded-2xl hover:bg-slate-50 transition-all">Cancel</button>
-             <button disabled={saving} className="flex-1 px-6 py-4 bg-brand text-white font-bold rounded-2xl hover:bg-brand-dark transition-all shadow-lg shadow-brand/20 disabled:opacity-50">
-               {saving ? 'Processing...' : editingUser ? 'Update Profile' : 'Create Account'}
-             </button>
+            <button type="button" onClick={onClose} className="flex-1 px-6 py-4 border border-slate-100 font-bold text-slate-600 rounded-2xl hover:bg-slate-50 transition-all">Cancel</button>
+            <button disabled={saving} className="flex-1 px-6 py-4 bg-brand text-white font-bold rounded-2xl hover:bg-brand-dark transition-all shadow-lg shadow-brand/20 disabled:opacity-50">
+              {saving ? 'Processing...' : editingUser ? 'Update Profile' : 'Create Account'}
+            </button>
           </div>
         </form>
       </div>
@@ -579,7 +586,17 @@ function UserModal({ isOpen, onClose, onSave, editingUser, saving }: any) {
   );
 }
 
-function ApptModal({ isOpen, onClose, onSave, editingAppt, saving, patients, doctors }: any) {
+interface ApptModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (appt: Partial<Appointment>) => Promise<void>;
+  editingAppt: Appointment | null;
+  saving: boolean;
+  patients: AdminUser[];
+  doctors: AdminUser[];
+}
+
+function ApptModal({ isOpen, onClose, onSave, editingAppt, saving, patients, doctors }: ApptModalProps) {
   const [form, setForm] = useState({
     patient_id: editingAppt?.patient_id || '',
     doctor_id: editingAppt?.doctor_id || '',
@@ -600,22 +617,22 @@ function ApptModal({ isOpen, onClose, onSave, editingAppt, saving, patients, doc
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X className="h-5 w-5 text-slate-400" /></button>
         </div>
-        
+
         <form onSubmit={(e) => { e.preventDefault(); onSave(form); }} className="p-8 space-y-6">
           {!editingAppt && (
             <>
-               <div className="space-y-2">
+              <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Patient</label>
-                <select required value={form.patient_id} onChange={e=>setForm({...form, patient_id: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20">
+                <select required value={form.patient_id} onChange={e => setForm({ ...form, patient_id: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20">
                   <option value="">Select Patient</option>
-                  {patients.map((p: any) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} ({p.email})</option>)}
+                  {patients.map((p: AdminUser) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name} ({p.email})</option>)}
                 </select>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Doctor</label>
-                <select required value={form.doctor_id} onChange={e=>setForm({...form, doctor_id: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20">
+                <select required value={form.doctor_id} onChange={e => setForm({ ...form, doctor_id: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20">
                   <option value="">Select Doctor</option>
-                  {doctors.map((d: any) => <option key={d.id} value={d.id}>{d.first_name} {d.last_name} ({d.email})</option>)}
+                  {doctors.map((d: AdminUser) => <option key={d.id} value={d.id}>{d.first_name} {d.last_name} ({d.email})</option>)}
                 </select>
               </div>
             </>
@@ -623,12 +640,12 @@ function ApptModal({ isOpen, onClose, onSave, editingAppt, saving, patients, doc
 
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Date & Time</label>
-            <input type="datetime-local" required value={form.scheduled_at} onChange={e=>setForm({...form, scheduled_at: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20" />
+            <input type="datetime-local" required value={form.scheduled_at} onChange={e => setForm({ ...form, scheduled_at: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20" />
           </div>
 
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Status</label>
-            <select value={form.status} onChange={e=>setForm({...form, status: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20">
+            <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as Appointment['status'] })} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20">
               <option value="pending">Pending</option>
               <option value="confirmed">Confirmed</option>
               <option value="completed">Completed</option>
@@ -638,14 +655,14 @@ function ApptModal({ isOpen, onClose, onSave, editingAppt, saving, patients, doc
 
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Notes/Reason</label>
-            <textarea value={form.reason} onChange={e=>setForm({...form, reason: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 min-h-[80px]" />
+            <textarea value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 min-h-[80px]" />
           </div>
 
           <div className="pt-4 flex gap-3">
-             <button type="button" onClick={onClose} className="flex-1 px-6 py-4 border border-slate-100 font-bold text-slate-600 rounded-2xl hover:bg-slate-50 transition-all">Cancel</button>
-             <button disabled={saving} className="flex-1 px-6 py-4 bg-brand text-white font-bold rounded-2xl hover:bg-brand-dark transition-all shadow-lg shadow-brand/20 disabled:opacity-50">
-               {saving ? 'Processing...' : editingAppt ? 'Update Booking' : 'Finalize Booking'}
-             </button>
+            <button type="button" onClick={onClose} className="flex-1 px-6 py-4 border border-slate-100 font-bold text-slate-600 rounded-2xl hover:bg-slate-50 transition-all">Cancel</button>
+            <button disabled={saving} className="flex-1 px-6 py-4 bg-brand text-white font-bold rounded-2xl hover:bg-brand-dark transition-all shadow-lg shadow-brand/20 disabled:opacity-50">
+              {saving ? 'Processing...' : editingAppt ? 'Update Booking' : 'Finalize Booking'}
+            </button>
           </div>
         </form>
       </div>
@@ -687,7 +704,15 @@ function StatCard({
   );
 }
 
-function UserTable({ users, onDeactivate, onReactivate, onEdit, actionId }: any) {
+interface UserTableProps {
+  users: AdminUser[];
+  onDeactivate: (userId: string) => Promise<void>;
+  onReactivate: (userId: string) => Promise<void>;
+  onEdit: (user: AdminUser) => void;
+  actionId: string | null;
+}
+
+function UserTable({ users, onDeactivate, onReactivate, onEdit, actionId }: UserTableProps) {
   if (users.length === 0) return <Empty message="No matching records found" />;
   return (
     <table className="w-full text-left text-sm border-separate border-spacing-y-2">
@@ -700,7 +725,7 @@ function UserTable({ users, onDeactivate, onReactivate, onEdit, actionId }: any)
         </tr>
       </thead>
       <tbody className="">
-        {users.map((u: any) => (
+        {users.map((u: AdminUser) => (
           <tr key={u.id} className="group hover:bg-slate-50/50 transition-colors bg-white">
             <td className="px-6 py-4 rounded-l-2xl border-y border-l border-slate-50 shadow-sm first:border-none">
               <div className="flex items-center gap-4">
@@ -726,7 +751,7 @@ function UserTable({ users, onDeactivate, onReactivate, onEdit, actionId }: any)
             </td>
             <td className="px-5 py-4 rounded-r-2xl border-y border-r border-slate-50 shadow-sm text-right">
               <div className="flex justify-end gap-2 items-center">
-                <button 
+                <button
                   onClick={() => onEdit(u)}
                   className="p-2 text-slate-400 hover:text-brand hover:bg-brand/5 rounded-lg transition-all"
                   title="Edit Profile"
@@ -735,18 +760,18 @@ function UserTable({ users, onDeactivate, onReactivate, onEdit, actionId }: any)
                 </button>
                 <div className="relative group/actions">
                   {u.is_active ? (
-                    <button 
-                      onClick={()=>onDeactivate(u.id)} 
-                      disabled={actionId===u.id} 
+                    <button
+                      onClick={() => onDeactivate(u.id)}
+                      disabled={actionId === u.id}
                       className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                       title="Deactivate Account"
                     >
                       <XCircle className="h-4.5 w-4.5" />
                     </button>
                   ) : (
-                    <button 
-                      onClick={()=>onReactivate(u.id)} 
-                      disabled={actionId===u.id} 
+                    <button
+                      onClick={() => onReactivate(u.id)}
+                      disabled={actionId === u.id}
                       className="px-4 py-1.5 bg-brand text-white text-[11px] rounded-lg font-bold hover:bg-brand-dark transition-all disabled:opacity-50"
                     >
                       Reactivate
@@ -762,11 +787,17 @@ function UserTable({ users, onDeactivate, onReactivate, onEdit, actionId }: any)
   );
 }
 
-function AppointmentList({ appointments, onEdit, onCancel }: any) {
+interface AppointmentListProps {
+  appointments: Appointment[];
+  onEdit: (appt: Appointment) => void;
+  onCancel: (apptId: string) => Promise<void>;
+}
+
+function AppointmentList({ appointments, onEdit, onCancel }: AppointmentListProps) {
   if (appointments.length === 0) return <Empty message="No appointments scheduled" />;
   return (
     <div className="p-6 space-y-4">
-      {appointments.map((a: any) => (
+      {appointments.map((a: Appointment) => (
         <div key={a.id} className="flex flex-col gap-4 p-5 rounded-[1.75rem] border border-slate-100 bg-white hover:border-brand/20 transition-all sm:flex-row sm:items-center">
           <div className="flex h-16 w-16 flex-col items-center justify-center rounded-2xl bg-white border border-brand/10 text-center shadow-sm shrink-0">
             <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-400">
@@ -791,7 +822,7 @@ function AppointmentList({ appointments, onEdit, onCancel }: any) {
                 </span>
               )}
             </div>
-            
+
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 font-medium">
               <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-brand" /> {fmtTime(a.scheduled_at)} · {a.duration_minutes || 30}m</span>
               <span className="flex items-center gap-1.5"><Activity className="h-3.5 w-3.5 text-brand" /> {modeLabel(a.consultation_mode)}</span>
@@ -800,22 +831,22 @@ function AppointmentList({ appointments, onEdit, onCancel }: any) {
           </div>
 
           <div className="flex items-center gap-3">
-             <button 
-                onClick={() => onEdit(a)}
-                className="p-2 text-slate-400 hover:text-brand hover:bg-brand/5 rounded-lg transition-all"
-                title="Edit Booking"
+            <button
+              onClick={() => onEdit(a)}
+              className="p-2 text-slate-400 hover:text-brand hover:bg-brand/5 rounded-lg transition-all"
+              title="Edit Booking"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+            {a.status !== 'cancelled' && (
+              <button
+                onClick={() => onCancel(a.id)}
+                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                title="Cancel Appointment"
               >
-                <Pencil className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" />
               </button>
-              {a.status !== 'cancelled' && (
-                <button 
-                  onClick={() => onCancel(a.id)}
-                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                  title="Cancel Appointment"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              )}
+            )}
           </div>
         </div>
       ))}
@@ -823,7 +854,11 @@ function AppointmentList({ appointments, onEdit, onCancel }: any) {
   );
 }
 
-function PaymentTable({ transactions }: any) {
+interface PaymentTableProps {
+  transactions: AdminTransaction[];
+}
+
+function PaymentTable({ transactions }: PaymentTableProps) {
   if (transactions.length === 0) return <Empty message="No transaction history" />;
   return (
     <div className="p-2">
@@ -836,7 +871,7 @@ function PaymentTable({ transactions }: any) {
           </tr>
         </thead>
         <tbody>
-          {transactions.map((t: any) => (
+          {transactions.map((t: AdminTransaction) => (
             <tr key={t.id} className="bg-white border-y border-slate-50 shadow-sm first:rounded-t-2xl">
               <td className="px-6 py-4 rounded-l-2xl border-y border-l border-slate-50 shadow-sm first:border-none">
                 <div className="flex items-center gap-4">
@@ -866,7 +901,13 @@ function PaymentTable({ transactions }: any) {
   );
 }
 
-function TicketTable({ tickets, onResolve, actionId }: any) {
+interface TicketTableProps {
+  tickets: AdminSupportTicket[];
+  onResolve: (ticket: AdminSupportTicket) => Promise<void>;
+  actionId: string | null;
+}
+
+function TicketTable({ tickets, onResolve, actionId }: TicketTableProps) {
   if (tickets.length === 0) return <Empty message="No active support tickets" />;
   return (
     <div className="p-2">
@@ -879,7 +920,7 @@ function TicketTable({ tickets, onResolve, actionId }: any) {
           </tr>
         </thead>
         <tbody>
-          {tickets.map((t: any) => (
+          {tickets.map((t: AdminSupportTicket) => (
             <tr key={t.id} className="bg-white group transition-all">
               <td className="px-6 py-4 rounded-l-2xl border-y border-l border-slate-50 shadow-sm">
                 <div className="flex items-center gap-4">
@@ -899,9 +940,9 @@ function TicketTable({ tickets, onResolve, actionId }: any) {
               </td>
               <td className="px-5 py-4 rounded-r-2xl border-y border-r border-slate-50 shadow-sm text-right">
                 {t.status === 'pending' ? (
-                  <button 
-                    onClick={()=>onResolve(t)} 
-                    disabled={actionId===t.id} 
+                  <button
+                    onClick={() => onResolve(t)}
+                    disabled={actionId === t.id}
                     className="px-4 py-2 bg-brand text-white text-[11px] rounded-xl font-bold hover:bg-brand-dark transition-all shadow-sm hover:shadow-brand/20 disabled:opacity-50"
                   >
                     Resolve Case
